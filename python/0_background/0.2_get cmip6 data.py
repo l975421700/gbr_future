@@ -45,7 +45,7 @@ import cartopy.feature as cfeature
 # management
 import os
 import sys  # print(sys.path)
-sys.path.append(os.getcwd() + '/code/RCM_GBR/module')
+sys.path.append(os.getcwd() + '/code/gbr_future/module')
 
 # self defined
 from mapplot import (
@@ -137,7 +137,6 @@ esm_datastore = intake.open_esm_datastore("https://storage.googleapis.com/cmip6/
 # region get data
 
 
-
 query = dict(
     experiment_id=['historical'],
     table_id='Omon',
@@ -184,3 +183,6 @@ esm_data_subset = esm_datastore.search(**{
 
 '''
 # endregion
+
+
+
