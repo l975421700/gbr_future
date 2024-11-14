@@ -56,17 +56,11 @@ mamba install ipykernel -y
 pip install SkillMetrics
 pip install igra
 pip install pint-xarray
-
-# pip install pycircstat failed
+pip install findent
 
 #-------------------------------- Secondary packages
 
-
-#--------------------------------
-
-# conda env list
-# conda env remove -n rcm_gbr
-# conda config --show channels
+# pip install pycircstat failed
 
 # mamba install jupyter -y
 # mamba install pywavelets -y
@@ -80,4 +74,13 @@ pip install pint-xarray
 
 # pytest -v --pyargs xesmf
 # conda clean -a
-# pip install pycircstat
+
+
+#--------------------------------
+# conda env list
+# conda env remove -n rcm_gbr
+# conda config --show channels
+
+# conda create --prefix /g/data/v46/qg8515/conda_envs/test
+# conda activate /g/data/v46/qg8515/conda_envs/test
+

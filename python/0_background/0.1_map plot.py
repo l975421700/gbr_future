@@ -42,7 +42,7 @@ import cartopy.feature as cfeature
 # management
 import os
 import sys  # print(sys.path)
-sys.path.append(os.getcwd() + '/code/RCM_GBR/module')
+sys.path.append(os.getcwd() + '/code/gbr_future/module')
 
 # self defined
 from mapplot import (
