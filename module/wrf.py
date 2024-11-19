@@ -76,6 +76,14 @@ def get_era5_for_wrf(
                 'temperature',
                 'u_component_of_wind',
                 'v_component_of_wind',
+                
+                # 'vertical_velocity',
+                # 'specific_cloud_ice_water_content',
+                # 'specific_cloud_liquid_water_content',
+                # 'specific_rain_water_content',
+                # 'specific_snow_water_content',
+                # 'fraction_of_cloud_cover',
+                # 'ozone_mass_mixing_ratio',
             ]
     
     if time_str_list is None:

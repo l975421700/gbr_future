@@ -52,6 +52,7 @@ mamba install ipython -y
 mamba install pytest -y
 mamba install pint-xarray -y
 mamba install ipykernel -y
+mamba install ipywidgets -y
 
 pip install SkillMetrics
 pip install igra
