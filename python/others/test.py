@@ -13,3 +13,6 @@ metpy.calc.pressure_to_height_std(100 * metpy.units.units('Pa'))
 # 20 km
 
 
+import intake
+cmip6 = intake.open_esm_datastore("/g/data/dk92/catalog/v2/esm/cmip6-oi10/catalog.json")
+

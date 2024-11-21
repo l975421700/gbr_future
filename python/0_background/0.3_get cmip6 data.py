@@ -1,5 +1,8 @@
 
 
+# qsub -I -q copyq -l walltime=04:00:00,ncpus=1,mem=60GB,jobfs=60GB,storage=gdata/v46,wd
+
+
 # region import packages
 
 # data analysis
@@ -10,179 +13,1227 @@ dask.config.set({"array.slicing.split_large_chunks": True})
 from dask.diagnostics import ProgressBar
 pbar = ProgressBar()
 pbar.register()
-from scipy import stats
-import xesmf as xe
 import pandas as pd
-from metpy.interpolate import cross_section
-from statsmodels.stats import multitest
-from metpy.calc import pressure_to_height_std, geopotential_to_height
-from metpy.units import units
-import metpy.calc as mpcalc
-import cmip6_preprocessing.preprocessing as cpp
-import fsspec
 import intake
-
-# plot
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-from matplotlib.colors import BoundaryNorm
-from matplotlib import cm
-import cartopy.crs as ccrs
-plt.rcParams['pcolor.shading'] = 'auto'
-mpl.rcParams['figure.dpi'] = 600
-mpl.rc('font', family='Times New Roman', size=10)
-mpl.rcParams['axes.linewidth'] = 0.2
-plt.rcParams.update({"mathtext.fontset": "stix"})
-import matplotlib.animation as animation
-import seaborn as sns
-from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
-from matplotlib.ticker import AutoMinorLocator
-import geopandas as gpd
-import matplotlib.patches as mpatches
-from matplotlib.lines import Line2D
-import cartopy.feature as cfeature
+from cdo import Cdo
+cdo=Cdo()
+import fsspec
 
 # management
 import os
 import sys  # print(sys.path)
-sys.path.append(os.getcwd() + '/code/gbr_future/module')
+sys.path.append('/home/563/qg8515/code/gbr_future/module')
+import pickle
 
-# self defined
-from mapplot import (
-    globe_plot,
-    regional_plot,
-    ticks_labels,
-    scale_bar,
-    plot_maxmin_points,
-    remove_trailing_zero,
-    remove_trailing_zero_pos,
-    )
-
+# self defined function
 from calculations import (
-    time_weighted_mean,
     mon_sea_ann,
-    mon_sea_ann_average,
     regrid,
-    inversion_top,
-    find_ilat_ilon,
-    find_gridvalue_at_site,
-    find_gridvalue_at_site_time,
+    time_weighted_mean,
+    )
+from cmip import (
+    combined_preprocessing,
+    drop_all_bounds,
+    open_dsets,
+    open_delayed,
     )
 
-from namelist import (
-    month,
-    monthini,
-    seasons,
-    seconds_per_d,
-    zerok,
-    panel_labels,
-    )
-
-from statistics0 import (
-    fdr_control_bh,
-    check_normality_3d,
-    check_equal_variance_3d,
-    ttest_fdr_control,
-    cplot_ttest,
-    xr_par_cor,
-    xr_regression_y_x1,
-)
-
-from component_plot import (
-    rainbow_text,
-    change_snsbar_width,
-    cplot_wind_vectors,
-    cplot_lon180,
-    cplot_lon180_ctr,
-    plt_mesh_pars,
-)
-
-
-# endregion
-
-
-# region define functions
-
-def combined_preprocessing(ds_in):
-    ds=ds_in.copy()
-    ds=cpp.rename_cmip6(ds)
-    ds=cpp.broadcast_lonlat(ds)
-    return ds
-
-def drop_all_bounds(ds):
-    drop_vars = [vname for vname in ds.coords
-                 if (('_bounds') in vname ) or ('_bnds') in vname]
-    return ds.drop(drop_vars)
-
-def open_dsets(df):
-    '''Open datasets from cloud storage and return xarray dataset.'''
-    dsets = [xr.open_zarr(fsspec.get_mapper(ds_url), consolidated=True, use_cftime=True) for ds_url in df.zstore]
-    try:
-        ds = xr.merge(dsets, join='exact')
-        return ds
-    except ValueError:
-        return None
-
-def open_delayed(df):
-    '''A dask.delayed wrapper around `open_dsets`.
-    Allows us to open many datasets in parallel.'''
-    return dask.delayed(open_dsets)(df)
-
+# get cmip table info
 cmip_info = pd.read_csv('https://storage.googleapis.com/cmip6/cmip6-zarr-consolidated-stores.csv')
 esm_datastore = intake.open_esm_datastore("https://storage.googleapis.com/cmip6/pangeo-cmip6.json")
 
-# endregion
-
-
-# region get data
-
-
-query = dict(
-    experiment_id=['historical'],
-    table_id='Omon',
-    variable_id=['tos'],
-)
-esm_data_subset = esm_datastore.search(**query)
-print(esm_data_subset)
-esm_data_subset.df.groupby("source_id").first()
-
-
-query = dict(
-    experiment_id=['ssp585'],
-    table_id='Omon',
-    variable_id=['tos'],
-)
-esm_data_subset = esm_datastore.search(**query)
-print(esm_data_subset)
-esm_data_subset.df.groupby("source_id").first()
-
-
-query = dict(
-    experiment_id=['ssp126'],
-    table_id='Omon',
-    variable_id=['tos'],
-)
-esm_data_subset = esm_datastore.search(**query)
-print(esm_data_subset)
-esm_data_subset.df.groupby("source_id").first()
-
-
-query = dict(
-    experiment_id=['amip'],
-    table_id='Amon',
-    variable_id=['tas'],
-)
-esm_data_subset = esm_datastore.search(**query)
-print(esm_data_subset)
-esm_data_subset.df.groupby("source_id").first()
-
-
 '''
-esm_data_subset = esm_datastore.search(**{
-    'experiment_id': ['historical'], 'table_id': 'Omon', 'variable_id': ['tos']})
-
+cmip_info['experiment_id'].unique()
+cmip_info['institution_id'].unique()
 '''
 # endregion
 
+
+
+
+# region get 'historical', 'Omon', 'tos'
+
+
+#-------------------------------- configurations
+
+experiment_id = 'historical'
+table_id = 'Omon'
+variable_id = 'tos'
+
+member_id = ['r1i1p1f1', 'r1i1p1f2', 'r1i1p2f1', 'r2i1p1f1', 'r1i1p1f3',]
+
+esm_data = esm_datastore.search(**{
+    'experiment_id': experiment_id,
+    'table_id': table_id,
+    'variable_id': variable_id,
+    'member_id': member_id,
+    })
+esm_data_subset = esm_data.df.sort_values(
+    ['source_id', 'member_id', 'grid_label', 'version'],
+    ascending=[True, True, True, False]).groupby('source_id').first()
+
+output_file = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '.pkl'
+output_file_regrid = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_regrid.pkl'
+output_file_regrid_alltime = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_regrid_alltime.pkl'
+
+intermediate_file = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_intf.pkl'
+intermediate_file1 = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_intf1.pkl'
+
+
+#-------------------------------- get data
+
+dsets = {}
+for group, df in esm_data_subset.groupby('source_id'):
+    dsets[group] = open_delayed(df)
+
+datasets = dask.compute(dsets)[0]
+
+with open(output_file, 'wb') as f: pickle.dump(datasets, f)
+
+
+#-------------------------------- get regridded data
+
+# with open(output_file, 'rb') as f: datasets = pickle.load(f)
+
+datasets_regrid = {}
+
+for imodel in datasets.keys():
+    # imodel = 'ACCESS-ESM1-5'
+    print('#---------------- ' + imodel)
+    
+    if not (imodel in ['AWI-CM-1-1-MR', 'AWI-ESM-1-1-LR']):
+        regridded_data = regrid(datasets[imodel])
+    elif (imodel in ['AWI-CM-1-1-MR', 'AWI-ESM-1-1-LR']):
+        datasets[imodel].to_netcdf(intermediate_file)
+        cdo.remapcon('global_1',
+                     input=intermediate_file,
+                     output=intermediate_file1)
+        regridded_data = regrid(xr.open_dataset(intermediate_file1, use_cftime=True))
+        os.remove(intermediate_file)
+        os.remove(intermediate_file1)
+    
+    datasets_regrid[imodel] = regridded_data.pipe(combined_preprocessing).pipe(drop_all_bounds)
+
+with open(output_file_regrid, 'wb') as f: pickle.dump(datasets_regrid, f)
+
+
+#-------------------------------- get mon_sea_ann regridded data
+
+# with open(output_file_regrid, 'rb') as f: datasets_regrid = pickle.load(f)
+
+datasets_regrid_alltime = {}
+
+for imodel in datasets_regrid.keys():
+    # imodel = 'ACCESS-ESM1-5'
+    print('#---------------- ' + imodel)
+    
+    datasets_regrid_alltime[imodel] = mon_sea_ann(
+        var_monthly=datasets_regrid[imodel][variable_id], )
+    
+    datasets_regrid_alltime[imodel]['mm'] = \
+        datasets_regrid_alltime[imodel]['mm'].rename({'month': 'time'})
+    datasets_regrid_alltime[imodel]['sm'] = \
+        datasets_regrid_alltime[imodel]['sm'].rename({'season': 'time'})
+    datasets_regrid_alltime[imodel]['am'] = \
+        datasets_regrid_alltime[imodel]['am'].expand_dims('time', axis=0)
+
+with open(output_file_regrid_alltime, 'wb') as f:
+    pickle.dump(datasets_regrid_alltime, f)
+
+
+'''
+
+print(esm_data)
+print(esm_data.df)
+esm_data.df.groupby("source_id").first()
+esm_data.df.groupby("source_id").nunique()
+print(esm_data.df.sort_values(
+    ['source_id', 'member_id', 'grid_label', 'version'],
+    ascending=[True, True, True, False])[['source_id', 'member_id', 'grid_label', 'version']].to_string())
+
+# 'ssp585', 'ssp126', 'amip'
+# 'Amon', 'tas'
+
+
+#-------------------------------- check
+with open(output_file, 'rb') as f: datasets = pickle.load(f)
+with open(output_file_regrid, 'rb') as f: datasets_regrid = pickle.load(f)
+with open(output_file_regrid_alltime, 'rb') as f: datasets_regrid_alltime = pickle.load(f)
+
+for imodel in datasets.keys():
+    # imodel = 'ACCESS-ESM1-5'
+    print('#---------------- ' + imodel)
+    
+    print(str(datasets[imodel].time[0].values)[:10] + ' to ' + str(datasets[imodel].time[-1].values)[:10] + ' ' + str(len(datasets[imodel].time)/12) + ' ' + str(datasets[imodel][variable_id].shape))
+    print(str(datasets_regrid[imodel].time[0].values)[:10] + ' to ' + str(datasets_regrid[imodel].time[-1].values)[:10] + ' ' + str(len(datasets_regrid[imodel].time)/12) + ' ' + str(datasets_regrid[imodel][variable_id].shape))
+    print(str(datasets_regrid_alltime[imodel]['mon'].time[0].values)[:10] + ' to ' + str(datasets_regrid_alltime[imodel]['mon'].time[-1].values)[:10] + ' ' + str(len(datasets_regrid_alltime[imodel]['mon'].time)/12) + ' ' + str(datasets_regrid_alltime[imodel]['mon'].shape))
+    print(datasets_regrid_alltime[imodel].keys())
+    
+    # print(datasets[imodel])
+    # print(datasets_regrid[imodel])
+    # print(datasets_regrid_alltime[imodel])
+
+import psutil
+process = psutil.Process()
+print(process.memory_info().rss / 2**30)
+
+'''
+# endregion
+
+
+# region get 'historical', 'Amon', 'tas'
+
+
+#-------------------------------- configurations
+
+experiment_id = 'historical'
+table_id = 'Amon'
+variable_id = 'tas'
+
+member_id = ['r1i1p1f1', 'r1i1p1f2', 'r1i1p2f1', 'r2i1p1f1', 'r1i1p1f3',]
+
+esm_data = esm_datastore.search(**{
+    'experiment_id': experiment_id,
+    'table_id': table_id,
+    'variable_id': variable_id,
+    'member_id': member_id,
+    })
+esm_data_subset = esm_data.df.sort_values(
+    ['source_id', 'member_id', 'grid_label', 'version'],
+    ascending=[True, True, True, False]).groupby('source_id').first()
+
+output_file = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '.pkl'
+output_file_regrid = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_regrid.pkl'
+output_file_regrid_alltime = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_regrid_alltime.pkl'
+
+intermediate_file = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_intf.pkl'
+intermediate_file1 = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_intf1.pkl'
+
+
+#-------------------------------- get data
+
+dsets = {}
+for group, df in esm_data_subset.groupby('source_id'):
+    dsets[group] = open_delayed(df)
+
+datasets = dask.compute(dsets)[0]
+
+with open(output_file, 'wb') as f: pickle.dump(datasets, f)
+
+
+#-------------------------------- get regridded data
+
+# with open(output_file, 'rb') as f: datasets = pickle.load(f)
+
+datasets_regrid = {}
+
+for imodel in datasets.keys():
+    # imodel = 'ACCESS-ESM1-5'
+    print('#---------------- ' + imodel)
+    
+    if not (imodel in ['AWI-CM-1-1-MR', 'AWI-ESM-1-1-LR']):
+        regridded_data = regrid(datasets[imodel])
+    elif (imodel in ['AWI-CM-1-1-MR', 'AWI-ESM-1-1-LR']):
+        datasets[imodel].to_netcdf(intermediate_file)
+        cdo.remapcon('global_1',
+                     input=intermediate_file,
+                     output=intermediate_file1)
+        regridded_data = regrid(xr.open_dataset(intermediate_file1, use_cftime=True))
+        os.remove(intermediate_file)
+        os.remove(intermediate_file1)
+    
+    datasets_regrid[imodel] = regridded_data.pipe(combined_preprocessing).pipe(drop_all_bounds)
+
+with open(output_file_regrid, 'wb') as f: pickle.dump(datasets_regrid, f)
+
+
+#-------------------------------- get mon_sea_ann regridded data
+
+# with open(output_file_regrid, 'rb') as f: datasets_regrid = pickle.load(f)
+
+datasets_regrid_alltime = {}
+
+for imodel in datasets_regrid.keys():
+    # imodel = 'ACCESS-ESM1-5'
+    print('#---------------- ' + imodel)
+    
+    datasets_regrid_alltime[imodel] = mon_sea_ann(
+        var_monthly=datasets_regrid[imodel][variable_id], )
+    
+    datasets_regrid_alltime[imodel]['mm'] = \
+        datasets_regrid_alltime[imodel]['mm'].rename({'month': 'time'})
+    datasets_regrid_alltime[imodel]['sm'] = \
+        datasets_regrid_alltime[imodel]['sm'].rename({'season': 'time'})
+    datasets_regrid_alltime[imodel]['am'] = \
+        datasets_regrid_alltime[imodel]['am'].expand_dims('time', axis=0)
+
+with open(output_file_regrid_alltime, 'wb') as f:
+    pickle.dump(datasets_regrid_alltime, f)
+
+
+'''
+
+print(esm_data)
+print(esm_data.df)
+esm_data.df.groupby("source_id").first()
+esm_data.df.groupby("source_id").nunique()
+print(esm_data.df.sort_values(
+    ['source_id', 'member_id', 'grid_label', 'version'],
+    ascending=[True, True, True, False])[['source_id', 'member_id', 'grid_label', 'version']].to_string())
+
+# 'ssp585', 'ssp126', 'amip'
+# 'Amon', 'tas'
+
+
+#-------------------------------- check
+with open(output_file, 'rb') as f: datasets = pickle.load(f)
+with open(output_file_regrid, 'rb') as f: datasets_regrid = pickle.load(f)
+with open(output_file_regrid_alltime, 'rb') as f: datasets_regrid_alltime = pickle.load(f)
+
+for imodel in datasets.keys():
+    # imodel = 'ACCESS-ESM1-5'
+    print('#---------------- ' + imodel)
+    
+    print(str(datasets[imodel].time[0].values)[:10] + ' to ' + str(datasets[imodel].time[-1].values)[:10] + ' ' + str(len(datasets[imodel].time)/12) + ' ' + str(datasets[imodel][variable_id].shape))
+    print(str(datasets_regrid[imodel].time[0].values)[:10] + ' to ' + str(datasets_regrid[imodel].time[-1].values)[:10] + ' ' + str(len(datasets_regrid[imodel].time)/12) + ' ' + str(datasets_regrid[imodel][variable_id].shape))
+    print(str(datasets_regrid_alltime[imodel]['mon'].time[0].values)[:10] + ' to ' + str(datasets_regrid_alltime[imodel]['mon'].time[-1].values)[:10] + ' ' + str(len(datasets_regrid_alltime[imodel]['mon'].time)/12) + ' ' + str(datasets_regrid_alltime[imodel]['mon'].shape))
+    print(datasets_regrid_alltime[imodel].keys())
+    
+    # print(datasets[imodel])
+    # print(datasets_regrid[imodel])
+    # print(datasets_regrid_alltime[imodel])
+
+import psutil
+process = psutil.Process()
+print(process.memory_info().rss / 2**30)
+
+'''
+# endregion
+
+
+# region get 'historical', 'Amon', 'pr'
+
+
+#-------------------------------- configurations
+
+experiment_id = 'historical'
+table_id = 'Amon'
+variable_id = 'pr'
+
+member_id = ['r1i1p1f1', 'r1i1p1f2', 'r1i1p2f1', 'r2i1p1f1', 'r1i1p1f3',]
+
+esm_data = esm_datastore.search(**{
+    'experiment_id': experiment_id,
+    'table_id': table_id,
+    'variable_id': variable_id,
+    'member_id': member_id,
+    })
+esm_data_subset = esm_data.df.sort_values(
+    ['source_id', 'member_id', 'grid_label', 'version'],
+    ascending=[True, True, True, False]).groupby('source_id').first()
+
+output_file = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '.pkl'
+output_file_regrid = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_regrid.pkl'
+output_file_regrid_alltime = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_regrid_alltime.pkl'
+
+intermediate_file = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_intf.pkl'
+intermediate_file1 = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_intf1.pkl'
+
+
+#-------------------------------- get data
+
+dsets = {}
+for group, df in esm_data_subset.groupby('source_id'):
+    dsets[group] = open_delayed(df)
+
+datasets = dask.compute(dsets)[0]
+
+with open(output_file, 'wb') as f: pickle.dump(datasets, f)
+
+
+#-------------------------------- get regridded data
+
+# with open(output_file, 'rb') as f: datasets = pickle.load(f)
+
+datasets_regrid = {}
+
+for imodel in datasets.keys():
+    # imodel = 'ACCESS-ESM1-5'
+    print('#---------------- ' + imodel)
+    
+    if not (imodel in ['AWI-CM-1-1-MR', 'AWI-ESM-1-1-LR']):
+        regridded_data = regrid(datasets[imodel])
+    elif (imodel in ['AWI-CM-1-1-MR', 'AWI-ESM-1-1-LR']):
+        datasets[imodel].to_netcdf(intermediate_file)
+        cdo.remapcon('global_1',
+                     input=intermediate_file,
+                     output=intermediate_file1)
+        regridded_data = regrid(xr.open_dataset(intermediate_file1, use_cftime=True))
+        os.remove(intermediate_file)
+        os.remove(intermediate_file1)
+    
+    datasets_regrid[imodel] = regridded_data.pipe(combined_preprocessing).pipe(drop_all_bounds)
+
+with open(output_file_regrid, 'wb') as f: pickle.dump(datasets_regrid, f)
+
+
+#-------------------------------- get mon_sea_ann regridded data
+
+# with open(output_file_regrid, 'rb') as f: datasets_regrid = pickle.load(f)
+
+datasets_regrid_alltime = {}
+
+for imodel in datasets_regrid.keys():
+    # imodel = 'ACCESS-ESM1-5'
+    print('#---------------- ' + imodel)
+    
+    datasets_regrid_alltime[imodel] = mon_sea_ann(
+        var_monthly=datasets_regrid[imodel][variable_id], )
+    
+    datasets_regrid_alltime[imodel]['mm'] = \
+        datasets_regrid_alltime[imodel]['mm'].rename({'month': 'time'})
+    datasets_regrid_alltime[imodel]['sm'] = \
+        datasets_regrid_alltime[imodel]['sm'].rename({'season': 'time'})
+    datasets_regrid_alltime[imodel]['am'] = \
+        datasets_regrid_alltime[imodel]['am'].expand_dims('time', axis=0)
+
+with open(output_file_regrid_alltime, 'wb') as f:
+    pickle.dump(datasets_regrid_alltime, f)
+
+
+'''
+
+print(esm_data)
+print(esm_data.df)
+esm_data.df.groupby("source_id").first()
+esm_data.df.groupby("source_id").nunique()
+print(esm_data.df.sort_values(
+    ['source_id', 'member_id', 'grid_label', 'version'],
+    ascending=[True, True, True, False])[['source_id', 'member_id', 'grid_label', 'version']].to_string())
+
+# 'ssp585', 'ssp126', 'amip'
+# 'Amon', 'tas'
+
+
+#-------------------------------- check
+with open(output_file, 'rb') as f: datasets = pickle.load(f)
+with open(output_file_regrid, 'rb') as f: datasets_regrid = pickle.load(f)
+with open(output_file_regrid_alltime, 'rb') as f: datasets_regrid_alltime = pickle.load(f)
+
+for imodel in datasets.keys():
+    # imodel = 'ACCESS-ESM1-5'
+    print('#---------------- ' + imodel)
+    
+    print(str(datasets[imodel].time[0].values)[:10] + ' to ' + str(datasets[imodel].time[-1].values)[:10] + ' ' + str(len(datasets[imodel].time)/12) + ' ' + str(datasets[imodel][variable_id].shape))
+    print(str(datasets_regrid[imodel].time[0].values)[:10] + ' to ' + str(datasets_regrid[imodel].time[-1].values)[:10] + ' ' + str(len(datasets_regrid[imodel].time)/12) + ' ' + str(datasets_regrid[imodel][variable_id].shape))
+    print(str(datasets_regrid_alltime[imodel]['mon'].time[0].values)[:10] + ' to ' + str(datasets_regrid_alltime[imodel]['mon'].time[-1].values)[:10] + ' ' + str(len(datasets_regrid_alltime[imodel]['mon'].time)/12) + ' ' + str(datasets_regrid_alltime[imodel]['mon'].shape))
+    print(datasets_regrid_alltime[imodel].keys())
+    
+    # print(datasets[imodel])
+    # print(datasets_regrid[imodel])
+    # print(datasets_regrid_alltime[imodel])
+
+import psutil
+process = psutil.Process()
+print(process.memory_info().rss / 2**30)
+
+'''
+# endregion
+
+
+
+
+# Memory Used: 83.49GB
+# Walltime Used: 02:32:38
+# JobFS used: 0B
+# region get 'ssp585', 'Omon', 'tos'
+
+
+#-------------------------------- configurations
+
+experiment_id = 'ssp585'
+table_id = 'Omon'
+variable_id = 'tos'
+
+member_id = ['r1i1p1f1', 'r1i1p1f2', 'r1i1p2f1', 'r2i1p1f1', 'r1i1p1f3', 'r4i1p1f1', 'r1i1p3f1']
+
+esm_data = esm_datastore.search(**{
+    'experiment_id': experiment_id,
+    'table_id': table_id,
+    'variable_id': variable_id,
+    'member_id': member_id,
+    })
+esm_data_subset = esm_data.df.sort_values(
+    ['source_id', 'member_id', 'grid_label', 'version'],
+    ascending=[True, True, True, False]).groupby('source_id').first()
+
+output_file = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '.pkl'
+output_file_regrid = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_regrid.pkl'
+output_file_regrid_alltime = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_regrid_alltime.pkl'
+
+intermediate_file = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_intf.pkl'
+intermediate_file1 = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_intf1.pkl'
+
+
+#-------------------------------- get data
+
+dsets = {}
+for group, df in esm_data_subset.groupby('source_id'):
+    dsets[group] = open_delayed(df)
+
+datasets = dask.compute(dsets)[0]
+
+with open(output_file, 'wb') as f: pickle.dump(datasets, f)
+
+
+#-------------------------------- get regridded data
+
+# with open(output_file, 'rb') as f: datasets = pickle.load(f)
+
+datasets_regrid = {}
+
+for imodel in datasets.keys():
+    # imodel = 'ACCESS-ESM1-5'
+    print('#---------------- ' + imodel)
+    
+    if not (imodel in ['AWI-CM-1-1-MR', 'AWI-ESM-1-1-LR']):
+        regridded_data = regrid(datasets[imodel])
+    elif (imodel in ['AWI-CM-1-1-MR', 'AWI-ESM-1-1-LR']):
+        datasets[imodel].to_netcdf(intermediate_file)
+        cdo.remapcon('global_1',
+                     input=intermediate_file,
+                     output=intermediate_file1)
+        regridded_data = regrid(xr.open_dataset(intermediate_file1, use_cftime=True))
+        os.remove(intermediate_file)
+        os.remove(intermediate_file1)
+    
+    datasets_regrid[imodel] = regridded_data.pipe(combined_preprocessing).pipe(drop_all_bounds)
+
+with open(output_file_regrid, 'wb') as f: pickle.dump(datasets_regrid, f)
+
+
+#-------------------------------- get mon_sea_ann regridded data
+
+# with open(output_file_regrid, 'rb') as f: datasets_regrid = pickle.load(f)
+
+datasets_regrid_alltime = {}
+
+for imodel in datasets_regrid.keys():
+    # imodel = 'ACCESS-ESM1-5'
+    print('#---------------- ' + imodel)
+    
+    datasets_regrid_alltime[imodel] = mon_sea_ann(
+        var_monthly=datasets_regrid[imodel][variable_id], )
+    
+    datasets_regrid_alltime[imodel]['mm'] = \
+        datasets_regrid_alltime[imodel]['mm'].rename({'month': 'time'})
+    datasets_regrid_alltime[imodel]['sm'] = \
+        datasets_regrid_alltime[imodel]['sm'].rename({'season': 'time'})
+    datasets_regrid_alltime[imodel]['am'] = \
+        datasets_regrid_alltime[imodel]['am'].expand_dims('time', axis=0)
+
+with open(output_file_regrid_alltime, 'wb') as f:
+    pickle.dump(datasets_regrid_alltime, f)
+
+
+'''
+
+print(esm_data)
+print(esm_data.df)
+print(esm_data.df[['source_id', 'member_id']].to_string())
+esm_data.df.groupby("source_id").first()
+esm_data.df.groupby("source_id").nunique()
+print(esm_data.df.sort_values(
+    ['source_id', 'member_id', 'grid_label', 'version'],
+    ascending=[True, True, True, False])[['source_id', 'member_id', 'grid_label', 'version']].to_string())
+
+# 'ssp585', 'ssp126', 'amip'
+# 'Amon', 'tas'
+
+
+#-------------------------------- check
+with open(output_file, 'rb') as f: datasets = pickle.load(f)
+with open(output_file_regrid, 'rb') as f: datasets_regrid = pickle.load(f)
+with open(output_file_regrid_alltime, 'rb') as f: datasets_regrid_alltime = pickle.load(f)
+
+for imodel in datasets.keys():
+    # imodel = 'ACCESS-ESM1-5'
+    print('#---------------- ' + imodel)
+    
+    print(str(datasets[imodel].time[0].values)[:10] + ' to ' + str(datasets[imodel].time[-1].values)[:10] + ' ' + str(len(datasets[imodel].time)/12) + ' ' + str(datasets[imodel][variable_id].shape))
+    print(str(datasets_regrid[imodel].time[0].values)[:10] + ' to ' + str(datasets_regrid[imodel].time[-1].values)[:10] + ' ' + str(len(datasets_regrid[imodel].time)/12) + ' ' + str(datasets_regrid[imodel][variable_id].shape))
+    print(str(datasets_regrid_alltime[imodel]['mon'].time[0].values)[:10] + ' to ' + str(datasets_regrid_alltime[imodel]['mon'].time[-1].values)[:10] + ' ' + str(len(datasets_regrid_alltime[imodel]['mon'].time)/12) + ' ' + str(datasets_regrid_alltime[imodel]['mon'].shape))
+    print(datasets_regrid_alltime[imodel].keys())
+    
+    # print(datasets[imodel])
+    # print(datasets_regrid[imodel])
+    # print(datasets_regrid_alltime[imodel])
+
+import psutil
+process = psutil.Process()
+print(process.memory_info().rss / 2**30)
+
+'''
+# endregion
+
+
+# region get 'ssp585', 'Amon', 'tas'
+
+
+#-------------------------------- configurations
+
+experiment_id = 'ssp585'
+table_id = 'Amon'
+variable_id = 'tas'
+
+member_id = ['r1i1p1f1', 'r1i1p1f2', 'r1i1p2f1', 'r2i1p1f1', 'r1i1p1f3', 'r4i1p1f1', 'r1i1p3f1']
+
+esm_data = esm_datastore.search(**{
+    'experiment_id': experiment_id,
+    'table_id': table_id,
+    'variable_id': variable_id,
+    'member_id': member_id,
+    })
+esm_data_subset = esm_data.df.sort_values(
+    ['source_id', 'member_id', 'grid_label', 'version'],
+    ascending=[True, True, True, False]).groupby('source_id').first()
+
+output_file = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '.pkl'
+output_file_regrid = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_regrid.pkl'
+output_file_regrid_alltime = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_regrid_alltime.pkl'
+
+intermediate_file = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_intf.pkl'
+intermediate_file1 = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_intf1.pkl'
+
+
+#-------------------------------- get data
+
+dsets = {}
+for group, df in esm_data_subset.groupby('source_id'):
+    dsets[group] = open_delayed(df)
+
+datasets = dask.compute(dsets)[0]
+
+with open(output_file, 'wb') as f: pickle.dump(datasets, f)
+
+
+#-------------------------------- get regridded data
+
+# with open(output_file, 'rb') as f: datasets = pickle.load(f)
+
+datasets_regrid = {}
+
+for imodel in datasets.keys():
+    # imodel = 'ACCESS-ESM1-5'
+    print('#---------------- ' + imodel)
+    
+    if not (imodel in ['AWI-CM-1-1-MR', 'AWI-ESM-1-1-LR']):
+        regridded_data = regrid(datasets[imodel])
+    elif (imodel in ['AWI-CM-1-1-MR', 'AWI-ESM-1-1-LR']):
+        datasets[imodel].to_netcdf(intermediate_file)
+        cdo.remapcon('global_1',
+                     input=intermediate_file,
+                     output=intermediate_file1)
+        regridded_data = regrid(xr.open_dataset(intermediate_file1, use_cftime=True))
+        os.remove(intermediate_file)
+        os.remove(intermediate_file1)
+    
+    datasets_regrid[imodel] = regridded_data.pipe(combined_preprocessing).pipe(drop_all_bounds)
+
+with open(output_file_regrid, 'wb') as f: pickle.dump(datasets_regrid, f)
+
+
+#-------------------------------- get mon_sea_ann regridded data
+
+# with open(output_file_regrid, 'rb') as f: datasets_regrid = pickle.load(f)
+
+datasets_regrid_alltime = {}
+
+for imodel in datasets_regrid.keys():
+    # imodel = 'ACCESS-ESM1-5'
+    print('#---------------- ' + imodel)
+    
+    datasets_regrid_alltime[imodel] = mon_sea_ann(
+        var_monthly=datasets_regrid[imodel][variable_id], )
+    
+    datasets_regrid_alltime[imodel]['mm'] = \
+        datasets_regrid_alltime[imodel]['mm'].rename({'month': 'time'})
+    datasets_regrid_alltime[imodel]['sm'] = \
+        datasets_regrid_alltime[imodel]['sm'].rename({'season': 'time'})
+    datasets_regrid_alltime[imodel]['am'] = \
+        datasets_regrid_alltime[imodel]['am'].expand_dims('time', axis=0)
+
+with open(output_file_regrid_alltime, 'wb') as f:
+    pickle.dump(datasets_regrid_alltime, f)
+
+
+'''
+
+print(esm_data)
+print(esm_data.df)
+print(esm_data.df[['source_id', 'member_id']].to_string())
+esm_data.df.groupby("source_id").first()
+esm_data.df.groupby("source_id").nunique()
+print(esm_data.df.sort_values(
+    ['source_id', 'member_id', 'grid_label', 'version'],
+    ascending=[True, True, True, False])[['source_id', 'member_id', 'grid_label', 'version']].to_string())
+
+# 'ssp585', 'ssp126', 'amip'
+# 'Amon', 'tas'
+
+
+#-------------------------------- check
+with open(output_file, 'rb') as f: datasets = pickle.load(f)
+with open(output_file_regrid, 'rb') as f: datasets_regrid = pickle.load(f)
+with open(output_file_regrid_alltime, 'rb') as f: datasets_regrid_alltime = pickle.load(f)
+
+for imodel in datasets.keys():
+    # imodel = 'ACCESS-ESM1-5'
+    print('#---------------- ' + imodel)
+    
+    print(str(datasets[imodel].time[0].values)[:10] + ' to ' + str(datasets[imodel].time[-1].values)[:10] + ' ' + str(len(datasets[imodel].time)/12) + ' ' + str(datasets[imodel][variable_id].shape))
+    print(str(datasets_regrid[imodel].time[0].values)[:10] + ' to ' + str(datasets_regrid[imodel].time[-1].values)[:10] + ' ' + str(len(datasets_regrid[imodel].time)/12) + ' ' + str(datasets_regrid[imodel][variable_id].shape))
+    print(str(datasets_regrid_alltime[imodel]['mon'].time[0].values)[:10] + ' to ' + str(datasets_regrid_alltime[imodel]['mon'].time[-1].values)[:10] + ' ' + str(len(datasets_regrid_alltime[imodel]['mon'].time)/12) + ' ' + str(datasets_regrid_alltime[imodel]['mon'].shape))
+    print(datasets_regrid_alltime[imodel].keys())
+    
+    # print(datasets[imodel])
+    # print(datasets_regrid[imodel])
+    # print(datasets_regrid_alltime[imodel])
+
+import psutil
+process = psutil.Process()
+print(process.memory_info().rss / 2**30)
+
+'''
+# endregion
+
+
+# region get 'ssp585', 'Amon', 'pr'
+
+
+#-------------------------------- configurations
+
+experiment_id = 'ssp585'
+table_id = 'Amon'
+variable_id = 'pr'
+
+member_id = ['r1i1p1f1', 'r1i1p1f2', 'r1i1p2f1', 'r2i1p1f1', 'r1i1p1f3', 'r4i1p1f1', 'r1i1p3f1']
+
+esm_data = esm_datastore.search(**{
+    'experiment_id': experiment_id,
+    'table_id': table_id,
+    'variable_id': variable_id,
+    'member_id': member_id,
+    })
+esm_data_subset = esm_data.df.sort_values(
+    ['source_id', 'member_id', 'grid_label', 'version'],
+    ascending=[True, True, True, False]).groupby('source_id').first()
+
+output_file = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '.pkl'
+output_file_regrid = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_regrid.pkl'
+output_file_regrid_alltime = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_regrid_alltime.pkl'
+
+intermediate_file = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_intf.pkl'
+intermediate_file1 = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_intf1.pkl'
+
+
+#-------------------------------- get data
+
+dsets = {}
+for group, df in esm_data_subset.groupby('source_id'):
+    dsets[group] = open_delayed(df)
+
+datasets = dask.compute(dsets)[0]
+
+with open(output_file, 'wb') as f: pickle.dump(datasets, f)
+
+
+#-------------------------------- get regridded data
+
+# with open(output_file, 'rb') as f: datasets = pickle.load(f)
+
+datasets_regrid = {}
+
+for imodel in datasets.keys():
+    # imodel = 'ACCESS-ESM1-5'
+    print('#---------------- ' + imodel)
+    
+    if not (imodel in ['AWI-CM-1-1-MR', 'AWI-ESM-1-1-LR']):
+        regridded_data = regrid(datasets[imodel])
+    elif (imodel in ['AWI-CM-1-1-MR', 'AWI-ESM-1-1-LR']):
+        datasets[imodel].to_netcdf(intermediate_file)
+        cdo.remapcon('global_1',
+                     input=intermediate_file,
+                     output=intermediate_file1)
+        regridded_data = regrid(xr.open_dataset(intermediate_file1, use_cftime=True))
+        os.remove(intermediate_file)
+        os.remove(intermediate_file1)
+    
+    datasets_regrid[imodel] = regridded_data.pipe(combined_preprocessing).pipe(drop_all_bounds)
+
+with open(output_file_regrid, 'wb') as f: pickle.dump(datasets_regrid, f)
+
+
+#-------------------------------- get mon_sea_ann regridded data
+
+# with open(output_file_regrid, 'rb') as f: datasets_regrid = pickle.load(f)
+
+datasets_regrid_alltime = {}
+
+for imodel in datasets_regrid.keys():
+    # imodel = 'ACCESS-ESM1-5'
+    print('#---------------- ' + imodel)
+    
+    datasets_regrid_alltime[imodel] = mon_sea_ann(
+        var_monthly=datasets_regrid[imodel][variable_id], )
+    
+    datasets_regrid_alltime[imodel]['mm'] = \
+        datasets_regrid_alltime[imodel]['mm'].rename({'month': 'time'})
+    datasets_regrid_alltime[imodel]['sm'] = \
+        datasets_regrid_alltime[imodel]['sm'].rename({'season': 'time'})
+    datasets_regrid_alltime[imodel]['am'] = \
+        datasets_regrid_alltime[imodel]['am'].expand_dims('time', axis=0)
+
+with open(output_file_regrid_alltime, 'wb') as f:
+    pickle.dump(datasets_regrid_alltime, f)
+
+
+'''
+
+print(esm_data)
+print(esm_data.df)
+print(esm_data.df[['source_id', 'member_id']].to_string())
+esm_data.df.groupby("source_id").first()
+esm_data.df.groupby("source_id").nunique()
+print(esm_data.df.sort_values(
+    ['source_id', 'member_id', 'grid_label', 'version'],
+    ascending=[True, True, True, False])[['source_id', 'member_id', 'grid_label', 'version']].to_string())
+
+# 'ssp585', 'ssp126', 'amip'
+# 'Amon', 'tas'
+
+
+#-------------------------------- check
+with open(output_file, 'rb') as f: datasets = pickle.load(f)
+with open(output_file_regrid, 'rb') as f: datasets_regrid = pickle.load(f)
+with open(output_file_regrid_alltime, 'rb') as f: datasets_regrid_alltime = pickle.load(f)
+
+for imodel in datasets.keys():
+    # imodel = 'ACCESS-ESM1-5'
+    print('#---------------- ' + imodel)
+    
+    print(str(datasets[imodel].time[0].values)[:10] + ' to ' + str(datasets[imodel].time[-1].values)[:10] + ' ' + str(len(datasets[imodel].time)/12) + ' ' + str(datasets[imodel][variable_id].shape))
+    print(str(datasets_regrid[imodel].time[0].values)[:10] + ' to ' + str(datasets_regrid[imodel].time[-1].values)[:10] + ' ' + str(len(datasets_regrid[imodel].time)/12) + ' ' + str(datasets_regrid[imodel][variable_id].shape))
+    print(str(datasets_regrid_alltime[imodel]['mon'].time[0].values)[:10] + ' to ' + str(datasets_regrid_alltime[imodel]['mon'].time[-1].values)[:10] + ' ' + str(len(datasets_regrid_alltime[imodel]['mon'].time)/12) + ' ' + str(datasets_regrid_alltime[imodel]['mon'].shape))
+    print(datasets_regrid_alltime[imodel].keys())
+    
+    # print(datasets[imodel])
+    # print(datasets_regrid[imodel])
+    # print(datasets_regrid_alltime[imodel])
+
+import psutil
+process = psutil.Process()
+print(process.memory_info().rss / 2**30)
+
+'''
+# endregion
+
+
+
+
+# region get 'ssp126', 'Omon', 'tos'
+
+
+#-------------------------------- configurations
+
+experiment_id = 'ssp126'
+table_id = 'Omon'
+variable_id = 'tos'
+
+member_id = ['r1i1p1f1', 'r1i1p1f2', 'r1i1p2f1', 'r2i1p1f1', 'r1i1p1f3', 'r4i1p1f1', 'r1i1p3f1']
+
+esm_data = esm_datastore.search(**{
+    'experiment_id': experiment_id,
+    'table_id': table_id,
+    'variable_id': variable_id,
+    'member_id': member_id,
+    })
+esm_data_subset = esm_data.df.sort_values(
+    ['source_id', 'member_id', 'grid_label', 'version'],
+    ascending=[True, True, True, False]).groupby('source_id').first()
+
+output_file = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '.pkl'
+output_file_regrid = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_regrid.pkl'
+output_file_regrid_alltime = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_regrid_alltime.pkl'
+
+intermediate_file = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_intf.pkl'
+intermediate_file1 = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_intf1.pkl'
+
+
+#-------------------------------- get data
+
+dsets = {}
+for group, df in esm_data_subset.iloc[13:15].groupby('source_id'):
+    dsets[group] = open_delayed(df)
+
+datasets = dask.compute(dsets)[0]
+
+with open(output_file, 'wb') as f: pickle.dump(datasets, f)
+
+
+#-------------------------------- get regridded data
+
+# with open(output_file, 'rb') as f: datasets = pickle.load(f)
+
+datasets_regrid = {}
+
+for imodel in datasets.keys():
+    # imodel = 'ACCESS-ESM1-5'
+    print('#---------------- ' + imodel)
+    
+    if not (imodel in ['AWI-CM-1-1-MR', 'AWI-ESM-1-1-LR']):
+        regridded_data = regrid(datasets[imodel])
+    elif (imodel in ['AWI-CM-1-1-MR', 'AWI-ESM-1-1-LR']):
+        datasets[imodel].to_netcdf(intermediate_file)
+        cdo.remapcon('global_1',
+                     input=intermediate_file,
+                     output=intermediate_file1)
+        regridded_data = regrid(xr.open_dataset(intermediate_file1, use_cftime=True))
+        os.remove(intermediate_file)
+        os.remove(intermediate_file1)
+    
+    datasets_regrid[imodel] = regridded_data.pipe(combined_preprocessing).pipe(drop_all_bounds)
+
+with open(output_file_regrid, 'wb') as f: pickle.dump(datasets_regrid, f)
+
+
+#-------------------------------- get mon_sea_ann regridded data
+
+# with open(output_file_regrid, 'rb') as f: datasets_regrid = pickle.load(f)
+
+datasets_regrid_alltime = {}
+
+for imodel in datasets_regrid.keys():
+    # imodel = 'ACCESS-ESM1-5'
+    print('#---------------- ' + imodel)
+    
+    datasets_regrid_alltime[imodel] = mon_sea_ann(
+        var_monthly=datasets_regrid[imodel][variable_id], )
+    
+    datasets_regrid_alltime[imodel]['mm'] = \
+        datasets_regrid_alltime[imodel]['mm'].rename({'month': 'time'})
+    datasets_regrid_alltime[imodel]['sm'] = \
+        datasets_regrid_alltime[imodel]['sm'].rename({'season': 'time'})
+    datasets_regrid_alltime[imodel]['am'] = \
+        datasets_regrid_alltime[imodel]['am'].expand_dims('time', axis=0)
+
+with open(output_file_regrid_alltime, 'wb') as f:
+    pickle.dump(datasets_regrid_alltime, f)
+
+
+'''
+
+
+print(esm_data)
+print(esm_data.df)
+print(esm_data.df[['source_id', 'member_id']].to_string())
+esm_data.df.groupby("source_id").first()
+esm_data.df.groupby("source_id").nunique()
+print(esm_data.df.sort_values(
+    ['source_id', 'member_id', 'grid_label', 'version'],
+    ascending=[True, True, True, False])[['source_id', 'member_id', 'grid_label', 'version']].to_string())
+
+# 'ssp585', 'ssp126', 'amip'
+# 'Amon', 'tas'
+
+
+#-------------------------------- check
+with open(output_file, 'rb') as f: datasets = pickle.load(f)
+with open(output_file_regrid, 'rb') as f: datasets_regrid = pickle.load(f)
+with open(output_file_regrid_alltime, 'rb') as f: datasets_regrid_alltime = pickle.load(f)
+
+for imodel in datasets.keys():
+    # imodel = 'ACCESS-ESM1-5'
+    print('#---------------- ' + imodel)
+    
+    print(str(datasets[imodel].time[0].values)[:10] + ' to ' + str(datasets[imodel].time[-1].values)[:10] + ' ' + str(len(datasets[imodel].time)/12) + ' ' + str(datasets[imodel][variable_id].shape))
+    print(str(datasets_regrid[imodel].time[0].values)[:10] + ' to ' + str(datasets_regrid[imodel].time[-1].values)[:10] + ' ' + str(len(datasets_regrid[imodel].time)/12) + ' ' + str(datasets_regrid[imodel][variable_id].shape))
+    print(str(datasets_regrid_alltime[imodel]['mon'].time[0].values)[:10] + ' to ' + str(datasets_regrid_alltime[imodel]['mon'].time[-1].values)[:10] + ' ' + str(len(datasets_regrid_alltime[imodel]['mon'].time)/12) + ' ' + str(datasets_regrid_alltime[imodel]['mon'].shape))
+    print(datasets_regrid_alltime[imodel].keys())
+    
+    # print(datasets[imodel])
+    # print(datasets_regrid[imodel])
+    # print(datasets_regrid_alltime[imodel])
+
+import psutil
+process = psutil.Process()
+print(process.memory_info().rss / 2**30)
+
+'''
+# endregion
+
+
+# region get 'ssp126', 'Amon', 'tas'
+
+
+#-------------------------------- configurations
+
+experiment_id = 'ssp126'
+table_id = 'Amon'
+variable_id = 'tas'
+
+member_id = ['r1i1p1f1', 'r1i1p1f2', 'r1i1p2f1', 'r2i1p1f1', 'r1i1p1f3', 'r4i1p1f1', 'r1i1p3f1']
+
+esm_data = esm_datastore.search(**{
+    'experiment_id': experiment_id,
+    'table_id': table_id,
+    'variable_id': variable_id,
+    'member_id': member_id,
+    })
+esm_data_subset = esm_data.df.sort_values(
+    ['source_id', 'member_id', 'grid_label', 'version'],
+    ascending=[True, True, True, False]).groupby('source_id').first()
+
+output_file = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '.pkl'
+output_file_regrid = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_regrid.pkl'
+output_file_regrid_alltime = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_regrid_alltime.pkl'
+
+intermediate_file = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_intf.pkl'
+intermediate_file1 = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_intf1.pkl'
+
+
+#-------------------------------- get data
+
+dsets = {}
+for group, df in esm_data_subset.iloc[13:15].groupby('source_id'):
+    dsets[group] = open_delayed(df)
+
+datasets = dask.compute(dsets)[0]
+
+with open(output_file, 'wb') as f: pickle.dump(datasets, f)
+
+
+#-------------------------------- get regridded data
+
+# with open(output_file, 'rb') as f: datasets = pickle.load(f)
+
+datasets_regrid = {}
+
+for imodel in datasets.keys():
+    # imodel = 'ACCESS-ESM1-5'
+    print('#---------------- ' + imodel)
+    
+    if not (imodel in ['AWI-CM-1-1-MR', 'AWI-ESM-1-1-LR']):
+        regridded_data = regrid(datasets[imodel])
+    elif (imodel in ['AWI-CM-1-1-MR', 'AWI-ESM-1-1-LR']):
+        datasets[imodel].to_netcdf(intermediate_file)
+        cdo.remapcon('global_1',
+                     input=intermediate_file,
+                     output=intermediate_file1)
+        regridded_data = regrid(xr.open_dataset(intermediate_file1, use_cftime=True))
+        os.remove(intermediate_file)
+        os.remove(intermediate_file1)
+    
+    datasets_regrid[imodel] = regridded_data.pipe(combined_preprocessing).pipe(drop_all_bounds)
+
+with open(output_file_regrid, 'wb') as f: pickle.dump(datasets_regrid, f)
+
+
+#-------------------------------- get mon_sea_ann regridded data
+
+# with open(output_file_regrid, 'rb') as f: datasets_regrid = pickle.load(f)
+
+datasets_regrid_alltime = {}
+
+for imodel in datasets_regrid.keys():
+    # imodel = 'ACCESS-ESM1-5'
+    print('#---------------- ' + imodel)
+    
+    datasets_regrid_alltime[imodel] = mon_sea_ann(
+        var_monthly=datasets_regrid[imodel][variable_id], )
+    
+    datasets_regrid_alltime[imodel]['mm'] = \
+        datasets_regrid_alltime[imodel]['mm'].rename({'month': 'time'})
+    datasets_regrid_alltime[imodel]['sm'] = \
+        datasets_regrid_alltime[imodel]['sm'].rename({'season': 'time'})
+    datasets_regrid_alltime[imodel]['am'] = \
+        datasets_regrid_alltime[imodel]['am'].expand_dims('time', axis=0)
+
+with open(output_file_regrid_alltime, 'wb') as f:
+    pickle.dump(datasets_regrid_alltime, f)
+
+
+'''
+
+
+print(esm_data)
+print(esm_data.df)
+print(esm_data.df[['source_id', 'member_id']].to_string())
+esm_data.df.groupby("source_id").first()
+esm_data.df.groupby("source_id").nunique()
+print(esm_data.df.sort_values(
+    ['source_id', 'member_id', 'grid_label', 'version'],
+    ascending=[True, True, True, False])[['source_id', 'member_id', 'grid_label', 'version']].to_string())
+
+# 'ssp585', 'ssp126', 'amip'
+# 'Amon', 'tas'
+
+
+#-------------------------------- check
+with open(output_file, 'rb') as f: datasets = pickle.load(f)
+with open(output_file_regrid, 'rb') as f: datasets_regrid = pickle.load(f)
+with open(output_file_regrid_alltime, 'rb') as f: datasets_regrid_alltime = pickle.load(f)
+
+for imodel in datasets.keys():
+    # imodel = 'ACCESS-ESM1-5'
+    print('#---------------- ' + imodel)
+    
+    print(str(datasets[imodel].time[0].values)[:10] + ' to ' + str(datasets[imodel].time[-1].values)[:10] + ' ' + str(len(datasets[imodel].time)/12) + ' ' + str(datasets[imodel][variable_id].shape))
+    print(str(datasets_regrid[imodel].time[0].values)[:10] + ' to ' + str(datasets_regrid[imodel].time[-1].values)[:10] + ' ' + str(len(datasets_regrid[imodel].time)/12) + ' ' + str(datasets_regrid[imodel][variable_id].shape))
+    print(str(datasets_regrid_alltime[imodel]['mon'].time[0].values)[:10] + ' to ' + str(datasets_regrid_alltime[imodel]['mon'].time[-1].values)[:10] + ' ' + str(len(datasets_regrid_alltime[imodel]['mon'].time)/12) + ' ' + str(datasets_regrid_alltime[imodel]['mon'].shape))
+    print(datasets_regrid_alltime[imodel].keys())
+    
+    # print(datasets[imodel])
+    # print(datasets_regrid[imodel])
+    # print(datasets_regrid_alltime[imodel])
+
+import psutil
+process = psutil.Process()
+print(process.memory_info().rss / 2**30)
+
+'''
+# endregion
+
+
+# region get 'ssp126', 'Amon', 'pr'
+
+
+#-------------------------------- configurations
+
+experiment_id = 'ssp126'
+table_id = 'Amon'
+variable_id = 'pr'
+
+member_id = ['r1i1p1f1', 'r1i1p1f2', 'r1i1p2f1', 'r2i1p1f1', 'r1i1p1f3', 'r4i1p1f1', 'r1i1p3f1']
+
+esm_data = esm_datastore.search(**{
+    'experiment_id': experiment_id,
+    'table_id': table_id,
+    'variable_id': variable_id,
+    'member_id': member_id,
+    })
+esm_data_subset = esm_data.df.sort_values(
+    ['source_id', 'member_id', 'grid_label', 'version'],
+    ascending=[True, True, True, False]).groupby('source_id').first()
+
+output_file = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '.pkl'
+output_file_regrid = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_regrid.pkl'
+output_file_regrid_alltime = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_regrid_alltime.pkl'
+
+intermediate_file = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_intf.pkl'
+intermediate_file1 = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_intf1.pkl'
+
+
+#-------------------------------- get data
+
+dsets = {}
+for group, df in esm_data_subset.iloc[13:15].groupby('source_id'):
+    dsets[group] = open_delayed(df)
+
+datasets = dask.compute(dsets)[0]
+
+with open(output_file, 'wb') as f: pickle.dump(datasets, f)
+
+
+#-------------------------------- get regridded data
+
+# with open(output_file, 'rb') as f: datasets = pickle.load(f)
+
+datasets_regrid = {}
+
+for imodel in datasets.keys():
+    # imodel = 'ACCESS-ESM1-5'
+    print('#---------------- ' + imodel)
+    
+    if not (imodel in ['AWI-CM-1-1-MR', 'AWI-ESM-1-1-LR']):
+        regridded_data = regrid(datasets[imodel])
+    elif (imodel in ['AWI-CM-1-1-MR', 'AWI-ESM-1-1-LR']):
+        datasets[imodel].to_netcdf(intermediate_file)
+        cdo.remapcon('global_1',
+                     input=intermediate_file,
+                     output=intermediate_file1)
+        regridded_data = regrid(xr.open_dataset(intermediate_file1, use_cftime=True))
+        os.remove(intermediate_file)
+        os.remove(intermediate_file1)
+    
+    datasets_regrid[imodel] = regridded_data.pipe(combined_preprocessing).pipe(drop_all_bounds)
+
+with open(output_file_regrid, 'wb') as f: pickle.dump(datasets_regrid, f)
+
+
+#-------------------------------- get mon_sea_ann regridded data
+
+# with open(output_file_regrid, 'rb') as f: datasets_regrid = pickle.load(f)
+
+datasets_regrid_alltime = {}
+
+for imodel in datasets_regrid.keys():
+    # imodel = 'ACCESS-ESM1-5'
+    print('#---------------- ' + imodel)
+    
+    datasets_regrid_alltime[imodel] = mon_sea_ann(
+        var_monthly=datasets_regrid[imodel][variable_id], )
+    
+    datasets_regrid_alltime[imodel]['mm'] = \
+        datasets_regrid_alltime[imodel]['mm'].rename({'month': 'time'})
+    datasets_regrid_alltime[imodel]['sm'] = \
+        datasets_regrid_alltime[imodel]['sm'].rename({'season': 'time'})
+    datasets_regrid_alltime[imodel]['am'] = \
+        datasets_regrid_alltime[imodel]['am'].expand_dims('time', axis=0)
+
+with open(output_file_regrid_alltime, 'wb') as f:
+    pickle.dump(datasets_regrid_alltime, f)
+
+
+'''
+
+
+print(esm_data)
+print(esm_data.df)
+print(esm_data.df[['source_id', 'member_id']].to_string())
+esm_data.df.groupby("source_id").first()
+esm_data.df.groupby("source_id").nunique()
+print(esm_data.df.sort_values(
+    ['source_id', 'member_id', 'grid_label', 'version'],
+    ascending=[True, True, True, False])[['source_id', 'member_id', 'grid_label', 'version']].to_string())
+
+# 'ssp585', 'ssp126', 'amip'
+# 'Amon', 'tas'
+
+
+#-------------------------------- check
+with open(output_file, 'rb') as f: datasets = pickle.load(f)
+with open(output_file_regrid, 'rb') as f: datasets_regrid = pickle.load(f)
+with open(output_file_regrid_alltime, 'rb') as f: datasets_regrid_alltime = pickle.load(f)
+
+for imodel in datasets.keys():
+    # imodel = 'ACCESS-ESM1-5'
+    print('#---------------- ' + imodel)
+    
+    print(str(datasets[imodel].time[0].values)[:10] + ' to ' + str(datasets[imodel].time[-1].values)[:10] + ' ' + str(len(datasets[imodel].time)/12) + ' ' + str(datasets[imodel][variable_id].shape))
+    print(str(datasets_regrid[imodel].time[0].values)[:10] + ' to ' + str(datasets_regrid[imodel].time[-1].values)[:10] + ' ' + str(len(datasets_regrid[imodel].time)/12) + ' ' + str(datasets_regrid[imodel][variable_id].shape))
+    print(str(datasets_regrid_alltime[imodel]['mon'].time[0].values)[:10] + ' to ' + str(datasets_regrid_alltime[imodel]['mon'].time[-1].values)[:10] + ' ' + str(len(datasets_regrid_alltime[imodel]['mon'].time)/12) + ' ' + str(datasets_regrid_alltime[imodel]['mon'].shape))
+    print(datasets_regrid_alltime[imodel].keys())
+    
+    # print(datasets[imodel])
+    # print(datasets_regrid[imodel])
+    # print(datasets_regrid_alltime[imodel])
+
+import psutil
+process = psutil.Process()
+print(process.memory_info().rss / 2**30)
+
+'''
+# endregion
 
 
