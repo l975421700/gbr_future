@@ -8,6 +8,6 @@
 
 cd $HOME
 source /home/563/qg8515/miniconda3/bin/activate rcm_gbr
-python /home/563/qg8515/code/gbr_future/python/others/py_scripts/qrun4.py
+python /home/563/qg8515/code/gbr_future/python/others/py_scripts/qrun0.py
 
 

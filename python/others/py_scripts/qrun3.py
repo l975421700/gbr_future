@@ -46,16 +46,16 @@ cmip_info['institution_id'].unique()
 # endregion
 
 
-# region get 'historical', 'Amon', 'tas'
+# region get 'ssp585', 'Omon', 'tos'
 
 
 #-------------------------------- configurations
 
-experiment_id = 'historical'
-table_id = 'Amon'
-variable_id = 'tas'
+experiment_id = 'ssp585'
+table_id = 'Omon'
+variable_id = 'tos'
 
-member_id = ['r1i1p1f1', 'r1i1p1f2', 'r1i1p2f1', 'r2i1p1f1', 'r1i1p1f3',]
+member_id = ['r1i1p1f1', 'r1i1p1f2', 'r1i1p2f1', 'r2i1p1f1', 'r1i1p1f3', 'r4i1p1f1', 'r1i1p3f1']
 
 esm_data = esm_datastore.search(**{
     'experiment_id': experiment_id,
@@ -124,13 +124,6 @@ for imodel in datasets_regrid.keys():
     
     datasets_regrid_alltime[imodel] = mon_sea_ann(
         var_monthly=datasets_regrid[imodel][variable_id], )
-    
-    datasets_regrid_alltime[imodel]['mm'] = \
-        datasets_regrid_alltime[imodel]['mm'].rename({'month': 'time'})
-    datasets_regrid_alltime[imodel]['sm'] = \
-        datasets_regrid_alltime[imodel]['sm'].rename({'season': 'time'})
-    datasets_regrid_alltime[imodel]['am'] = \
-        datasets_regrid_alltime[imodel]['am'].expand_dims('time', axis=0)
 
 with open(output_file_regrid_alltime, 'wb') as f:
     pickle.dump(datasets_regrid_alltime, f)
@@ -140,6 +133,7 @@ with open(output_file_regrid_alltime, 'wb') as f:
 
 print(esm_data)
 print(esm_data.df)
+print(esm_data.df[['source_id', 'member_id']].to_string())
 esm_data.df.groupby("source_id").first()
 esm_data.df.groupby("source_id").nunique()
 print(esm_data.df.sort_values(

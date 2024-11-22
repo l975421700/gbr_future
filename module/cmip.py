@@ -31,7 +31,7 @@ def open_dsets(df):
     import fsspec
     import xarray as xr
     
-    dsets = [xr.open_zarr(fsspec.get_mapper(ds_url), consolidated=False, use_cftime=True) for ds_url in df.zstore]
+    dsets = [xr.open_zarr(fsspec.get_mapper(ds_url), consolidated=False, use_cftime=True).sortby('time') for ds_url in df.zstore]
     
     try:
         ds = xr.merge(dsets, join='exact')

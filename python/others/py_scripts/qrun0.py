@@ -1,8 +1,5 @@
 
 
-# qsub -I -q copyq -l walltime=04:00:00,ncpus=1,mem=60GB,jobfs=60GB,storage=gdata/v46,wd
-
-
 # region import packages
 
 # data analysis
@@ -17,6 +14,7 @@ import pandas as pd
 import intake
 from cdo import Cdo
 cdo=Cdo()
+import fsspec
 
 # management
 import os
@@ -33,6 +31,7 @@ from calculations import (
 from cmip import (
     combined_preprocessing,
     drop_all_bounds,
+    open_dsets,
     open_delayed,
     )
 
@@ -40,10 +39,14 @@ from cmip import (
 cmip_info = pd.read_csv('https://storage.googleapis.com/cmip6/cmip6-zarr-consolidated-stores.csv')
 esm_datastore = intake.open_esm_datastore("https://storage.googleapis.com/cmip6/pangeo-cmip6.json")
 
+'''
+cmip_info['experiment_id'].unique()
+cmip_info['institution_id'].unique()
+'''
 # endregion
 
 
-# region get data
+# region get 'historical', 'Omon', 'tos'
 
 
 #-------------------------------- configurations
@@ -68,6 +71,9 @@ output_file = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_i
 output_file_regrid = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_regrid.pkl'
 output_file_regrid_alltime = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_regrid_alltime.pkl'
 
+intermediate_file = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_intf.pkl'
+intermediate_file1 = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_intf1.pkl'
+
 
 #-------------------------------- get data
 
@@ -87,19 +93,19 @@ with open(output_file, 'wb') as f: pickle.dump(datasets, f)
 datasets_regrid = {}
 
 for imodel in datasets.keys():
-    # imodel = 'ACCESS-ESM1-5'
+    # imodel = 'CESM2-FV2'
     print('#---------------- ' + imodel)
     
     if not (imodel in ['AWI-CM-1-1-MR', 'AWI-ESM-1-1-LR']):
         regridded_data = regrid(datasets[imodel])
     elif (imodel in ['AWI-CM-1-1-MR', 'AWI-ESM-1-1-LR']):
-        datasets[imodel].to_netcdf('/home/563/qg8515/data/sim/cmip6/calculate.nc')
+        datasets[imodel].to_netcdf(intermediate_file)
         cdo.remapcon('global_1',
-                     input='/home/563/qg8515/data/sim/cmip6/calculate.nc',
-                     output='/home/563/qg8515/data/sim/cmip6/calculate1.nc')
-        regridded_data = regrid(xr.open_dataset('/home/563/qg8515/data/sim/cmip6/calculate1.nc', use_cftime=True))
-        os.remove('/home/563/qg8515/data/sim/cmip6/calculate.nc')
-        os.remove('/home/563/qg8515/data/sim/cmip6/calculate1.nc')
+                     input=intermediate_file,
+                     output=intermediate_file1)
+        regridded_data = regrid(xr.open_dataset(intermediate_file1, use_cftime=True))
+        os.remove(intermediate_file)
+        os.remove(intermediate_file1)
     
     datasets_regrid[imodel] = regridded_data.pipe(combined_preprocessing).pipe(drop_all_bounds)
 
@@ -113,18 +119,11 @@ with open(output_file_regrid, 'wb') as f: pickle.dump(datasets_regrid, f)
 datasets_regrid_alltime = {}
 
 for imodel in datasets_regrid.keys():
-    # imodel = 'ACCESS-ESM1-5'
+    # imodel = 'MPI-ESM1-2-LR'
     print('#---------------- ' + imodel)
     
     datasets_regrid_alltime[imodel] = mon_sea_ann(
         var_monthly=datasets_regrid[imodel][variable_id], )
-    
-    datasets_regrid_alltime[imodel]['mm'] = \
-        datasets_regrid_alltime[imodel]['mm'].rename({'month': 'time'})
-    datasets_regrid_alltime[imodel]['sm'] = \
-        datasets_regrid_alltime[imodel]['sm'].rename({'season': 'time'})
-    datasets_regrid_alltime[imodel]['am'] = \
-        datasets_regrid_alltime[imodel]['am'].expand_dims('time', axis=0)
 
 with open(output_file_regrid_alltime, 'wb') as f:
     pickle.dump(datasets_regrid_alltime, f)
@@ -153,6 +152,8 @@ for imodel in datasets.keys():
     # imodel = 'ACCESS-ESM1-5'
     print('#---------------- ' + imodel)
     
+    print(datasets[imodel][variable_id].shape)
+    
     print(str(datasets[imodel].time[0].values)[:10] + ' to ' + str(datasets[imodel].time[-1].values)[:10] + ' ' + str(len(datasets[imodel].time)/12) + ' ' + str(datasets[imodel][variable_id].shape))
     print(str(datasets_regrid[imodel].time[0].values)[:10] + ' to ' + str(datasets_regrid[imodel].time[-1].values)[:10] + ' ' + str(len(datasets_regrid[imodel].time)/12) + ' ' + str(datasets_regrid[imodel][variable_id].shape))
     print(str(datasets_regrid_alltime[imodel]['mon'].time[0].values)[:10] + ' to ' + str(datasets_regrid_alltime[imodel]['mon'].time[-1].values)[:10] + ' ' + str(len(datasets_regrid_alltime[imodel]['mon'].time)/12) + ' ' + str(datasets_regrid_alltime[imodel]['mon'].shape))
@@ -168,7 +169,3 @@ print(process.memory_info().rss / 2**30)
 
 '''
 # endregion
-
-
-
-

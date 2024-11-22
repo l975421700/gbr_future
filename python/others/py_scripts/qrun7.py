@@ -71,14 +71,11 @@ output_file = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_i
 output_file_regrid = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_regrid.pkl'
 output_file_regrid_alltime = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_regrid_alltime.pkl'
 
-intermediate_file = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_intf.pkl'
-intermediate_file1 = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_intf1.pkl'
-
 
 #-------------------------------- get data
 
 dsets = {}
-for group, df in esm_data_subset.iloc[13:15].groupby('source_id'):
+for group, df in esm_data_subset.groupby('source_id'):
     dsets[group] = open_delayed(df)
 
 datasets = dask.compute(dsets)[0]
@@ -96,18 +93,7 @@ for imodel in datasets.keys():
     # imodel = 'ACCESS-ESM1-5'
     print('#---------------- ' + imodel)
     
-    if not (imodel in ['AWI-CM-1-1-MR', 'AWI-ESM-1-1-LR']):
-        regridded_data = regrid(datasets[imodel])
-    elif (imodel in ['AWI-CM-1-1-MR', 'AWI-ESM-1-1-LR']):
-        datasets[imodel].to_netcdf(intermediate_file)
-        cdo.remapcon('global_1',
-                     input=intermediate_file,
-                     output=intermediate_file1)
-        regridded_data = regrid(xr.open_dataset(intermediate_file1, use_cftime=True))
-        os.remove(intermediate_file)
-        os.remove(intermediate_file1)
-    
-    datasets_regrid[imodel] = regridded_data.pipe(combined_preprocessing).pipe(drop_all_bounds)
+    datasets_regrid[imodel] = regrid(datasets[imodel]).pipe(combined_preprocessing).pipe(drop_all_bounds)
 
 with open(output_file_regrid, 'wb') as f: pickle.dump(datasets_regrid, f)
 
@@ -124,13 +110,6 @@ for imodel in datasets_regrid.keys():
     
     datasets_regrid_alltime[imodel] = mon_sea_ann(
         var_monthly=datasets_regrid[imodel][variable_id], )
-    
-    datasets_regrid_alltime[imodel]['mm'] = \
-        datasets_regrid_alltime[imodel]['mm'].rename({'month': 'time'})
-    datasets_regrid_alltime[imodel]['sm'] = \
-        datasets_regrid_alltime[imodel]['sm'].rename({'season': 'time'})
-    datasets_regrid_alltime[imodel]['am'] = \
-        datasets_regrid_alltime[imodel]['am'].expand_dims('time', axis=0)
 
 with open(output_file_regrid_alltime, 'wb') as f:
     pickle.dump(datasets_regrid_alltime, f)

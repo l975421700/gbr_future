@@ -46,14 +46,14 @@ cmip_info['institution_id'].unique()
 # endregion
 
 
-# region get 'ssp585', 'Amon', 'tas'
+# region get 'ssp585', 'Amon', 'pr'
 
 
 #-------------------------------- configurations
 
 experiment_id = 'ssp585'
 table_id = 'Amon'
-variable_id = 'tas'
+variable_id = 'pr'
 
 member_id = ['r1i1p1f1', 'r1i1p1f2', 'r1i1p2f1', 'r2i1p1f1', 'r1i1p1f3', 'r4i1p1f1', 'r1i1p3f1']
 
@@ -70,9 +70,6 @@ esm_data_subset = esm_data.df.sort_values(
 output_file = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '.pkl'
 output_file_regrid = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_regrid.pkl'
 output_file_regrid_alltime = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_regrid_alltime.pkl'
-
-intermediate_file = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_intf.pkl'
-intermediate_file1 = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_intf1.pkl'
 
 
 #-------------------------------- get data
@@ -96,18 +93,7 @@ for imodel in datasets.keys():
     # imodel = 'ACCESS-ESM1-5'
     print('#---------------- ' + imodel)
     
-    if not (imodel in ['AWI-CM-1-1-MR', 'AWI-ESM-1-1-LR']):
-        regridded_data = regrid(datasets[imodel])
-    elif (imodel in ['AWI-CM-1-1-MR', 'AWI-ESM-1-1-LR']):
-        datasets[imodel].to_netcdf(intermediate_file)
-        cdo.remapcon('global_1',
-                     input=intermediate_file,
-                     output=intermediate_file1)
-        regridded_data = regrid(xr.open_dataset(intermediate_file1, use_cftime=True))
-        os.remove(intermediate_file)
-        os.remove(intermediate_file1)
-    
-    datasets_regrid[imodel] = regridded_data.pipe(combined_preprocessing).pipe(drop_all_bounds)
+    datasets_regrid[imodel] = regrid(datasets[imodel]).pipe(combined_preprocessing).pipe(drop_all_bounds)
 
 with open(output_file_regrid, 'wb') as f: pickle.dump(datasets_regrid, f)
 
@@ -124,13 +110,6 @@ for imodel in datasets_regrid.keys():
     
     datasets_regrid_alltime[imodel] = mon_sea_ann(
         var_monthly=datasets_regrid[imodel][variable_id], )
-    
-    datasets_regrid_alltime[imodel]['mm'] = \
-        datasets_regrid_alltime[imodel]['mm'].rename({'month': 'time'})
-    datasets_regrid_alltime[imodel]['sm'] = \
-        datasets_regrid_alltime[imodel]['sm'].rename({'season': 'time'})
-    datasets_regrid_alltime[imodel]['am'] = \
-        datasets_regrid_alltime[imodel]['am'].expand_dims('time', axis=0)
 
 with open(output_file_regrid_alltime, 'wb') as f:
     pickle.dump(datasets_regrid_alltime, f)

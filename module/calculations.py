@@ -18,6 +18,7 @@ def time_weighted_mean(ds):
 def mon_sea_ann(
     var_daily = None, var_monthly = None, var_6hourly = None,
     lcopy = True, seasons = 'QE-FEB',
+    mm=False, sm=False, am=False, mon_no_mm=False, ann_no_am=False,
     ):
     '''
     #---- Input
@@ -38,19 +39,11 @@ def mon_sea_ann(
         else:
             var_alltime['daily'] = var_daily
         
-        #-------- monthly
         var_alltime['mon'] = var_daily.resample({'time': '1M'}).mean(skipna=False).compute()
         
-        #-------- seasonal
-        # var_alltime['sea'] = var_daily.resample({'time': 'QE-FEB'}).mean(skipna=skipna)[1:-1].compute()
-        
-        #-------- annual
-        # var_alltime['ann'] = var_daily.resample({'time': '1YE'}).mean(skipna=skipna).compute()
-        
     elif not var_monthly is None:
-        #-------- monthly
         if lcopy:
-            var_alltime['mon'] = var_monthly.copy()
+            var_alltime['mon'] = var_monthly.copy().compute()
         else:
             var_alltime['mon'] = var_monthly
         
@@ -64,29 +57,30 @@ def mon_sea_ann(
         
         var_alltime['mon'] = var_alltime['daily'].resample({'time': '1M'}).mean(skipna=False).compute()
     
-    #-------- seasonal
     if (seasons == 'QE-FEB'):
         var_alltime['sea'] = var_alltime['mon'].resample({'time': seasons}).map(time_weighted_mean)[1:-1].compute()
-        #-------- seasonal mean
-        var_alltime['sm'] = var_alltime['sea'].groupby('time.season').mean(skipna=True).compute()
     elif (seasons == 'QE-MAR'):
         var_alltime['sea'] = var_alltime['mon'].resample({'time': seasons}).map(time_weighted_mean).compute()
-        var_alltime['sm'] = var_alltime['sea'].groupby('time.month').mean(skipna=True).compute()
     
-    #-------- annual
     var_alltime['ann'] = var_alltime['mon'].resample({'time': '1YE'}).map(time_weighted_mean).compute()
     
-    #-------- monthly mean
-    var_alltime['mm'] = var_alltime['mon'].groupby('time.month').mean(skipna=True).compute()
+    if mm:
+        var_alltime['mm'] = var_alltime['mon'].groupby('time.month').mean(skipna=True).compute()
+        var_alltime['mm'] = var_alltime['mm'].rename({'month': 'time'})
     
-    #-------- annual mean
-    var_alltime['am'] = var_alltime['ann'].mean(dim='time', skipna=True).compute()
+    if sm:
+        var_alltime['sm'] = var_alltime['sea'].groupby('time.season').mean(skipna=True).compute()
+        var_alltime['sm'] = var_alltime['sm'].rename({'season': 'time'})
     
-    #-------- monthly without monthly mean
-    var_alltime['mon no mm'] = (var_alltime['mon'].groupby('time.month') - var_alltime['mm']).compute()
+    if am:
+        var_alltime['am'] = var_alltime['ann'].mean(dim='time', skipna=True).compute()
+        var_alltime['am'] = var_alltime['am'].expand_dims('time', axis=0)
     
-    #-------- annual without annual mean
-    var_alltime['ann no am'] = (var_alltime['ann'] - var_alltime['am']).compute()
+    if mon_no_mm:
+        var_alltime['mon no mm'] = (var_alltime['mon'].groupby('time.month') - var_alltime['mm']).compute()
+    
+    if ann_no_am:
+        var_alltime['ann no am'] = (var_alltime['ann'] - var_alltime['am']).compute()
     
     return(var_alltime)
 
