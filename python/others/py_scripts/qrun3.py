@@ -25,7 +25,7 @@ import pickle
 # self defined function
 from calculations import (
     mon_sea_ann,
-    regrid,
+    cdo_regrid,
     time_weighted_mean,
     )
 from cmip import (
@@ -46,16 +46,19 @@ cmip_info['institution_id'].unique()
 # endregion
 
 
-# region get 'ssp585', 'Omon', 'tos'
+# region get 'historical', 'Amon', 'pr'
 
+# Service Units:      68.37
+# Memory Used: 118.02GB
+# Walltime Used: 00:42:44
 
 #-------------------------------- configurations
 
-experiment_id = 'ssp585'
-table_id = 'Omon'
-variable_id = 'tos'
+experiment_id = 'historical'
+table_id = 'Amon'
+variable_id = 'pr'
 
-member_id = ['r1i1p1f1', 'r1i1p1f2', 'r1i1p2f1', 'r2i1p1f1', 'r1i1p1f3', 'r4i1p1f1', 'r1i1p3f1']
+member_id = ['r1i1p1f1', 'r1i1p1f2', 'r1i1p2f1', 'r2i1p1f1', 'r1i1p1f3',]
 
 esm_data = esm_datastore.search(**{
     'experiment_id': experiment_id,
@@ -93,21 +96,10 @@ with open(output_file, 'wb') as f: pickle.dump(datasets, f)
 datasets_regrid = {}
 
 for imodel in datasets.keys():
-    # imodel = 'ACCESS-ESM1-5'
+    # imodel = 'ICON-ESM-LR'
     print('#---------------- ' + imodel)
     
-    if not (imodel in ['AWI-CM-1-1-MR', 'AWI-ESM-1-1-LR']):
-        regridded_data = regrid(datasets[imodel])
-    elif (imodel in ['AWI-CM-1-1-MR', 'AWI-ESM-1-1-LR']):
-        datasets[imodel].to_netcdf(intermediate_file)
-        cdo.remapcon('global_1',
-                     input=intermediate_file,
-                     output=intermediate_file1)
-        regridded_data = regrid(xr.open_dataset(intermediate_file1, use_cftime=True))
-        os.remove(intermediate_file)
-        os.remove(intermediate_file1)
-    
-    datasets_regrid[imodel] = regridded_data.pipe(combined_preprocessing).pipe(drop_all_bounds)
+    datasets_regrid[imodel] = cdo_regrid(datasets[imodel], intermediate_file, intermediate_file1).pipe(combined_preprocessing).pipe(drop_all_bounds)
 
 with open(output_file_regrid, 'wb') as f: pickle.dump(datasets_regrid, f)
 
@@ -123,17 +115,18 @@ for imodel in datasets_regrid.keys():
     print('#---------------- ' + imodel)
     
     datasets_regrid_alltime[imodel] = mon_sea_ann(
-        var_monthly=datasets_regrid[imodel][variable_id], )
+        var_monthly=datasets_regrid[imodel][variable_id], lcopy = False)
 
 with open(output_file_regrid_alltime, 'wb') as f:
     pickle.dump(datasets_regrid_alltime, f)
 
 
 '''
+with open('data/sim/cmip6/historical_Amon_pr_regrid_alltime.pkl', 'rb') as f:
+    historical_Amon_pr = pickle.load(f)
 
 print(esm_data)
 print(esm_data.df)
-print(esm_data.df[['source_id', 'member_id']].to_string())
 esm_data.df.groupby("source_id").first()
 esm_data.df.groupby("source_id").nunique()
 print(esm_data.df.sort_values(

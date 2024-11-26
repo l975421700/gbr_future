@@ -25,7 +25,7 @@ import pickle
 # self defined function
 from calculations import (
     mon_sea_ann,
-    regrid,
+    cdo_regrid,
     time_weighted_mean,
     )
 from cmip import (
@@ -46,14 +46,17 @@ cmip_info['institution_id'].unique()
 # endregion
 
 
-# region get 'ssp585', 'Amon', 'pr'
+# region get 'ssp585', 'Amon', 'tas'
 
+# Service Units:      34.00
+# Memory Used: 80.46GB
+# Walltime Used: 00:21:15
 
 #-------------------------------- configurations
 
 experiment_id = 'ssp585'
 table_id = 'Amon'
-variable_id = 'pr'
+variable_id = 'tas'
 
 member_id = ['r1i1p1f1', 'r1i1p1f2', 'r1i1p2f1', 'r2i1p1f1', 'r1i1p1f3', 'r4i1p1f1', 'r1i1p3f1']
 
@@ -71,6 +74,8 @@ output_file = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_i
 output_file_regrid = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_regrid.pkl'
 output_file_regrid_alltime = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_regrid_alltime.pkl'
 
+intermediate_file = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_intf.pkl'
+intermediate_file1 = '/home/563/qg8515/data/sim/cmip6/' + experiment_id + '_' + table_id + '_' + variable_id + '_intf1.pkl'
 
 #-------------------------------- get data
 
@@ -90,10 +95,10 @@ with open(output_file, 'wb') as f: pickle.dump(datasets, f)
 datasets_regrid = {}
 
 for imodel in datasets.keys():
-    # imodel = 'ACCESS-ESM1-5'
+    # imodel = 'AWI-CM-1-1-MR'
     print('#---------------- ' + imodel)
     
-    datasets_regrid[imodel] = regrid(datasets[imodel]).pipe(combined_preprocessing).pipe(drop_all_bounds)
+    datasets_regrid[imodel] = cdo_regrid(datasets[imodel], intermediate_file, intermediate_file1).pipe(combined_preprocessing).pipe(drop_all_bounds)
 
 with open(output_file_regrid, 'wb') as f: pickle.dump(datasets_regrid, f)
 
@@ -105,17 +110,19 @@ with open(output_file_regrid, 'wb') as f: pickle.dump(datasets_regrid, f)
 datasets_regrid_alltime = {}
 
 for imodel in datasets_regrid.keys():
-    # imodel = 'ACCESS-ESM1-5'
+    # imodel = 'MPI-ESM1-2-LR'
     print('#---------------- ' + imodel)
     
     datasets_regrid_alltime[imodel] = mon_sea_ann(
-        var_monthly=datasets_regrid[imodel][variable_id], )
+        var_monthly=datasets_regrid[imodel][variable_id], lcopy = False)
 
 with open(output_file_regrid_alltime, 'wb') as f:
     pickle.dump(datasets_regrid_alltime, f)
 
 
 '''
+with open('data/sim/cmip6/ssp585_Amon_tas_regrid_alltime.pkl', 'rb') as f:
+    ssp585_Amon_tas = pickle.load(f)
 
 print(esm_data)
 print(esm_data.df)

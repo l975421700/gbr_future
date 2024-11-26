@@ -11,7 +11,6 @@ from dask.diagnostics import ProgressBar
 pbar = ProgressBar()
 pbar.register()
 from scipy import stats
-import xesmf as xe
 import pandas as pd
 from metpy.interpolate import cross_section
 from statsmodels.stats import multitest
@@ -55,17 +54,6 @@ from mapplot import (
     remove_trailing_zero_pos,
     )
 
-from calculations import (
-    time_weighted_mean,
-    mon_sea_ann,
-    mon_sea_ann_average,
-    regrid,
-    inversion_top,
-    find_ilat_ilon,
-    find_gridvalue_at_site,
-    find_gridvalue_at_site_time,
-    )
-
 from namelist import (
     month,
     monthini,
@@ -74,16 +62,6 @@ from namelist import (
     zerok,
     panel_labels,
     )
-
-from statistics0 import (
-    fdr_control_bh,
-    check_normality_3d,
-    check_equal_variance_3d,
-    ttest_fdr_control,
-    cplot_ttest,
-    xr_par_cor,
-    xr_regression_y_x1,
-)
 
 from component_plot import (
     rainbow_text,
@@ -100,8 +78,16 @@ from component_plot import (
 
 # region plot the globe
 
+fig, ax = globe_plot()
 
+fig.savefig('figures/test.png')
 
+'''
+ax.add_feature(
+    cfeature.LAND, color='green', zorder=2, edgecolor=None,lw=0)
+ax.add_feature(
+    cfeature.OCEAN, color='blue', zorder=2, edgecolor=None,lw=0)
+'''
 # endregion
 
 
@@ -110,3 +96,6 @@ from component_plot import (
 
 
 # endregion
+
+
+

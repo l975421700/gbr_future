@@ -19,6 +19,7 @@ def mon_sea_ann(
     var_daily = None, var_monthly = None, var_6hourly = None,
     lcopy = True, seasons = 'QE-FEB',
     mm=False, sm=False, am=False, mon_no_mm=False, ann_no_am=False,
+    lsea_cpt=True, lann_cpt=True
     ):
     '''
     #---- Input
@@ -58,11 +59,13 @@ def mon_sea_ann(
         var_alltime['mon'] = var_alltime['daily'].resample({'time': '1M'}).mean(skipna=False).compute()
     
     if (seasons == 'QE-FEB'):
-        var_alltime['sea'] = var_alltime['mon'].resample({'time': seasons}).map(time_weighted_mean)[1:-1].compute()
+        var_alltime['sea'] = var_alltime['mon'].resample({'time': seasons}).map(time_weighted_mean)[1:-1]
     elif (seasons == 'QE-MAR'):
-        var_alltime['sea'] = var_alltime['mon'].resample({'time': seasons}).map(time_weighted_mean).compute()
+        var_alltime['sea'] = var_alltime['mon'].resample({'time': seasons}).map(time_weighted_mean)
+    if lsea_cpt: var_alltime['sea'] = var_alltime['sea'].compute()
     
     var_alltime['ann'] = var_alltime['mon'].resample({'time': '1YE'}).map(time_weighted_mean).compute()
+    if lann_cpt: var_alltime['ann'] = var_alltime['ann'].compute()
     
     if mm:
         var_alltime['mm'] = var_alltime['mon'].groupby('time.month').mean(skipna=True).compute()
@@ -331,6 +334,44 @@ def regrid(
 
 '''
 '''
+# endregion
+
+
+# region pop_fillvalue
+
+def pop_fillvalue(ds):
+    for coord in ds.coords:
+        if ('_FillValue' in ds[coord].encoding and 'missing_value' in ds[coord].encoding):
+            ds[coord].encoding["missing_value"] = None
+    return ds
+
+# endregion
+
+
+# region cdo_regrid
+
+def cdo_regrid(ds_in, target_grid='global_1'):
+    import xarray as xr
+    import tempfile
+    from cdo import Cdo
+    cdo=Cdo()
+    
+    with tempfile.NamedTemporaryFile(suffix='.nc') as temp_input:
+        try:
+            ds_in.to_netcdf(temp_input.name)
+        except:
+            pop_fillvalue(regrid(ds_in)).to_netcdf(temp_input.name)
+        with tempfile.NamedTemporaryFile(suffix='.nc') as temp_output:
+            try:
+                cdo.remapcon(target_grid, input=temp_input.name, output=temp_output.name)
+            except:
+                cdo.remapbil(target_grid, input=temp_input.name, output=temp_output.name)
+            
+            ds_out = xr.open_dataset(temp_output.name,use_cftime=True).compute()
+    
+    return(ds_out)
+
+
 # endregion
 
 

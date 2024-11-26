@@ -4,17 +4,15 @@
 
 
 import numpy as np
-import cartopy as ctp
-
+import cartopy.crs as ccrs
 def globe_plot(
     ax_org=None,
-    figsize=np.array([8.8, 6.4]) / 2.54,
-    extent=[-180, 180, -90, 90],
-    projections = ctp.crs.PlateCarree(), # (Robinson, PlateCarree)
+    figsize=np.array([8.8, 4.4]) / 2.54,
+    projections = ccrs.Mollweide(central_longitude=180),
     add_atlas=True, atlas_color='black', lw=0.1,
     add_grid=True, grid_color='gray',
-    add_grid_labels=True, ticklabel = None, labelsize=6,
-    fm_left=0.07, fm_right=0.98, fm_bottom=0.1, fm_top=0.97,
+    add_grid_labels=False, ticklabel = None, labelsize=10,
+    fm_left=0.01, fm_right=0.99, fm_bottom=0.01, fm_top=0.99,
     plot_scalebar=False, sb_bars=2, sb_length=200, sb_location=(0.02, 0.015),
     sb_barheight=20, sb_linewidth=0.15, sb_col='black', sb_middle_label=False,
     ):
@@ -30,15 +28,13 @@ def globe_plot(
     import matplotlib.pyplot as plt
     
     if (ticklabel is None):
-        ticklabel = ticks_labels(-180, 180, -90, 90, 60, 30)
+        ticklabel = ticks_labels(0, 360, -90, 90, 60, 30)
     
     if (ax_org is None):
         fig, ax = plt.subplots(
             1, 1, figsize=figsize, subplot_kw={'projection': projections},)
     else:
         ax = ax_org
-    
-    ax.set_extent(extent, crs = ctp.crs.PlateCarree())
     
     if add_grid_labels:
         ax.set_xticks(ticklabel[0],)
@@ -59,7 +55,7 @@ def globe_plot(
     
     if add_grid:
         gl = ax.gridlines(
-            crs=ctp.crs.PlateCarree(), linewidth=lw * 0.75, zorder=2,
+            crs=ccrs.PlateCarree(), linewidth=lw * 0.75, zorder=2,
             color=grid_color, linestyle='--')
         gl.xlocator = mticker.FixedLocator(ticklabel[0])
         gl.ylocator = mticker.FixedLocator(ticklabel[2])
@@ -81,6 +77,7 @@ def globe_plot(
         return fig, ax
     else:
         return ax
+
 
 
 '''

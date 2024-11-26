@@ -1,6 +1,6 @@
 
 
-# check interpolation
+# qsub -I -q copyq -l walltime=04:00:00,ncpus=1,mem=192GB,storage=gdata/v46
 
 
 # region import packages
@@ -84,15 +84,39 @@ from component_plot import (
 # endregion
 
 
-# region plot data
+# region import data
 
-with open('data/sim/cmip6/historical_Omon_tos.pkl', 'rb') as f:
+with open('data/sim/cmip6/historical_Omon_tos_regrid_alltime.pkl', 'rb') as f:
     historical_Omon_tos = pickle.load(f)
+with open('data/sim/cmip6/historical_Amon_tas_regrid_alltime.pkl', 'rb') as f:
+    historical_Amon_tas = pickle.load(f)
+with open('data/sim/cmip6/historical_Amon_pr_regrid_alltime.pkl', 'rb') as f:
+    historical_Amon_pr = pickle.load(f)
 
-models = list(historical_Omon_tos.keys())
+with open('data/obs/era5/mon/era5_mon_sst_regrid_alltime.pkl', 'rb') as f: era5_mon_sst = pickle.load(f)
+with open('data/obs/era5/mon/era5_mon_t2m_regrid_alltime.pkl', 'rb') as f: era5_mon_t2m = pickle.load(f)
+with open('data/obs/era5/mon/era5_mon_tp_regrid_alltime.pkl', 'rb') as f: era5_mon_tp = pickle.load(f)
 
-output_png = 'figures/test.png'
-cbar_label = r'CMIP6 $\mathit{historical}$' + ' monthly SST [$°C$]'
+lon = era5_mon_sst['ann'].lon.values
+lat = era5_mon_sst['ann'].lat.values
+
+common_models = sorted(list(set(historical_Omon_tos.keys()) & set(historical_Amon_tas.keys()) & set(historical_Amon_pr.keys())))
+
+'''
+print(process.memory_info().rss / 2**30)
+
+print(len(historical_Omon_tos.keys()))
+print(len(historical_Amon_tas.keys()))
+print(len(historical_Amon_pr.keys()))
+
+'''
+# endregion
+
+
+# region plot am global sst
+
+output_png = 'figures/1_cmip6/1.0_cmip6_era5/1.0.0 era5 and historical am global sst.png'
+cbar_label = r'ERA5 and CMIP6 $\mathit{historical}$' + ' annual mean SST (1979-2014) [$°C$]'
 
 pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
     cm_min=0, cm_max=28, cm_interval1=1, cm_interval2=2, cmap='viridis_r',)
@@ -108,9 +132,9 @@ fig, axs = plt.subplots(
 
 for irow in range(nrow):
     for jcol in range(ncol):
-        if (jcol + ncol * irow < len(models)):
+        if (jcol + ncol * irow <= len(common_models)):
             panel_label = f'({string.ascii_lowercase[irow]}{jcol+1})'
-            model = models[jcol + ncol * irow]
+            model = (['ERA5'] + common_models)[jcol + ncol * irow]
             
             axs[irow, jcol] = globe_plot(ax_org=axs[irow, jcol])
             
@@ -124,12 +148,16 @@ for irow in range(nrow):
 # plot data
 for irow in range(nrow):
     for jcol in range(ncol):
-        if (jcol + ncol * irow < len(models)):
-            model = models[jcol + ncol * irow]
+        if (jcol + ncol * irow <= len(common_models)):
+            model = (['ERA5'] + common_models)[jcol + ncol * irow]
             print(model)
             
-            plot_data = historical_Omon_tos[model]['ann'].sel(
-                time=slice('1979', '2014')).mean(dim='time')
+            if (model == 'ERA5'):
+                plot_data = era5_mon_sst['ann'].sel(
+                    time=slice('1979', '2014')).mean(dim='time') - zerok
+            else:
+                plot_data = historical_Omon_tos[model]['ann'].sel(
+                    time=slice('1979', '2014')).mean(dim='time')
             
             plt_mesh = axs[irow, jcol].contourf(
                 lon, lat, plot_data, levels=pltlevel, extend='both',
@@ -150,4 +178,5 @@ fig.savefig(output_png)
 plt.close()
 
 # endregion
+
 
