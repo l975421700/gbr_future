@@ -11,13 +11,9 @@ client = cdsapi.Client()
 import xarray as xr
 import dask
 dask.config.set({"array.slicing.split_large_chunks": True})
-from dask.diagnostics import ProgressBar
-pbar = ProgressBar()
-pbar.register()
 import pandas as pd
 
 # management
-import os
 import sys  # print(sys.path)
 sys.path.append('/home/563/qg8515/code/gbr_future/module')
 import pickle
@@ -25,9 +21,7 @@ import pickle
 # self defined function
 from calculations import (
     mon_sea_ann,
-    regrid,
-    time_weighted_mean,
-    )
+    cdo_regrid,)
 
 # endregion
 
@@ -35,35 +29,33 @@ from calculations import (
 # era5 sl mm
 # region sst
 
-
-variable = "sea_surface_temperature"
+variable = 'sea_surface_temperature'
 var = 'sst'
 folder = 'data/obs/era5/mon/'
 
-output_file = folder + 'era5_mon_' + var + '.nc'
-output_file_regrid = folder + 'era5_mon_' + var + '_regrid.nc'
-output_file_regrid_alltime = folder + 'era5_mon_' + var + '_regrid_alltime.pkl'
-output_file_alltime = folder + 'era5_mon_' + var + '_alltime.pkl'
+outf = f'{folder}era5_mon_{var}.nc'
+outf_rgd = f'{folder}era5_mon_{var}_rgd.nc'
+outf_rgd_alltime = f'{folder}era5_mon_{var}_rgd_alltime.pkl'
+outf_alltime = f'{folder}era5_mon_{var}_alltime.pkl'
 
 
-dataset = "reanalysis-era5-single-levels-monthly-means"
 request = {
     "product_type": ["monthly_averaged_reanalysis"],
     "variable": variable,
     "year": [
-        "1940", "1941", "1942",
-        "1943", "1944", "1945",
-        "1946", "1947", "1948",
-        "1949", "1950", "1951",
-        "1952", "1953", "1954",
-        "1955", "1956", "1957",
-        "1958", "1959", "1960",
-        "1961", "1962", "1963",
-        "1964", "1965", "1966",
-        "1967", "1968", "1969",
-        "1970", "1971", "1972",
-        "1973", "1974", "1975",
-        "1976", "1977", "1978",
+        # "1940", "1941", "1942",
+        # "1943", "1944", "1945",
+        # "1946", "1947", "1948",
+        # "1949", "1950", "1951",
+        # "1952", "1953", "1954",
+        # "1955", "1956", "1957",
+        # "1958", "1959", "1960",
+        # "1961", "1962", "1963",
+        # "1964", "1965", "1966",
+        # "1967", "1968", "1969",
+        # "1970", "1971", "1972",
+        # "1973", "1974", "1975",
+        # "1976", "1977", "1978",
         "1979", "1980", "1981",
         "1982", "1983", "1984",
         "1985", "1986", "1987",
@@ -79,7 +71,7 @@ request = {
         "2015", "2016", "2017",
         "2018", "2019", "2020",
         "2021", "2022", "2023",
-        "2024"
+        # "2024"
     ],
     "month": [
         "01", "02", "03",
@@ -89,76 +81,73 @@ request = {
     ],
     "time": ["00:00"],
     "data_format": "netcdf",
-    "download_format": "unarchived"
-}
-
-client.retrieve(dataset, request, output_file)
+    "download_format": "unarchived"}
+client.retrieve("reanalysis-era5-single-levels-monthly-means", request, outf)
 
 
-dataset = xr.open_dataset(output_file)
-dataset = dataset.rename({'date': 'time', 'latitude': 'lat', 'longitude': 'lon'})
-dataset = dataset.assign_coords(time = pd.to_datetime(dataset.time, format='%Y%m%d'))
+dset = xr.open_dataset(outf)
+dset = dset.rename({'date': 'time', 'latitude': 'lat', 'longitude': 'lon'})
+dset = dset.assign_coords(time = pd.to_datetime(dset.time, format='%Y%m%d'))
 
-dataset_regrid = regrid(dataset)
-dataset_regrid_alltime = mon_sea_ann(var_monthly=dataset_regrid[var])
-dataset_alltime = mon_sea_ann(var_monthly=dataset[var])
+dset_rgd = cdo_regrid(dset)
+dset_rgd_alltime = mon_sea_ann(var_monthly=dset_rgd[var], lcopy=False, lsea_cpt=False)
+dset_alltime = mon_sea_ann(var_monthly=dset[var], lcopy=False, lsea_cpt=False)
 
 
-dataset_regrid.to_netcdf(output_file_regrid)
-with open(output_file_regrid_alltime, 'wb') as f:
-    pickle.dump(dataset_regrid_alltime, f)
-with open(output_file_alltime, 'wb') as f: pickle.dump(dataset_alltime, f)
+dset_rgd.to_netcdf(outf_rgd)
+with open(outf_rgd_alltime, 'wb') as f:
+    pickle.dump(dset_rgd_alltime, f)
+with open(outf_alltime, 'wb') as f: pickle.dump(dset_alltime, f)
 
 
 '''
 #-------------------------------- check
-dataset = xr.open_dataset('data/obs/era5/mon/era5_mon_sst.nc')
-dataset_regrid = xr.open_dataset('data/obs/era5/mon/era5_mon_sst_regrid.nc')
-with open('data/obs/era5/mon/era5_mon_sst_regrid_alltime.pkl', 'rb') as f: dataset_regrid_alltime = pickle.load(f)
-with open('data/obs/era5/mon/era5_mon_sst_alltime.pkl', 'rb') as f: dataset_alltime = pickle.load(f)
+dset = xr.open_dataset('data/obs/era5/mon/era5_mon_sst.nc')
+dset_rgd = xr.open_dataset('data/obs/era5/mon/era5_mon_sst_rgd.nc')
+with open('data/obs/era5/mon/era5_mon_sst_rgd_alltime.pkl', 'rb') as f: dset_rgd_alltime = pickle.load(f)
+with open('data/obs/era5/mon/era5_mon_sst_alltime.pkl', 'rb') as f: dset_alltime = pickle.load(f)
 
-print(dataset[var].shape)
-print(dataset_regrid[var].shape)
-print(dataset_regrid_alltime['mon'].shape)
-print(dataset_regrid_alltime.keys())
-print(dataset_alltime['mon'].shape)
-print(dataset_alltime.keys())
+print(dset[var].shape)
+print(dset_rgd[var].shape)
+print(dset_rgd_alltime['mon'].shape)
+print(dset_rgd_alltime.keys())
+print(dset_alltime['mon'].shape)
+print(dset_alltime.keys())
 
-del dataset, dataset_regrid, dataset_regrid_alltime, dataset_alltime
+del dset, dset_rgd, dset_rgd_alltime, dset_alltime
 '''
 # endregion
 
 
 # region t2m
 
-variable = "2m_temperature"
+variable = '2m_temperature'
 var = 't2m'
 folder = 'data/obs/era5/mon/'
 
-output_file = folder + 'era5_mon_' + var + '.nc'
-output_file_regrid = folder + 'era5_mon_' + var + '_regrid.nc'
-output_file_regrid_alltime = folder + 'era5_mon_' + var + '_regrid_alltime.pkl'
-output_file_alltime = folder + 'era5_mon_' + var + '_alltime.pkl'
+outf = f'{folder}era5_mon_{var}.nc'
+outf_rgd = f'{folder}era5_mon_{var}_rgd.nc'
+outf_rgd_alltime = f'{folder}era5_mon_{var}_rgd_alltime.pkl'
+outf_alltime = f'{folder}era5_mon_{var}_alltime.pkl'
 
 
-dataset = "reanalysis-era5-single-levels-monthly-means"
 request = {
     "product_type": ["monthly_averaged_reanalysis"],
     "variable": variable,
     "year": [
-        "1940", "1941", "1942",
-        "1943", "1944", "1945",
-        "1946", "1947", "1948",
-        "1949", "1950", "1951",
-        "1952", "1953", "1954",
-        "1955", "1956", "1957",
-        "1958", "1959", "1960",
-        "1961", "1962", "1963",
-        "1964", "1965", "1966",
-        "1967", "1968", "1969",
-        "1970", "1971", "1972",
-        "1973", "1974", "1975",
-        "1976", "1977", "1978",
+        # "1940", "1941", "1942",
+        # "1943", "1944", "1945",
+        # "1946", "1947", "1948",
+        # "1949", "1950", "1951",
+        # "1952", "1953", "1954",
+        # "1955", "1956", "1957",
+        # "1958", "1959", "1960",
+        # "1961", "1962", "1963",
+        # "1964", "1965", "1966",
+        # "1967", "1968", "1969",
+        # "1970", "1971", "1972",
+        # "1973", "1974", "1975",
+        # "1976", "1977", "1978",
         "1979", "1980", "1981",
         "1982", "1983", "1984",
         "1985", "1986", "1987",
@@ -174,7 +163,7 @@ request = {
         "2015", "2016", "2017",
         "2018", "2019", "2020",
         "2021", "2022", "2023",
-        "2024"
+        # "2024"
     ],
     "month": [
         "01", "02", "03",
@@ -184,77 +173,73 @@ request = {
     ],
     "time": ["00:00"],
     "data_format": "netcdf",
-    "download_format": "unarchived"
-}
-
-client.retrieve(dataset, request, output_file)
+    "download_format": "unarchived"}
+client.retrieve("reanalysis-era5-single-levels-monthly-means", request, outf)
 
 
-dataset = xr.open_dataset(output_file)
-dataset = dataset.rename({'date': 'time', 'latitude': 'lat', 'longitude': 'lon'})
-dataset = dataset.assign_coords(time = pd.to_datetime(dataset.time, format='%Y%m%d'))
+dset = xr.open_dataset(outf)
+dset = dset.rename({'date': 'time', 'latitude': 'lat', 'longitude': 'lon'})
+dset = dset.assign_coords(time = pd.to_datetime(dset.time, format='%Y%m%d'))
 
-dataset_regrid = regrid(dataset)
-dataset_regrid_alltime = mon_sea_ann(var_monthly=dataset_regrid[var])
-dataset_alltime = mon_sea_ann(var_monthly=dataset[var])
+dset_rgd = cdo_regrid(dset)
+dset_rgd_alltime = mon_sea_ann(var_monthly=dset_rgd[var], lcopy=False, lsea_cpt=False)
+dset_alltime = mon_sea_ann(var_monthly=dset[var], lcopy=False, lsea_cpt=False)
 
 
-dataset_regrid.to_netcdf(output_file_regrid)
-with open(output_file_regrid_alltime, 'wb') as f:
-    pickle.dump(dataset_regrid_alltime, f)
-with open(output_file_alltime, 'wb') as f: pickle.dump(dataset_alltime, f)
+dset_rgd.to_netcdf(outf_rgd)
+with open(outf_rgd_alltime, 'wb') as f:
+    pickle.dump(dset_rgd_alltime, f)
+with open(outf_alltime, 'wb') as f: pickle.dump(dset_alltime, f)
 
 
 '''
 #-------------------------------- check
-dataset = xr.open_dataset('data/obs/era5/mon/era5_mon_t2m.nc')
-dataset_regrid = xr.open_dataset('data/obs/era5/mon/era5_mon_t2m_regrid.nc')
-with open('data/obs/era5/mon/era5_mon_t2m_regrid_alltime.pkl', 'rb') as f: dataset_regrid_alltime = pickle.load(f)
-with open('data/obs/era5/mon/era5_mon_t2m_alltime.pkl', 'rb') as f: dataset_alltime = pickle.load(f)
+dset = xr.open_dataset('data/obs/era5/mon/era5_mon_t2m.nc')
+dset_rgd = xr.open_dataset('data/obs/era5/mon/era5_mon_t2m_rgd.nc')
+with open('data/obs/era5/mon/era5_mon_t2m_rgd_alltime.pkl', 'rb') as f: dset_rgd_alltime = pickle.load(f)
+with open('data/obs/era5/mon/era5_mon_t2m_alltime.pkl', 'rb') as f: dset_alltime = pickle.load(f)
 
-print(dataset[var].shape)
-print(dataset_regrid[var].shape)
-print(dataset_regrid_alltime['mon'].shape)
-print(dataset_regrid_alltime.keys())
-print(dataset_alltime['mon'].shape)
-print(dataset_alltime.keys())
+print(dset[var].shape)
+print(dset_rgd[var].shape)
+print(dset_rgd_alltime['mon'].shape)
+print(dset_rgd_alltime.keys())
+print(dset_alltime['mon'].shape)
+print(dset_alltime.keys())
 
-del dataset, dataset_regrid, dataset_regrid_alltime, dataset_alltime
+del dset, dset_rgd, dset_rgd_alltime, dset_alltime
 '''
 # endregion
 
 
 # region tp
 
-
-variable = "total_precipitation"
+variable = 'total_precipitation'
 var = 'tp'
 folder = 'data/obs/era5/mon/'
 
-output_file = folder + 'era5_mon_' + var + '.nc'
-output_file_regrid = folder + 'era5_mon_' + var + '_regrid.nc'
-output_file_regrid_alltime = folder + 'era5_mon_' + var + '_regrid_alltime.pkl'
-output_file_alltime = folder + 'era5_mon_' + var + '_alltime.pkl'
+outf = f'{folder}era5_mon_{var}.nc'
+outf_rgd = f'{folder}era5_mon_{var}_rgd.nc'
+outf_rgd_alltime = f'{folder}era5_mon_{var}_rgd_alltime.pkl'
+outf_alltime = f'{folder}era5_mon_{var}_alltime.pkl'
 
 
-dataset = "reanalysis-era5-single-levels-monthly-means"
 request = {
     "product_type": ["monthly_averaged_reanalysis"],
     "variable": variable,
     "year": [
-        "1940", "1941", "1942",
-        "1943", "1944", "1945",
-        "1946", "1947", "1948",
-        "1949", "1950", "1951",
-        "1952", "1953", "1954",
-        "1955", "1956", "1957",
-        "1958", "1959", "1960",
-        "1961", "1962", "1963",
-        "1964", "1965", "1966",
-        "1967", "1968", "1969",
-        "1970", "1971", "1972",
-        "1973", "1974", "1975",
-        "1976", "1977", "1978",
+        # "1940", "1941", "1942",
+        # "1943", "1944", "1945",
+        # "1946", "1947", "1948",
+        # "1949", "1950", "1951",
+        # "1952", "1953", "1954",
+        # "1955", "1956", "1957",
+        # "1958", "1959", "1960",
+        # "1961", "1962", "1963",
+        # "1964", "1965", "1966",
+        # "1967", "1968", "1969",
+        # "1970", "1971", "1972",
+        # "1973", "1974", "1975",
+        # "1976", "1977", "1978",
         "1979", "1980", "1981",
         "1982", "1983", "1984",
         "1985", "1986", "1987",
@@ -270,7 +255,7 @@ request = {
         "2015", "2016", "2017",
         "2018", "2019", "2020",
         "2021", "2022", "2023",
-        "2024"
+        # "2024"
     ],
     "month": [
         "01", "02", "03",
@@ -280,77 +265,73 @@ request = {
     ],
     "time": ["00:00"],
     "data_format": "netcdf",
-    "download_format": "unarchived"
-}
-
-client.retrieve(dataset, request, output_file)
+    "download_format": "unarchived"}
+client.retrieve("reanalysis-era5-single-levels-monthly-means", request, outf)
 
 
-dataset = xr.open_dataset(output_file)
-dataset = dataset.rename({'date': 'time', 'latitude': 'lat', 'longitude': 'lon'})
-dataset = dataset.assign_coords(time = pd.to_datetime(dataset.time, format='%Y%m%d'))
+dset = xr.open_dataset(outf)
+dset = dset.rename({'date': 'time', 'latitude': 'lat', 'longitude': 'lon'})
+dset = dset.assign_coords(time = pd.to_datetime(dset.time, format='%Y%m%d'))
 
-dataset_regrid = regrid(dataset)
-dataset_regrid_alltime = mon_sea_ann(var_monthly=dataset_regrid[var])
-dataset_alltime = mon_sea_ann(var_monthly=dataset[var])
+dset_rgd = cdo_regrid(dset)
+dset_rgd_alltime = mon_sea_ann(var_monthly=dset_rgd[var], lcopy=False, lsea_cpt=False)
+dset_alltime = mon_sea_ann(var_monthly=dset[var], lcopy=False, lsea_cpt=False)
 
 
-dataset_regrid.to_netcdf(output_file_regrid)
-with open(output_file_regrid_alltime, 'wb') as f:
-    pickle.dump(dataset_regrid_alltime, f)
-with open(output_file_alltime, 'wb') as f: pickle.dump(dataset_alltime, f)
+dset_rgd.to_netcdf(outf_rgd)
+with open(outf_rgd_alltime, 'wb') as f:
+    pickle.dump(dset_rgd_alltime, f)
+with open(outf_alltime, 'wb') as f: pickle.dump(dset_alltime, f)
 
 
 '''
 #-------------------------------- check
-dataset = xr.open_dataset('data/obs/era5/mon/era5_mon_tp.nc')
-dataset_regrid = xr.open_dataset('data/obs/era5/mon/era5_mon_tp_regrid.nc')
-with open('data/obs/era5/mon/era5_mon_tp_regrid_alltime.pkl', 'rb') as f: dataset_regrid_alltime = pickle.load(f)
-with open('data/obs/era5/mon/era5_mon_tp_alltime.pkl', 'rb') as f: dataset_alltime = pickle.load(f)
+dset = xr.open_dataset('data/obs/era5/mon/era5_mon_tp.nc')
+dset_rgd = xr.open_dataset('data/obs/era5/mon/era5_mon_tp_rgd.nc')
+with open('data/obs/era5/mon/era5_mon_tp_rgd_alltime.pkl', 'rb') as f: dset_rgd_alltime = pickle.load(f)
+with open('data/obs/era5/mon/era5_mon_tp_alltime.pkl', 'rb') as f: dset_alltime = pickle.load(f)
 
-print(dataset[var].shape)
-print(dataset_regrid[var].shape)
-print(dataset_regrid_alltime['mon'].shape)
-print(dataset_regrid_alltime.keys())
-print(dataset_alltime['mon'].shape)
-print(dataset_alltime.keys())
+print(dset[var].shape)
+print(dset_rgd[var].shape)
+print(dset_rgd_alltime['mon'].shape)
+print(dset_rgd_alltime.keys())
+print(dset_alltime['mon'].shape)
+print(dset_alltime.keys())
 
-del dataset, dataset_regrid, dataset_regrid_alltime, dataset_alltime
+del dset, dset_rgd, dset_rgd_alltime, dset_alltime
 '''
 # endregion
 
 
 # region msl
 
-
-variable = "mean_sea_level_pressure"
+variable = 'mean_sea_level_pressure'
 var = 'msl'
 folder = 'data/obs/era5/mon/'
 
-output_file = folder + 'era5_mon_' + var + '.nc'
-output_file_regrid = folder + 'era5_mon_' + var + '_regrid.nc'
-output_file_regrid_alltime = folder + 'era5_mon_' + var + '_regrid_alltime.pkl'
-output_file_alltime = folder + 'era5_mon_' + var + '_alltime.pkl'
+outf = f'{folder}era5_mon_{var}.nc'
+outf_rgd = f'{folder}era5_mon_{var}_rgd.nc'
+outf_rgd_alltime = f'{folder}era5_mon_{var}_rgd_alltime.pkl'
+outf_alltime = f'{folder}era5_mon_{var}_alltime.pkl'
 
 
-dataset = "reanalysis-era5-single-levels-monthly-means"
 request = {
     "product_type": ["monthly_averaged_reanalysis"],
     "variable": variable,
     "year": [
-        "1940", "1941", "1942",
-        "1943", "1944", "1945",
-        "1946", "1947", "1948",
-        "1949", "1950", "1951",
-        "1952", "1953", "1954",
-        "1955", "1956", "1957",
-        "1958", "1959", "1960",
-        "1961", "1962", "1963",
-        "1964", "1965", "1966",
-        "1967", "1968", "1969",
-        "1970", "1971", "1972",
-        "1973", "1974", "1975",
-        "1976", "1977", "1978",
+        # "1940", "1941", "1942",
+        # "1943", "1944", "1945",
+        # "1946", "1947", "1948",
+        # "1949", "1950", "1951",
+        # "1952", "1953", "1954",
+        # "1955", "1956", "1957",
+        # "1958", "1959", "1960",
+        # "1961", "1962", "1963",
+        # "1964", "1965", "1966",
+        # "1967", "1968", "1969",
+        # "1970", "1971", "1972",
+        # "1973", "1974", "1975",
+        # "1976", "1977", "1978",
         "1979", "1980", "1981",
         "1982", "1983", "1984",
         "1985", "1986", "1987",
@@ -366,7 +347,7 @@ request = {
         "2015", "2016", "2017",
         "2018", "2019", "2020",
         "2021", "2022", "2023",
-        "2024"
+        # "2024"
     ],
     "month": [
         "01", "02", "03",
@@ -376,42 +357,40 @@ request = {
     ],
     "time": ["00:00"],
     "data_format": "netcdf",
-    "download_format": "unarchived"
-}
-
-client.retrieve(dataset, request, output_file)
+    "download_format": "unarchived"}
+client.retrieve("reanalysis-era5-single-levels-monthly-means", request, outf)
 
 
-dataset = xr.open_dataset(output_file)
-dataset = dataset.rename({'date': 'time', 'latitude': 'lat', 'longitude': 'lon'})
-dataset = dataset.assign_coords(time = pd.to_datetime(dataset.time, format='%Y%m%d'))
+dset = xr.open_dataset(outf)
+dset = dset.rename({'date': 'time', 'latitude': 'lat', 'longitude': 'lon'})
+dset = dset.assign_coords(time = pd.to_datetime(dset.time, format='%Y%m%d'))
 
-dataset_regrid = regrid(dataset)
-dataset_regrid_alltime = mon_sea_ann(var_monthly=dataset_regrid[var])
-dataset_alltime = mon_sea_ann(var_monthly=dataset[var])
+dset_rgd = cdo_regrid(dset)
+dset_rgd_alltime = mon_sea_ann(var_monthly=dset_rgd[var], lcopy=False, lsea_cpt=False)
+dset_alltime = mon_sea_ann(var_monthly=dset[var], lcopy=False, lsea_cpt=False)
 
 
-dataset_regrid.to_netcdf(output_file_regrid)
-with open(output_file_regrid_alltime, 'wb') as f:
-    pickle.dump(dataset_regrid_alltime, f)
-with open(output_file_alltime, 'wb') as f: pickle.dump(dataset_alltime, f)
+dset_rgd.to_netcdf(outf_rgd)
+with open(outf_rgd_alltime, 'wb') as f:
+    pickle.dump(dset_rgd_alltime, f)
+with open(outf_alltime, 'wb') as f: pickle.dump(dset_alltime, f)
 
 
 '''
 #-------------------------------- check
-dataset = xr.open_dataset('data/obs/era5/mon/era5_mon_msl.nc')
-dataset_regrid = xr.open_dataset('data/obs/era5/mon/era5_mon_msl_regrid.nc')
-with open('data/obs/era5/mon/era5_mon_msl_regrid_alltime.pkl', 'rb') as f: dataset_regrid_alltime = pickle.load(f)
-with open('data/obs/era5/mon/era5_mon_msl_alltime.pkl', 'rb') as f: dataset_alltime = pickle.load(f)
+dset = xr.open_dataset('data/obs/era5/mon/era5_mon_msl.nc')
+dset_rgd = xr.open_dataset('data/obs/era5/mon/era5_mon_msl_rgd.nc')
+with open('data/obs/era5/mon/era5_mon_msl_rgd_alltime.pkl', 'rb') as f: dset_rgd_alltime = pickle.load(f)
+with open('data/obs/era5/mon/era5_mon_msl_alltime.pkl', 'rb') as f: dset_alltime = pickle.load(f)
 
-print(dataset[var].shape)
-print(dataset_regrid[var].shape)
-print(dataset_regrid_alltime['mon'].shape)
-print(dataset_regrid_alltime.keys())
-print(dataset_alltime['mon'].shape)
-print(dataset_alltime.keys())
+print(dset[var].shape)
+print(dset_rgd[var].shape)
+print(dset_rgd_alltime['mon'].shape)
+print(dset_rgd_alltime.keys())
+print(dset_alltime['mon'].shape)
+print(dset_alltime.keys())
 
-del dataset, dataset_regrid, dataset_regrid_alltime, dataset_alltime
+del dset, dset_rgd, dset_rgd_alltime, dset_alltime
 '''
 # endregion
 

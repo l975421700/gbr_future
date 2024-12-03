@@ -1,8 +1,9 @@
 #!/bin/bash
 
 #PBS -q copyq
-#PBS -l walltime=05:00:00
-#PBS -l mem=150GB
+#PBS -l walltime=02:00:00
+#PBS -l mem=100GB
+#PBS -l jobfs=100GB
 #PBS -l ncpus=1
 #PBS -l storage=gdata/v46
 

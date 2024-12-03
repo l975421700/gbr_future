@@ -94,8 +94,9 @@ ax.add_feature(
 # region plot Australia
 
 
+fig, ax = regional_plot(extent=[140, 157, -27, -8], figsize = np.array([4.4, 4.4]) / 2.54)
+fig.savefig('figures/test.png')
+
 
 # endregion
-
-
 

@@ -1,6 +1,6 @@
 
 
-# qsub -I -q copyq -l walltime=04:00:00,ncpus=1,mem=192GB,storage=gdata/v46
+# qsub -I -q copyq -l walltime=02:00:00,ncpus=1,mem=100GB,jobfs=100GB,storage=gdata/v46
 
 
 # region import packages
@@ -73,8 +73,8 @@ with open(outf, 'wb') as f: pickle.dump(dsets, f)
 dsets_rgd = {}
 for imodel in dsets.keys():
     print(imodel)
-    if (len(dsets[imodel].sel(time=slice('1979', '1980')).time) > 0):
-        dsets_rgd[imodel] = cdo_regrid(dsets[imodel].sel(time=slice('1979', '1980'))).pipe(combined_preprocessing).pipe(drop_all_bounds)
+    if (len(dsets[imodel].sel(time=slice('1979', '2014')).time) > 0):
+        dsets_rgd[imodel] = cdo_regrid(dsets[imodel].sel(time=slice('1979', '2014'))).pipe(combined_preprocessing).pipe(drop_all_bounds)
 
 del dsets
 with open(outf_rgd, 'wb') as f: pickle.dump(dsets_rgd, f)
@@ -84,7 +84,7 @@ dsets_rgd_alltime = {}
 for imodel in dsets_rgd.keys():
     print(imodel)
     dsets_rgd_alltime[imodel] = mon_sea_ann(
-        var_monthly=dsets_rgd[imodel][var_id], lcopy=False, lsea_cpt=False)
+        var_monthly=dsets_rgd[imodel][var_id], lcopy=False)
 
 del dsets_rgd
 with open(outf_rgd_alltime, 'wb') as f: pickle.dump(dsets_rgd_alltime, f)
@@ -158,8 +158,8 @@ with open(outf, 'wb') as f: pickle.dump(dsets, f)
 dsets_rgd = {}
 for imodel in dsets.keys():
     print(imodel)
-    if (len(dsets[imodel].sel(time=slice('1979', '1980')).time) > 0):
-        dsets_rgd[imodel] = cdo_regrid(dsets[imodel].sel(time=slice('1979', '1980'))).pipe(combined_preprocessing).pipe(drop_all_bounds)
+    if (len(dsets[imodel].sel(time=slice('1979', '2014')).time) > 0):
+        dsets_rgd[imodel] = cdo_regrid(dsets[imodel].sel(time=slice('1979', '2014'))).pipe(combined_preprocessing).pipe(drop_all_bounds)
 
 del dsets
 with open(outf_rgd, 'wb') as f: pickle.dump(dsets_rgd, f)
@@ -169,7 +169,7 @@ dsets_rgd_alltime = {}
 for imodel in dsets_rgd.keys():
     print(imodel)
     dsets_rgd_alltime[imodel] = mon_sea_ann(
-        var_monthly=dsets_rgd[imodel][var_id], lcopy=False, lsea_cpt=False)
+        var_monthly=dsets_rgd[imodel][var_id], lcopy=False)
 
 del dsets_rgd
 with open(outf_rgd_alltime, 'wb') as f: pickle.dump(dsets_rgd_alltime, f)
@@ -244,8 +244,8 @@ with open(outf, 'wb') as f: pickle.dump(dsets, f)
 dsets_rgd = {}
 for imodel in dsets.keys():
     print(imodel)
-    if (len(dsets[imodel].sel(time=slice('1979', '1980')).time) > 0):
-        dsets_rgd[imodel] = cdo_regrid(dsets[imodel].sel(time=slice('1979', '1980'))).pipe(combined_preprocessing).pipe(drop_all_bounds)
+    if (len(dsets[imodel].sel(time=slice('1979', '2014')).time) > 0):
+        dsets_rgd[imodel] = cdo_regrid(dsets[imodel].sel(time=slice('1979', '2014'))).pipe(combined_preprocessing).pipe(drop_all_bounds)
 
 del dsets
 with open(outf_rgd, 'wb') as f: pickle.dump(dsets_rgd, f)
@@ -255,7 +255,7 @@ dsets_rgd_alltime = {}
 for imodel in dsets_rgd.keys():
     print(imodel)
     dsets_rgd_alltime[imodel] = mon_sea_ann(
-        var_monthly=dsets_rgd[imodel][var_id], lcopy=False, lsea_cpt=False)
+        var_monthly=dsets_rgd[imodel][var_id], lcopy=False)
 
 del dsets_rgd
 with open(outf_rgd_alltime, 'wb') as f: pickle.dump(dsets_rgd_alltime, f)
@@ -331,8 +331,8 @@ with open(outf, 'wb') as f: pickle.dump(dsets, f)
 dsets_rgd = {}
 for imodel in dsets.keys():
     print(imodel)
-    if (len(dsets[imodel].sel(time=slice('2015', '2016')).time) > 0):
-        dsets_rgd[imodel] = cdo_regrid(dsets[imodel].sel(time=slice('2015', '2016'))).pipe(combined_preprocessing).pipe(drop_all_bounds)
+    if (len(dsets[imodel].sel(time=slice('2015', '2100')).time) > 0):
+        dsets_rgd[imodel] = cdo_regrid(dsets[imodel].sel(time=slice('2015', '2100'))).pipe(combined_preprocessing).pipe(drop_all_bounds)
 
 del dsets
 with open(outf_rgd, 'wb') as f: pickle.dump(dsets_rgd, f)
@@ -342,7 +342,7 @@ dsets_rgd_alltime = {}
 for imodel in dsets_rgd.keys():
     print(imodel)
     dsets_rgd_alltime[imodel] = mon_sea_ann(
-        var_monthly=dsets_rgd[imodel][var_id], lcopy=False, lsea_cpt=False)
+        var_monthly=dsets_rgd[imodel][var_id], lcopy=False)
 
 del dsets_rgd
 with open(outf_rgd_alltime, 'wb') as f: pickle.dump(dsets_rgd_alltime, f)
@@ -418,8 +418,8 @@ with open(outf, 'wb') as f: pickle.dump(dsets, f)
 dsets_rgd = {}
 for imodel in dsets.keys():
     print(imodel)
-    if (len(dsets[imodel].sel(time=slice('2015', '2016')).time) > 0):
-        dsets_rgd[imodel] = cdo_regrid(dsets[imodel].sel(time=slice('2015', '2016'))).pipe(combined_preprocessing).pipe(drop_all_bounds)
+    if (len(dsets[imodel].sel(time=slice('2015', '2100')).time) > 0):
+        dsets_rgd[imodel] = cdo_regrid(dsets[imodel].sel(time=slice('2015', '2100'))).pipe(combined_preprocessing).pipe(drop_all_bounds)
 
 del dsets
 with open(outf_rgd, 'wb') as f: pickle.dump(dsets_rgd, f)
@@ -429,7 +429,7 @@ dsets_rgd_alltime = {}
 for imodel in dsets_rgd.keys():
     print(imodel)
     dsets_rgd_alltime[imodel] = mon_sea_ann(
-        var_monthly=dsets_rgd[imodel][var_id], lcopy=False, lsea_cpt=False)
+        var_monthly=dsets_rgd[imodel][var_id], lcopy=False)
 
 del dsets_rgd
 with open(outf_rgd_alltime, 'wb') as f: pickle.dump(dsets_rgd_alltime, f)
@@ -505,8 +505,8 @@ with open(outf, 'wb') as f: pickle.dump(dsets, f)
 dsets_rgd = {}
 for imodel in dsets.keys():
     print(imodel)
-    if (len(dsets[imodel].sel(time=slice('2015', '2016')).time) > 0):
-        dsets_rgd[imodel] = cdo_regrid(dsets[imodel].sel(time=slice('2015', '2016'))).pipe(combined_preprocessing).pipe(drop_all_bounds)
+    if (len(dsets[imodel].sel(time=slice('2015', '2100')).time) > 0):
+        dsets_rgd[imodel] = cdo_regrid(dsets[imodel].sel(time=slice('2015', '2100'))).pipe(combined_preprocessing).pipe(drop_all_bounds)
 
 del dsets
 with open(outf_rgd, 'wb') as f: pickle.dump(dsets_rgd, f)
@@ -516,7 +516,7 @@ dsets_rgd_alltime = {}
 for imodel in dsets_rgd.keys():
     print(imodel)
     dsets_rgd_alltime[imodel] = mon_sea_ann(
-        var_monthly=dsets_rgd[imodel][var_id], lcopy=False, lsea_cpt=False)
+        var_monthly=dsets_rgd[imodel][var_id], lcopy=False)
 
 del dsets_rgd
 with open(outf_rgd_alltime, 'wb') as f: pickle.dump(dsets_rgd_alltime, f)
@@ -593,8 +593,8 @@ with open(outf, 'wb') as f: pickle.dump(dsets, f)
 dsets_rgd = {}
 for imodel in dsets.keys():
     print(imodel)
-    if (len(dsets[imodel].sel(time=slice('2015', '2016')).time) > 0):
-        dsets_rgd[imodel] = cdo_regrid(dsets[imodel].sel(time=slice('2015', '2016'))).pipe(combined_preprocessing).pipe(drop_all_bounds)
+    if (len(dsets[imodel].sel(time=slice('2015', '2100')).time) > 0):
+        dsets_rgd[imodel] = cdo_regrid(dsets[imodel].sel(time=slice('2015', '2100'))).pipe(combined_preprocessing).pipe(drop_all_bounds)
 
 del dsets
 with open(outf_rgd, 'wb') as f: pickle.dump(dsets_rgd, f)
@@ -604,7 +604,7 @@ dsets_rgd_alltime = {}
 for imodel in dsets_rgd.keys():
     print(imodel)
     dsets_rgd_alltime[imodel] = mon_sea_ann(
-        var_monthly=dsets_rgd[imodel][var_id], lcopy=False, lsea_cpt=False)
+        var_monthly=dsets_rgd[imodel][var_id], lcopy=False)
 
 del dsets_rgd
 with open(outf_rgd_alltime, 'wb') as f: pickle.dump(dsets_rgd_alltime, f)
@@ -680,8 +680,8 @@ with open(outf, 'wb') as f: pickle.dump(dsets, f)
 dsets_rgd = {}
 for imodel in dsets.keys():
     print(imodel)
-    if (len(dsets[imodel].sel(time=slice('2015', '2016')).time) > 0):
-        dsets_rgd[imodel] = cdo_regrid(dsets[imodel].sel(time=slice('2015', '2016'))).pipe(combined_preprocessing).pipe(drop_all_bounds)
+    if (len(dsets[imodel].sel(time=slice('2015', '2100')).time) > 0):
+        dsets_rgd[imodel] = cdo_regrid(dsets[imodel].sel(time=slice('2015', '2100'))).pipe(combined_preprocessing).pipe(drop_all_bounds)
 
 del dsets
 with open(outf_rgd, 'wb') as f: pickle.dump(dsets_rgd, f)
@@ -691,7 +691,7 @@ dsets_rgd_alltime = {}
 for imodel in dsets_rgd.keys():
     print(imodel)
     dsets_rgd_alltime[imodel] = mon_sea_ann(
-        var_monthly=dsets_rgd[imodel][var_id], lcopy=False, lsea_cpt=False)
+        var_monthly=dsets_rgd[imodel][var_id], lcopy=False)
 
 del dsets_rgd
 with open(outf_rgd_alltime, 'wb') as f: pickle.dump(dsets_rgd_alltime, f)
@@ -768,8 +768,8 @@ with open(outf, 'wb') as f: pickle.dump(dsets, f)
 dsets_rgd = {}
 for imodel in dsets.keys():
     print(imodel)
-    if (len(dsets[imodel].sel(time=slice('2015', '2016')).time) > 0):
-        dsets_rgd[imodel] = cdo_regrid(dsets[imodel].sel(time=slice('2015', '2016'))).pipe(combined_preprocessing).pipe(drop_all_bounds)
+    if (len(dsets[imodel].sel(time=slice('2015', '2100')).time) > 0):
+        dsets_rgd[imodel] = cdo_regrid(dsets[imodel].sel(time=slice('2015', '2100'))).pipe(combined_preprocessing).pipe(drop_all_bounds)
 
 del dsets
 with open(outf_rgd, 'wb') as f: pickle.dump(dsets_rgd, f)
@@ -779,7 +779,7 @@ dsets_rgd_alltime = {}
 for imodel in dsets_rgd.keys():
     print(imodel)
     dsets_rgd_alltime[imodel] = mon_sea_ann(
-        var_monthly=dsets_rgd[imodel][var_id], lcopy=False, lsea_cpt=False)
+        var_monthly=dsets_rgd[imodel][var_id], lcopy=False)
 
 del dsets_rgd
 with open(outf_rgd_alltime, 'wb') as f: pickle.dump(dsets_rgd_alltime, f)
@@ -857,8 +857,8 @@ with open(outf, 'wb') as f: pickle.dump(dsets, f)
 dsets_rgd = {}
 for imodel in dsets.keys():
     print(imodel)
-    if (len(dsets[imodel].sel(time=slice('1979', '1980')).time) > 0):
-        dsets_rgd[imodel] = cdo_regrid(dsets[imodel].sel(time=slice('1979', '1980'))).pipe(combined_preprocessing).pipe(drop_all_bounds)
+    if (len(dsets[imodel].sel(time=slice('1979', '2014')).time) > 0):
+        dsets_rgd[imodel] = cdo_regrid(dsets[imodel].sel(time=slice('1979', '2014'))).pipe(combined_preprocessing).pipe(drop_all_bounds)
 
 del dsets
 with open(outf_rgd, 'wb') as f: pickle.dump(dsets_rgd, f)
@@ -868,7 +868,7 @@ dsets_rgd_alltime = {}
 for imodel in dsets_rgd.keys():
     print(imodel)
     dsets_rgd_alltime[imodel] = mon_sea_ann(
-        var_monthly=dsets_rgd[imodel][var_id], lcopy=False, lsea_cpt=False)
+        var_monthly=dsets_rgd[imodel][var_id], lcopy=False)
 
 del dsets_rgd
 with open(outf_rgd_alltime, 'wb') as f: pickle.dump(dsets_rgd_alltime, f)
@@ -941,8 +941,8 @@ with open(outf, 'wb') as f: pickle.dump(dsets, f)
 dsets_rgd = {}
 for imodel in dsets.keys():
     print(imodel)
-    if (len(dsets[imodel].sel(time=slice('1979', '1980')).time) > 0):
-        dsets_rgd[imodel] = cdo_regrid(dsets[imodel].sel(time=slice('1979', '1980'))).pipe(combined_preprocessing).pipe(drop_all_bounds)
+    if (len(dsets[imodel].sel(time=slice('1979', '2014')).time) > 0):
+        dsets_rgd[imodel] = cdo_regrid(dsets[imodel].sel(time=slice('1979', '2014'))).pipe(combined_preprocessing).pipe(drop_all_bounds)
 
 del dsets
 with open(outf_rgd, 'wb') as f: pickle.dump(dsets_rgd, f)
@@ -952,7 +952,7 @@ dsets_rgd_alltime = {}
 for imodel in dsets_rgd.keys():
     print(imodel)
     dsets_rgd_alltime[imodel] = mon_sea_ann(
-        var_monthly=dsets_rgd[imodel][var_id], lcopy=False, lsea_cpt=False)
+        var_monthly=dsets_rgd[imodel][var_id], lcopy=False)
 
 del dsets_rgd
 with open(outf_rgd_alltime, 'wb') as f: pickle.dump(dsets_rgd_alltime, f)

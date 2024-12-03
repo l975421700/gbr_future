@@ -204,12 +204,12 @@ def regional_plot(
     extent=None,
     figsize=None,
     central_longitude = 0,
-    xmajortick_int = 20, ymajortick_int = 10,
-    xminortick_int = 10, yminortick_int = 10,
+    xmajortick_int = 10, ymajortick_int = 10,
+    xminortick_int = 5, yminortick_int = 5,
     lw=0.25, country_boundaries=True, border_color = 'black',
     grid_color = 'gray',
     set_figure_margin = False, figure_margin=None,
-    ticks_and_labels = True,
+    ticks_and_labels = False,
     ax_org=None, fontsize=8,
     ):
     '''
@@ -284,8 +284,6 @@ def regional_plot(
         return fig, ax
     else:
         return ax
-
-
 
 
 '''
