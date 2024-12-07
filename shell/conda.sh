@@ -58,6 +58,7 @@ pip install SkillMetrics
 pip install igra
 pip install pint-xarray
 pip install findent
+pip install f90nml
 
 #-------------------------------- Secondary packages
 
