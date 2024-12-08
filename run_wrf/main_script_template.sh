@@ -1,14 +1,12 @@
 #!/bin/bash
 #PBS -N ${RUNNAME}
-#PBS -l walltime=48:00:00
-#PBS -l mem=128GB
-#PBS -l ncpus=64
-#PBS -j oe
 #PBS -q normal
+#PBS -l walltime=48:00:00
+#PBS -l mem=1536GB
+#PBS -l ncpus=384
+#PBS -j oe
 #PBS -l wd
-
-# Submit WRF for a group of consecutive days. Wait for each job to
-# finish before starting the next one.
+#PBS -l storage=gdata/${PROJECT}
 
 echo Start date is ${STARTDATE}
 echo Run directory is ${RUN_DIR}
@@ -34,9 +32,7 @@ while [ $n -lt ${njobs} ]; do
   start_date=`echo $startdate | cut -b 1-8`
   start_hour=`echo $startdate | cut -b 9-10`
   startdate=`date -u +%Y%m%d%H -d "$start_date+$start_hour hours+${nhours} hours UTC"`
- 
   echo $startdate
- 
   # Go into the next directory
   cd ${RUN_DIR}/$startdate/
 
@@ -44,10 +40,10 @@ while [ $n -lt ${njobs} ]; do
   if [ ${runAsOneJob} == "true" ] ; then
       chmod u+x run.sh
       ./run.sh
-  elif [ ${NUDGING} == "true" ] ; then
-      job_next=`qsub -W depend=afterok:$job run.sh`
-      echo "$job_next depends on $job"
-      job=$job_next
+#   elif [ ${NUDGING} == "true" ] ; then
+#       job_next=`qsub -W depend=afterok:$job run.sh`
+#       echo "$job_next depends on $job"
+#       job=$job_next
   else
       job_next=`qsub run.sh`
       echo "Job $job_next now queued"

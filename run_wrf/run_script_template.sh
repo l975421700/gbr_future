@@ -1,12 +1,12 @@
 #!/bin/bash
-
 #PBS -N ${RUNSHORT}_${STARTDATE}
-#PBS -l walltime=12:00:00
-#PBS -l mem=192GB
-#PBS -l ncpus=48
-#PBS -j oe
 #PBS -q normal
+#PBS -l walltime=48:00:00
+#PBS -l mem=1536GB
+#PBS -l ncpus=384
+#PBS -j oe
 #PBS -l wd
+#PBS -l storage=gdata/${PROJECT}
 
 module purge
 module load dot

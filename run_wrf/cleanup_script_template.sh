@@ -1,12 +1,12 @@
 #!/bin/bash
-
 #PBS -N cleanup
-#PBS -l walltime=1:00:00
-#PBS -l mem=2GB
+#PBS -q normal
+#PBS -l walltime=2:00:00
+#PBS -l mem=4GB
 #PBS -l ncpus=1
 #PBS -j oe
-#PBS -q copyq
 #PBS -l wd
+#PBS -l storage=gdata/${PROJECT}
 
 module purge
 module load pbs
@@ -21,23 +21,24 @@ cd ${RUN_DIR}
 du -hc .
 
 echo "Remove temporary files"
-rm -f met_em*
-rm -f geo_em*
-rm -f link_grib.csh
-rm -f Vtable
-rm -r -f metgrid
-rm -f metgrid.exe metgrid.log*
-rm -f myoutfields*
-rm -f namelist.output
+# rm -f met_em*
+# rm -f geo_em*
+# rm -f link_grib.csh
+# rm -f Vtable
+# rm -r -f metgrid
+# rm -f ungrib.exe ungrib.log metgrid.exe metgrid.log*
+# rm -f myoutfields*
+# rm -f FILE* GRIB*
+# rm -r -f ei_tmp analysis_tmp sst_tmp
+# rm -f SST\:*
+# rm -f ERA\:*
+# rm -f fort.*
 rm -r realrsl rsl*
-rm -f wrf.log wrf.exe ungrib.exe ungrib.log real.exe real.log
-rm -f FILE* GRIB* *DATA *TBL
-rm -r -f ei_tmp analysis_tmp sst_tmp
-rm -f SST\:*
-rm -f ERA\:*
-rm -f fort.*
+rm -f wrf.log wrf.exe ideal.exe ideal.log*
 rm -f *{DAT,formatted,CAM,asc,TBL,dat,tbl,txt,tr}*
-rm -f wrfbdy* wrfinput* wrflow* nco* wrffdda* 
+rm -f wrfbdy* wrfinput* wrflow* nco* wrffdda*
+# rm -f namelist.output
+# rm -f *DATA *TBL
 
 echo "Remove files during the spinup period "
 for wrfoutfile in `find . -type f -iname 'wrfout_*'` ; do

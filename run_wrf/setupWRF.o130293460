@@ -1,0 +1,19 @@
+		Generate the main coordination script
+Start preparation for the run beginning 2016-01-01
+	Check that the WRF initialisation files exist
+		The WRF initialisation files did not exist...
+		configure the WRF namelist
+		Run ideal.exe at 2024-12-07 09:21:17
+
+======================================================================================
+                  Resource Usage on 2024-12-07 20:25:27:
+   Job Id:             130293460.gadi-pbs
+   Project:            v46
+   Exit Status:        0
+   Service Units:      0.21
+   NCPUs Requested:    1                      NCPUs Used: 1               
+                                           CPU Time Used: 00:00:05        
+   Memory Requested:   4.0GB                 Memory Used: 568.89MB        
+   Walltime requested: 00:30:00            Walltime Used: 00:06:19        
+   JobFS requested:    100.0MB                JobFS used: 0B              
+======================================================================================

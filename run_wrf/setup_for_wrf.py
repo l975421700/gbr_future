@@ -42,7 +42,7 @@ except Exception as e:
 ## parse the config file
 try:
     ## strip out the comments
-    input_str = re.sub(r'#.*\n', '\n', input_str)
+    input_str = re.sub(r'//.*\n', '\n', input_str)
     config = json.loads(input_str)
 except Exception as e:
     print("Problem parsing in configuration file")
@@ -79,18 +79,18 @@ while iterationCount < 10:
     ##
     iterationCount += 1
 
-## parameters that should agree for the WRF and WPS namelists
-namelistParamsThatShouldAgree = [
-    {'wrf_var': 'max_dom','wrf_group': 'domains', 'wps_var': 'max_dom','wps_group': 'share'},
-    {'wrf_var': 'interval_seconds','wrf_group': 'time_control', 'wps_var': 'interval_seconds','wps_group': 'share'},
-    {'wrf_var': 'parent_id','wrf_group': 'domains', 'wps_var': 'parent_id','wps_group': 'geogrid'}, 
-    {'wrf_var': 'parent_grid_ratio','wrf_group': 'domains', 'wps_var': 'parent_grid_ratio','wps_group': 'geogrid'}, 
-    {'wrf_var': 'i_parent_start','wrf_group': 'domains', 'wps_var': 'i_parent_start','wps_group': 'geogrid'}, 
-    {'wrf_var': 'j_parent_start','wrf_group': 'domains', 'wps_var': 'j_parent_start','wps_group': 'geogrid'}, 
-    {'wrf_var': 'e_we','wrf_group': 'domains', 'wps_var': 'e_we','wps_group': 'geogrid'}, 
-    {'wrf_var': 'e_sn','wrf_group': 'domains', 'wps_var': 'e_sn','wps_group': 'geogrid'}, 
-    {'wrf_var': 'dx','wrf_group': 'domains', 'wps_var': 'dx','wps_group': 'geogrid'}, 
-    {'wrf_var': 'dy','wrf_group': 'domains', 'wps_var': 'dy','wps_group': 'geogrid'}]
+# ## parameters that should agree for the WRF and WPS namelists
+# namelistParamsThatShouldAgree = [
+#     {'wrf_var': 'max_dom','wrf_group': 'domains', 'wps_var': 'max_dom','wps_group': 'share'},
+#     {'wrf_var': 'interval_seconds','wrf_group': 'time_control', 'wps_var': 'interval_seconds','wps_group': 'share'},
+#     {'wrf_var': 'parent_id','wrf_group': 'domains', 'wps_var': 'parent_id','wps_group': 'geogrid'}, 
+#     {'wrf_var': 'parent_grid_ratio','wrf_group': 'domains', 'wps_var': 'parent_grid_ratio','wps_group': 'geogrid'}, 
+#     {'wrf_var': 'i_parent_start','wrf_group': 'domains', 'wps_var': 'i_parent_start','wps_group': 'geogrid'}, 
+#     {'wrf_var': 'j_parent_start','wrf_group': 'domains', 'wps_var': 'j_parent_start','wps_group': 'geogrid'}, 
+#     {'wrf_var': 'e_we','wrf_group': 'domains', 'wps_var': 'e_we','wps_group': 'geogrid'}, 
+#     {'wrf_var': 'e_sn','wrf_group': 'domains', 'wps_var': 'e_sn','wps_group': 'geogrid'}, 
+#     {'wrf_var': 'dx','wrf_group': 'domains', 'wps_var': 'dx','wps_group': 'geogrid'}, 
+#     {'wrf_var': 'dy','wrf_group': 'domains', 'wps_var': 'dy','wps_group': 'geogrid'}]
 
 assert iterationCount < 10, "Config key substitution exceeded iteration limit..."
 
@@ -103,12 +103,16 @@ for requisite_key in requisite_keys:
 truevals = ['true', '1', 't', 'y', 'yes']
 falsevals = ['false', '0', 'f', 'n', 'no']
 boolvals = truevals + falsevals
-bool_keys = ["run_as_one_job", "submit_wrf_now", "submit_wps_component", "only_edit_namelists","restart",'delete_metem_files',"use_high_res_sst_data", 'regional_subset_of_grib_data']
+bool_keys = ["restart", "run_as_one_job", "submit_wrf_now",
+             "submit_wps_component", "only_edit_namelists",
+             "use_high_res_sst_data",
+            #  'delete_metem_files', 'regional_subset_of_grib_data',
+             ]
 for bool_key in bool_keys:
     assert config[bool_key].lower() in boolvals,'Key {} not a recognised boolean value'.format(bool_key)
     config[bool_key] = (config[bool_key].lower() in truevals)
 
-assert config['analysis_source'] in ['ERAI', 'FNL'], 'Key analysis_source must be one of ERAI or FNL'
+# assert config['analysis_source'] in ['ERAI', 'FNL'], 'Key analysis_source must be one of ERAI or FNL'
 
 # execfile("/opt/Modules/default/init/python")
 
@@ -240,63 +244,64 @@ def check_file_status(filepath, filesize):
     sys.stdout.write('%.3f %s' % (percent_complete, '% Completed'))
     sys.stdout.flush()
 
-def downloadFNL(email,pswd,targetDir,times):
-    """
-    Download NCEP GDAS/FNL 0.25 Degree Global Tropospheric Analyses and Forecast Grids, ds083.3 | DOI: 10.5065/D65Q4T4Z
 
-    Args:
-        email = [string] email address for which you have an account on rda.ucar.edu / CISL
-        pswd = [string] password for your account on rda.ucar.edu / CISL
-        targetDir = [string] Directory where the data should be downloaded
-        times = [list of datetime.datetime objects] times to get analyses. Shoule be strictly at 00Z, 06Z, 12Z, 18Z and not before 2015-07-08
+# def downloadFNL(email,pswd,targetDir,times):
+#     """
+#     Download NCEP GDAS/FNL 0.25 Degree Global Tropospheric Analyses and Forecast Grids, ds083.3 | DOI: 10.5065/D65Q4T4Z
 
-    Return:
-        List of downloaded files
+#     Args:
+#         email = [string] email address for which you have an account on rda.ucar.edu / CISL
+#         pswd = [string] password for your account on rda.ucar.edu / CISL
+#         targetDir = [string] Directory where the data should be downloaded
+#         times = [list of datetime.datetime objects] times to get analyses. Shoule be strictly at 00Z, 06Z, 12Z, 18Z and not before 2015-07-08
 
-    """
-    print('in downloadFNL')
-    oldDir = os.getcwd()
-    ## check that the target directory is indeed a directory
-    assert os.path.exists(targetDir) and os.path.isdir(targetDir), "Target directory {} not found...".format(targetDir)
-    os.chdir(targetDir)
+#     Return:
+#         List of downloaded files
 
-    print('authenticate credentials')
-    url = 'https://rda.ucar.edu/cgi-bin/login'
-    values = {'email' : email, 'passwd' : pswd, 'action' : 'login'}
-    # Authenticate
-    ret = requests.post(url,data=values)
-    if ret.status_code != 200:
-        print('Bad Authentication')
-        print(ret.text)
-        sys.exit()
-    dspath = 'http://rda.ucar.edu/data/ds083.3/'
-    downloaded_files = []
+#     """
+#     print('in downloadFNL')
+#     oldDir = os.getcwd()
+#     ## check that the target directory is indeed a directory
+#     assert os.path.exists(targetDir) and os.path.isdir(targetDir), "Target directory {} not found...".format(targetDir)
+#     os.chdir(targetDir)
 
-    FNLstartDate = pytz.UTC.localize(datetime.datetime(2015,7,8,0,0,0))
+#     print('authenticate credentials')
+#     url = 'https://rda.ucar.edu/cgi-bin/login'
+#     values = {'email' : email, 'passwd' : pswd, 'action' : 'login'}
+#     # Authenticate
+#     ret = requests.post(url,data=values)
+#     if ret.status_code != 200:
+#         print('Bad Authentication')
+#         print(ret.text)
+#         sys.exit()
+#     dspath = 'http://rda.ucar.edu/data/ds083.3/'
+#     downloaded_files = []
+
+#     FNLstartDate = pytz.UTC.localize(datetime.datetime(2015,7,8,0,0,0))
     
-    for time in times:
-        assert (time.hour % 6) == 0 and time.minute == 0 and time.second == 0, "Analysis time should be staggered at 00Z, 06Z, 12Z, 18Z intervals"
-        assert time > FNLstartDate, "Analysis times should not be before 2015-07-08"
-        filepath = time.strftime('%Y/%Y%m/gdas1.fnl0p25.%Y%m%d%H.f00.grib2')
-        filename=dspath+filepath
-        file_base = os.path.basename(filepath)
-        print('Downloading',file_base)
-        req = requests.get(filename, cookies = ret.cookies, allow_redirects=True, stream=True)
-        filesize = int(req.headers['Content-length'])
-        with open(file_base, 'wb') as outfile:
-            chunk_size=1048576
-            for chunk in req.iter_content(chunk_size=chunk_size):
-                outfile.write(chunk)
-                if chunk_size < filesize:
-                    check_file_status(file_base, filesize)
-        check_file_status(file_base, filesize)
-        print()
-        downloaded_files.append(file_base)
+#     for time in times:
+#         assert (time.hour % 6) == 0 and time.minute == 0 and time.second == 0, "Analysis time should be staggered at 00Z, 06Z, 12Z, 18Z intervals"
+#         assert time > FNLstartDate, "Analysis times should not be before 2015-07-08"
+#         filepath = time.strftime('%Y/%Y%m/gdas1.fnl0p25.%Y%m%d%H.f00.grib2')
+#         filename=dspath+filepath
+#         file_base = os.path.basename(filepath)
+#         print('Downloading',file_base)
+#         req = requests.get(filename, cookies = ret.cookies, allow_redirects=True, stream=True)
+#         filesize = int(req.headers['Content-length'])
+#         with open(file_base, 'wb') as outfile:
+#             chunk_size=1048576
+#             for chunk in req.iter_content(chunk_size=chunk_size):
+#                 outfile.write(chunk)
+#                 if chunk_size < filesize:
+#                     check_file_status(file_base, filesize)
+#         check_file_status(file_base, filesize)
+#         print()
+#         downloaded_files.append(file_base)
 
-    ##
-    os.chdir(oldDir)
-    ## send back a list of downloaded files
-    return downloaded_files
+#     ##
+#     os.chdir(oldDir)
+#     ## send back a list of downloaded files
+#     return downloaded_files
 
 
 ## parse the times
@@ -315,47 +320,47 @@ run_length_hours = (end_date - start_date).total_seconds()/3600.
 number_of_jobs = int(math.ceil(run_length_hours/float(config["num_hours_per_run"])))
 
 ## check that namelist template files are present
-WPSnmlPath = config["namelist_wps"]
+# WPSnmlPath = config["namelist_wps"]
 WRFnmlPath = config["namelist_wrf"]
-assert os.path.exists(WPSnmlPath),"File WPS namelist not found at {}".format(WPSnmlPath)
+# assert os.path.exists(WPSnmlPath),"File WPS namelist not found at {}".format(WPSnmlPath)
 assert os.path.exists(WRFnmlPath),"File WRF namelist not found at {}".format(WRFnmlPath)
 
 ## read the WPS
-WPSnml = f90nml.read(WPSnmlPath)
+# WPSnml = f90nml.read(WPSnmlPath)
 WRFnml = f90nml.read(WRFnmlPath)
 
 ## check that the parameters do agree between the WRF and WPS namelists
-print('\t\tCheck for consistency between key parameters of the WRF and WPS namelists')
-for paramDict in namelistParamsThatShouldAgree:
-    WRFval = WRFnml[paramDict['wrf_group']][paramDict['wrf_var']]
-    WPSval = WPSnml[paramDict['wps_group']][paramDict['wps_var']]
-    ## the dx,dy variables need special treatment - they are handled differently in the two namelists
-    if paramDict['wrf_var'] in ['dx','dy']:
-        if WPSnml['share']['max_dom'] == 1:
-            if type(WRFval) == type([]):
-                assert WRFval[0] == WPSval, "Mismatched values for variable {} between the WRF and WPS namelists".format(paramDict['wrf_var'])
-            else:
-                assert WRFval == WPSval, "Mismatched values for variable {} between the WRF and WPS namelists".format(paramDict['wrf_var'])
-        else:
-            expectedVal = [float(WPSnml['geogrid'][paramDict['wps_var']])]
-            for idom in range(1,WPSnml['share']['max_dom']):
-                try:
-                    expectedVal.append(expectedVal[-1]/float(WPSnml['geogrid']['parent_grid_ratio'][idom]))
-                except:
-                    pdb.set_trace()
-            ##
-            assert len(WRFval) == len(expectedVal), "Mismatched length for variable {} between the WRF and WPS namelists".format(paramDict['wrf_var'])
-            assert all([a == b for a,b in zip(WRFval,expectedVal)]), "Mismatched values for variable {} between the WRF and WPS namelists".format(paramDict['wrf_var'])
-    else:
-        assert type(WRFval) == type(WPSval), "Mismatched type for variable {} between the WRF and WPS namelists".format(paramDict['wrf_var'])
-        if type(WRFval) == type([]):
-            assert len(WRFval) == len(WPSval), "Mismatched length for variable {} between the WRF and WPS namelists".format(paramDict['wrf_var'])
-            assert all([a == b for a,b in zip(WRFval,WPSval)]), "Mismatched values for variable {} between the WRF and WPS namelists".format(paramDict['wrf_var'])
-        else:
-            assert WRFval == WPSval, "Mismatched values for variable {} between the WRF and WPS namelists".format(paramDict['wrf_var'])
+# print('\t\tCheck for consistency between key parameters of the WRF and WPS namelists')
+# for paramDict in namelistParamsThatShouldAgree:
+#     WRFval = WRFnml[paramDict['wrf_group']][paramDict['wrf_var']]
+#     WPSval = WPSnml[paramDict['wps_group']][paramDict['wps_var']]
+#     ## the dx,dy variables need special treatment - they are handled differently in the two namelists
+#     if paramDict['wrf_var'] in ['dx','dy']:
+#         if WPSnml['share']['max_dom'] == 1:
+#             if type(WRFval) == type([]):
+#                 assert WRFval[0] == WPSval, "Mismatched values for variable {} between the WRF and WPS namelists".format(paramDict['wrf_var'])
+#             else:
+#                 assert WRFval == WPSval, "Mismatched values for variable {} between the WRF and WPS namelists".format(paramDict['wrf_var'])
+#         else:
+#             expectedVal = [float(WPSnml['geogrid'][paramDict['wps_var']])]
+#             for idom in range(1,WPSnml['share']['max_dom']):
+#                 try:
+#                     expectedVal.append(expectedVal[-1]/float(WPSnml['geogrid']['parent_grid_ratio'][idom]))
+#                 except:
+#                     pdb.set_trace()
+#             ##
+#             assert len(WRFval) == len(expectedVal), "Mismatched length for variable {} between the WRF and WPS namelists".format(paramDict['wrf_var'])
+#             assert all([a == b for a,b in zip(WRFval,expectedVal)]), "Mismatched values for variable {} between the WRF and WPS namelists".format(paramDict['wrf_var'])
+#     else:
+#         assert type(WRFval) == type(WPSval), "Mismatched type for variable {} between the WRF and WPS namelists".format(paramDict['wrf_var'])
+#         if type(WRFval) == type([]):
+#             assert len(WRFval) == len(WPSval), "Mismatched length for variable {} between the WRF and WPS namelists".format(paramDict['wrf_var'])
+#             assert all([a == b for a,b in zip(WRFval,WPSval)]), "Mismatched values for variable {} between the WRF and WPS namelists".format(paramDict['wrf_var'])
+#         else:
+#             assert WRFval == WPSval, "Mismatched values for variable {} between the WRF and WPS namelists".format(paramDict['wrf_var'])
 
 ## get the number of domains
-nDom = WPSnml['share']['max_dom']
+nDom = WRFnml['domains']['max_dom']
 
 ## get the total run length
 run_length_total_hours = config["num_hours_per_run"] + config["num_hours_spin_up"]
@@ -363,6 +368,8 @@ run_length_total_hours = config["num_hours_per_run"] + config["num_hours_spin_up
 ## check that the output directory exists - if not, create it
 if not os.path.exists(config["run_dir"]):
     mkdir_p(config["run_dir"])
+
+# shutil.copy(configFile, os.path.join(config['run_dir'], 'config.json'))
 
 print('\t\tGenerate the main coordination script')
 
@@ -373,7 +380,7 @@ substitutions = {'STARTDATE'   : start_date.strftime('%Y%m%d%H'),
                  'njobs'       : '{}'.format(number_of_jobs),
                  'nhours'      : '{}'.format(config['num_hours_per_run']),
                  'RUNNAME'     : config['run_name'],
-                 'NUDGING'     : '{}'.format(not config['restart']).lower(),
+                #  'NUDGING'     : '{}'.format(not config['restart']).lower(),
                  'runAsOneJob' : '{}'.format(config['run_as_one_job']).lower(),
                  'RUN_DIR'     : config['run_dir'] }
 ############## end edit section #####################################################
@@ -408,473 +415,473 @@ for ind_job in range(number_of_jobs):
     ##
     os.chdir(run_dir_with_date)
     ## check that the WRF initialisation files exist
-    print("\tCheck that the WRF initialisation files exist")
-    wrfbdyPath = os.path.join(run_dir_with_date,'wrfbdy_d01') ## check for the BCs
-    wrfInitFilesExist = os.path.exists(wrfbdyPath)
-    for iDom in range(nDom):
-        dom = 'd0{}'.format(iDom+1)
-        wrfinputPath = os.path.join(run_dir_with_date,'wrfinput_{}'.format(dom)) ## check for the ICs
-        wrfInitFilesExist = wrfInitFilesExist and os.path.exists(wrfinputPath)
-        wrflowinpPath = os.path.join(run_dir_with_date,'wrflowinp_{}'.format(dom)) ## check for SSTs
-        wrfInitFilesExist = wrfInitFilesExist and os.path.exists(wrflowinpPath)
+    # print("\tCheck that the WRF initialisation files exist")
+    # wrfbdyPath = os.path.join(run_dir_with_date,'wrfbdy_d01') ## check for the BCs
+    # wrfInitFilesExist = os.path.exists(wrfbdyPath)
+    # for iDom in range(nDom):
+    #     dom = 'd0{}'.format(iDom+1)
+    #     wrfinputPath = os.path.join(run_dir_with_date,'wrfinput_{}'.format(dom)) ## check for the ICs
+    #     wrfInitFilesExist = wrfInitFilesExist and os.path.exists(wrfinputPath)
+    #     wrflowinpPath = os.path.join(run_dir_with_date,'wrflowinp_{}'.format(dom)) ## check for SSTs
+    #     wrfInitFilesExist = wrfInitFilesExist and os.path.exists(wrflowinpPath)
     ##
-    if not config['only_edit_namelists']:
-        if not wrfInitFilesExist:
-            print("\t\tThe WRF initialisation files did not exist...")
+    # if not config['only_edit_namelists']:
+    #     if not wrfInitFilesExist:
+    #         print("\t\tThe WRF initialisation files did not exist...")
             # Check that the topography files exist
-            geoFilesExist = True
-            print("\tCheck that the geo_em files exist")
-            for iDom in range(nDom):
-                dom = 'd0{}'.format(iDom+1)
-                geoFile = 'geo_em.{}.nc'.format(dom)
-                geoPath = os.path.join(config["nml_dir"],geoFile)
-                if not os.path.exists(geoPath):
-                    geoFilesExist = False
+            # geoFilesExist = True
+            # print("\tCheck that the geo_em files exist")
+            # for iDom in range(nDom):
+            #     dom = 'd0{}'.format(iDom+1)
+            #     geoFile = 'geo_em.{}.nc'.format(dom)
+            #     geoPath = os.path.join(config["nml_dir"],geoFile)
+            #     if not os.path.exists(geoPath):
+            #         geoFilesExist = False
             ## If not, produce them
-            if geoFilesExist:
-                print("\t\tThe geo_em files were indeed found")
-            else:
-                print("\t\tThe geo_em files did not exist - create them")
-                ## copy the WPS namelist
-                src = WPSnmlPath
-                dst = os.path.join(run_dir_with_date,'namelist.wps')
-                shutil.copyfile(src, dst)
-                ## copy the geogrid table
-                src = config['geogrid_tbl']
-                assert os.path.exists(src), "Cannot find GEOGRID.TBL at {} ...".format(src)
-                geogridFolder = os.path.join(run_dir_with_date,'geogrid')
-                if not os.path.exists(geogridFolder):
-                    mkdir_p(geogridFolder)
-                ##
-                dst = os.path.join(run_dir_with_date,'geogrid','GEOGRID.TBL')
-                if os.path.exists(dst): os.remove(dst)
-                os.symlink(src, dst)
-                ## link to the geogrid.exe program
-                src = config['geogrid_exe']
-                assert os.path.exists(src), "Cannot find geogrid.exe at {} ...".format(src)
-                dst = os.path.join(run_dir_with_date,'geogrid.exe')
-                if not os.path.exists(dst):
-                    os.symlink(src, dst)
-                ## move to the directory and run geogrid.exe
-                os.chdir(run_dir_with_date)
-                print("\t\tRun geogrid at {}".format(datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')))
-                p = subprocess.Popen(['./geogrid.exe'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                stdout, stderr = p.communicate()
-                stdout = decode_bytes(stdout) 
-                stderr = decode_bytes(stderr)
-                ##
-                f = open('geogrid.log.stdout', 'w')
-                f.writelines(stdout)
-                f.close()
-                ##
-                f = open('geogrid.log.stderr', 'w')
-                f.writelines(stderr)
-                f.close()
-                ## check that it ran
-                dom = 'd0{}'.format(nDom)
-                geoFile = 'geo_em.{}.nc'.format(dom)
-                assert os.path.exists(geoFile), "./geogrid.exe did not produce expected output..."
-                ##
-                src = 'namelist.wps'
-                dst = 'namelist.wps.geogrid'
-                os.rename(src, dst)
-                ## compress the output
-                print("\tCompress the geo_em files")
-                for iDom in range(nDom):
-                    dom = 'd0{}'.format(iDom+1)
-                    geoFile = 'geo_em.{}.nc'.format(dom)
-                    compressNCfile(geoFile)
-                    ## move the file to the namelist directory
-                    src = os.path.join(run_dir_with_date, geoFile)
-                    dst = os.path.join(config["nml_dir"], geoFile)
-                    shutil.move(src, dst)
+            # if geoFilesExist:
+            #     print("\t\tThe geo_em files were indeed found")
+            # else:
+            #     print("\t\tThe geo_em files did not exist - create them")
+            #     ## copy the WPS namelist
+            #     src = WPSnmlPath
+            #     dst = os.path.join(run_dir_with_date,'namelist.wps')
+            #     shutil.copyfile(src, dst)
+            #     ## copy the geogrid table
+            #     src = config['geogrid_tbl']
+            #     assert os.path.exists(src), "Cannot find GEOGRID.TBL at {} ...".format(src)
+            #     geogridFolder = os.path.join(run_dir_with_date,'geogrid')
+            #     if not os.path.exists(geogridFolder):
+            #         mkdir_p(geogridFolder)
+            #     ##
+            #     dst = os.path.join(run_dir_with_date,'geogrid','GEOGRID.TBL')
+            #     if os.path.exists(dst): os.remove(dst)
+            #     os.symlink(src, dst)
+            #     ## link to the geogrid.exe program
+            #     src = config['geogrid_exe']
+            #     assert os.path.exists(src), "Cannot find geogrid.exe at {} ...".format(src)
+            #     dst = os.path.join(run_dir_with_date,'geogrid.exe')
+            #     if not os.path.exists(dst):
+            #         os.symlink(src, dst)
+            #     ## move to the directory and run geogrid.exe
+            #     os.chdir(run_dir_with_date)
+            #     print("\t\tRun geogrid at {}".format(datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')))
+            #     p = subprocess.Popen(['./geogrid.exe'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            #     stdout, stderr = p.communicate()
+            #     stdout = decode_bytes(stdout) 
+            #     stderr = decode_bytes(stderr)
+            #     ##
+            #     f = open('geogrid.log.stdout', 'w')
+            #     f.writelines(stdout)
+            #     f.close()
+            #     ##
+            #     f = open('geogrid.log.stderr', 'w')
+            #     f.writelines(stderr)
+            #     f.close()
+            #     ## check that it ran
+            #     dom = 'd0{}'.format(nDom)
+            #     geoFile = 'geo_em.{}.nc'.format(dom)
+            #     assert os.path.exists(geoFile), "./geogrid.exe did not produce expected output..."
+            #     ##
+            #     src = 'namelist.wps'
+            #     dst = 'namelist.wps.geogrid'
+            #     os.rename(src, dst)
+            #     ## compress the output
+            #     print("\tCompress the geo_em files")
+            #     for iDom in range(nDom):
+            #         dom = 'd0{}'.format(iDom+1)
+            #         geoFile = 'geo_em.{}.nc'.format(dom)
+            #         compressNCfile(geoFile)
+            #         ## move the file to the namelist directory
+            #         src = os.path.join(run_dir_with_date, geoFile)
+            #         dst = os.path.join(config["nml_dir"], geoFile)
+            #         shutil.move(src, dst)
             ##
             ## link to the geo files
-            for iDom in range(nDom):
-                dom = 'd0{}'.format(iDom+1)
-                geoFile = 'geo_em.{}.nc'.format(dom)
-                ## move the file to the namelist directory
-                src = os.path.join(config["nml_dir"], geoFile)
-                dst = os.path.join(run_dir_with_date, geoFile)
-                if not os.path.exists(dst):
-                    os.symlink(src, dst)
+            # for iDom in range(nDom):
+            #     dom = 'd0{}'.format(iDom+1)
+            #     geoFile = 'geo_em.{}.nc'.format(dom)
+            #     ## move the file to the namelist directory
+            #     src = os.path.join(config["nml_dir"], geoFile)
+            #     dst = os.path.join(run_dir_with_date, geoFile)
+            #     if not os.path.exists(dst):
+            #         os.symlink(src, dst)
             ##
-            print("\tCheck that the met_em files exist")
-            if not os.path.exists(config["metem_dir"]):
-                mkdir_p(config["metem_dir"])
-                metemFilesExist = False
-            else:
-                metemFilesExist = True
-                ## check if the met_em files exist
-                for hour in range(0,run_length_total_hours+1,6):
-                    metem_time = job_start + datetime.timedelta(seconds = hour*3600)
-                    metem_time_str = metem_time.strftime('%Y-%m-%d_%H:%M:%S')
-                    for iDom in range(nDom):
-                        dom = 'd0{}'.format(iDom+1)
-                        metem_file = os.path.join(config["metem_dir"],'met_em.{}.{}.nc'.format(dom,metem_time_str))
-                        metemFilesExist = metemFilesExist and os.path.exists(metem_file)
+            # print("\tCheck that the met_em files exist")
+            # if not os.path.exists(config["metem_dir"]):
+            #     mkdir_p(config["metem_dir"])
+            #     metemFilesExist = False
+            # else:
+            #     metemFilesExist = True
+            #     ## check if the met_em files exist
+            #     for hour in range(0,run_length_total_hours+1,6):
+            #         metem_time = job_start + datetime.timedelta(seconds = hour*3600)
+            #         metem_time_str = metem_time.strftime('%Y-%m-%d_%H:%M:%S')
+            #         for iDom in range(nDom):
+            #             dom = 'd0{}'.format(iDom+1)
+            #             metem_file = os.path.join(config["metem_dir"],'met_em.{}.{}.nc'.format(dom,metem_time_str))
+            #             metemFilesExist = metemFilesExist and os.path.exists(metem_file)
             ##
-            if not metemFilesExist:
-                print("\t\tThe met_em files did not exist - create them")
-                ##
-                os.chdir(run_dir_with_date)
-                ## deal with SSTs first
-                ##
-                ## copy the link_grib script
-                src = config["linkgrib_script"]
-                assert os.path.exists(src), "Cannot find link_grib.csh at {} ...".format(src)
-                dst = os.path.join(run_dir_with_date,"link_grib.csh")
-                if os.path.exists(dst): os.remove(dst)
-                os.symlink(src, dst)
-                ## link the ungrib executabble
-                src = config['ungrib_exe']
-                assert os.path.exists(src), "Cannot find ungrib.exe at {} ...".format(src)
-                dst = os.path.join(run_dir_with_date,"ungrib.exe")
-                if not os.path.exists(dst):
-                    os.symlink(src, dst)
+            # if not metemFilesExist:
+            #     print("\t\tThe met_em files did not exist - create them")
+            #     ##
+            #     os.chdir(run_dir_with_date)
+            #     ## deal with SSTs first
+            #     ##
+            #     ## copy the link_grib script
+            #     src = config["linkgrib_script"]
+            #     assert os.path.exists(src), "Cannot find link_grib.csh at {} ...".format(src)
+            #     dst = os.path.join(run_dir_with_date,"link_grib.csh")
+            #     if os.path.exists(dst): os.remove(dst)
+            #     os.symlink(src, dst)
+            #     ## link the ungrib executabble
+            #     src = config['ungrib_exe']
+            #     assert os.path.exists(src), "Cannot find ungrib.exe at {} ...".format(src)
+            #     dst = os.path.join(run_dir_with_date,"ungrib.exe")
+            #     if not os.path.exists(dst):
+            #         os.symlink(src, dst)
 
-                wpsStrDate = (job_start - datetime.timedelta(days = 1)).date()
-                wpsEndDate = (job_end   + datetime.timedelta(days = 1)).date()
-                nDaysWps = (wpsEndDate - wpsStrDate).days + 1
+            #     wpsStrDate = (job_start - datetime.timedelta(days = 1)).date()
+            #     wpsEndDate = (job_end   + datetime.timedelta(days = 1)).date()
+            #     nDaysWps = (wpsEndDate - wpsStrDate).days + 1
 
-                ## should we use ERA-Interim analyses?
-                if config['analysis_source'] == 'ERAI':
+            #     ## should we use ERA-Interim analyses?
+            #     if config['analysis_source'] == 'ERAI':
 
-                    if config['use_high_res_sst_data']:
-                        ## configure the namelist
-                        ## EDIT: the following are the substitutions used for the WPS namelist
-                        WPSnml['share']['start_date'] = [job_start.strftime('%Y-%m-%d_00:00:00')] * nDom
-                        WPSnml['share']['end_date']   = [(job_end.date() + datetime.timedelta(days=1)).strftime(  '%Y-%m-%d_%H:%M:%S')] * nDom
-                        WPSnml['share']['interval_seconds'] = 6*60*60 ## 24*60*60
-                        WPSnml['ungrib']['prefix']    = 'SST'
-                        ## end edit section #####################################################
-                        ## write out the namelist
-                        if os.path.exists('namelist.wps'): os.remove('namelist.wps')
-                        ##
-                        WPSnml.write('namelist.wps')
+            #         if config['use_high_res_sst_data']:
+            #             ## configure the namelist
+            #             ## EDIT: the following are the substitutions used for the WPS namelist
+            #             WPSnml['share']['start_date'] = [job_start.strftime('%Y-%m-%d_00:00:00')] * nDom
+            #             WPSnml['share']['end_date']   = [(job_end.date() + datetime.timedelta(days=1)).strftime(  '%Y-%m-%d_%H:%M:%S')] * nDom
+            #             WPSnml['share']['interval_seconds'] = 6*60*60 ## 24*60*60
+            #             WPSnml['ungrib']['prefix']    = 'SST'
+            #             ## end edit section #####################################################
+            #             ## write out the namelist
+            #             if os.path.exists('namelist.wps'): os.remove('namelist.wps')
+            #             ##
+            #             WPSnml.write('namelist.wps')
 
-                        sstDir = 'sst_tmp'
-                        if not os.path.exists(sstDir):
-                            mkdir_p(sstDir)
-                        ##
-                        for iDayWps in range(nDaysWps):
-                            wpsDate = wpsStrDate + datetime.timedelta(days = iDayWps)
-                            ## check for the monthly file
-                            monthlyFile = wpsDate.strftime(config["sst_monthly_pattern"])
-                            monthlyFileSrc = os.path.join(config["sst_monthly_dir"], monthlyFile)
-                            monthlyFileDst = os.path.join(sstDir, monthlyFile)
-                            if os.path.exists(monthlyFileSrc) and (not os.path.exists(monthlyFileDst)):
-                                if not os.path.exists(monthlyFileDst):
-                                    os.symlink(monthlyFileSrc, monthlyFileDst)
-                            ## check for the daily file
-                            dailyFile = wpsDate.strftime(config["sst_daily_pattern"])
-                            dailyFileSrc = os.path.join(config["sst_daily_dir"], dailyFile)
-                            dailyFileDst = os.path.join(sstDir, dailyFile)
-                            if os.path.exists(dailyFileSrc) and (not os.path.exists(dailyFileDst)):
-                                if not os.path.exists(dailyFileDst):
-                                    os.symlink(dailyFileSrc, dailyFileDst)
-                        ##
-                        wpsStrDateStr = wpsStrDate.strftime('%Y-%m-%d_%H:%M:%S')
-                        wpsEndDateEnd = wpsEndDate.strftime('%Y-%m-%d_%H:%M:%S')
-                        ##
-                        purge(run_dir_with_date, 'GRIBFILE*')
-                        print("\t\tRun link_grib for the SST data at {}".format(datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')))
-                        p = subprocess.Popen(['./link_grib.csh',os.path.join(sstDir,'*')], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                        stdout, stderr = p.communicate()
-                        stdout = decode_bytes(stdout) 
-                        stderr = decode_bytes(stderr)
-                        ##
-                        f = open('link_grib_sst.log.stdout', 'w')
-                        f.writelines(stdout)
-                        f.close()
-                        ##
-                        f = open('link_grib_sst.log.stderr', 'w')
-                        f.writelines(stderr)
-                        f.close()
-                        ## check that it ran
-                        ## time.sleep(0.2)
-                        gribmatches = [f for f in os.listdir(run_dir_with_date) if re.search('GRIBFILE', f) is not None ]
-                        if len(gribmatches) == 0:
-                            raise RuntimeError("Gribfiles not linked successfully...")
-                        ## link to the SST Vtable
-                        src = config["sst_vtable"]
-                        assert os.path.exists(src), "SST Vtable expected at {}".format(src)
-                        dst = 'Vtable'
-                        if os.path.exists(dst): os.remove(dst)
-                        os.symlink(src,dst)
-                        purge(run_dir_with_date, 'SST:*')
-                        purge(run_dir_with_date, 'PFILE:*')
-                        ## run ungrib on the SST files
-                        print("\t\tRun ungrib for the SST data at {}".format(datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')))
-                        p = subprocess.Popen(['./ungrib.exe'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                        stdout, stderr = p.communicate()
-                        stdout = decode_bytes(stdout) 
-                        stderr = decode_bytes(stderr)
-                        ##
-                        f = open('ungrib_sst.log.stdout', 'w')
-                        f.writelines(stdout)
-                        f.close()
-                        ##
-                        f = open('ungrib_sst.log.stderr', 'w')
-                        f.writelines(stderr)
-                        f.close()
+            #             sstDir = 'sst_tmp'
+            #             if not os.path.exists(sstDir):
+            #                 mkdir_p(sstDir)
+            #             ##
+            #             for iDayWps in range(nDaysWps):
+            #                 wpsDate = wpsStrDate + datetime.timedelta(days = iDayWps)
+            #                 ## check for the monthly file
+            #                 monthlyFile = wpsDate.strftime(config["sst_monthly_pattern"])
+            #                 monthlyFileSrc = os.path.join(config["sst_monthly_dir"], monthlyFile)
+            #                 monthlyFileDst = os.path.join(sstDir, monthlyFile)
+            #                 if os.path.exists(monthlyFileSrc) and (not os.path.exists(monthlyFileDst)):
+            #                     if not os.path.exists(monthlyFileDst):
+            #                         os.symlink(monthlyFileSrc, monthlyFileDst)
+            #                 ## check for the daily file
+            #                 dailyFile = wpsDate.strftime(config["sst_daily_pattern"])
+            #                 dailyFileSrc = os.path.join(config["sst_daily_dir"], dailyFile)
+            #                 dailyFileDst = os.path.join(sstDir, dailyFile)
+            #                 if os.path.exists(dailyFileSrc) and (not os.path.exists(dailyFileDst)):
+            #                     if not os.path.exists(dailyFileDst):
+            #                         os.symlink(dailyFileSrc, dailyFileDst)
+            #             ##
+            #             wpsStrDateStr = wpsStrDate.strftime('%Y-%m-%d_%H:%M:%S')
+            #             wpsEndDateEnd = wpsEndDate.strftime('%Y-%m-%d_%H:%M:%S')
+            #             ##
+            #             purge(run_dir_with_date, 'GRIBFILE*')
+            #             print("\t\tRun link_grib for the SST data at {}".format(datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')))
+            #             p = subprocess.Popen(['./link_grib.csh',os.path.join(sstDir,'*')], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            #             stdout, stderr = p.communicate()
+            #             stdout = decode_bytes(stdout) 
+            #             stderr = decode_bytes(stderr)
+            #             ##
+            #             f = open('link_grib_sst.log.stdout', 'w')
+            #             f.writelines(stdout)
+            #             f.close()
+            #             ##
+            #             f = open('link_grib_sst.log.stderr', 'w')
+            #             f.writelines(stderr)
+            #             f.close()
+            #             ## check that it ran
+            #             ## time.sleep(0.2)
+            #             gribmatches = [f for f in os.listdir(run_dir_with_date) if re.search('GRIBFILE', f) is not None ]
+            #             if len(gribmatches) == 0:
+            #                 raise RuntimeError("Gribfiles not linked successfully...")
+            #             ## link to the SST Vtable
+            #             src = config["sst_vtable"]
+            #             assert os.path.exists(src), "SST Vtable expected at {}".format(src)
+            #             dst = 'Vtable'
+            #             if os.path.exists(dst): os.remove(dst)
+            #             os.symlink(src,dst)
+            #             purge(run_dir_with_date, 'SST:*')
+            #             purge(run_dir_with_date, 'PFILE:*')
+            #             ## run ungrib on the SST files
+            #             print("\t\tRun ungrib for the SST data at {}".format(datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')))
+            #             p = subprocess.Popen(['./ungrib.exe'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            #             stdout, stderr = p.communicate()
+            #             stdout = decode_bytes(stdout) 
+            #             stderr = decode_bytes(stderr)
+            #             ##
+            #             f = open('ungrib_sst.log.stdout', 'w')
+            #             f.writelines(stdout)
+            #             f.close()
+            #             ##
+            #             f = open('ungrib_sst.log.stderr', 'w')
+            #             f.writelines(stderr)
+            #             f.close()
 
-                        ## check that it ran
-                        ## matches = grep_file('Successful completion of ungrib', logfile)
-                        matches = grep_lines('Successful completion of ungrib', stdout)
-                        if len(matches) == 0:
-                            raise RuntimeError("Success message not found in ungrib logfile...")
+            #             ## check that it ran
+            #             ## matches = grep_file('Successful completion of ungrib', logfile)
+            #             matches = grep_lines('Successful completion of ungrib', stdout)
+            #             if len(matches) == 0:
+            #                 raise RuntimeError("Success message not found in ungrib logfile...")
 
-                        src = 'namelist.wps'
-                        dst = 'namelist.wps.sst'
-                        os.rename(src, dst)
+            #             src = 'namelist.wps'
+            #             dst = 'namelist.wps.sst'
+            #             os.rename(src, dst)
 
-                    analysisDir = 'analysis_tmp'
-                    if not os.path.exists(analysisDir):
-                        mkdir_p(analysisDir)
+            #         analysisDir = 'analysis_tmp'
+            #         if not os.path.exists(analysisDir):
+            #             mkdir_p(analysisDir)
 
-                    ## find the files matching the analysis pattern
-                    patternTypes = ["analysis_pattern_surface", "analysis_pattern_upper"]
-                    for patternType in patternTypes:
-                        pattern = config[patternType]
-                        files = set([])
-                        for iDayWps in range(nDaysWps):
-                            wpsDate = wpsStrDate + datetime.timedelta(days = iDayWps)
-                            patternWithDates = wpsDate.strftime(pattern)
-                            files = files.union(set(glob.glob(patternWithDates)))
-                        ##
-                        files = list(files)
-                        files.sort()
-                        if patternType == "analysis_pattern_upper":
-                            ## for the upper-level files, be selective and use only those that contain the relevant range of dates
-                            for ifile, filename in enumerate(files):
-                                basepieces = os.path.basename(filename).split('_')
-                                fileStartDateStr = os.path.basename(filename).split('_')[-2]
-                                fileEndDateStr = os.path.basename(filename).split('_')[-1]
-                                fileStartDate = datetime.datetime.strptime(fileStartDateStr,'%Y%m%d').date()
-                                fileEndDate = datetime.datetime.strptime(fileEndDateStr,'%Y%m%d').date()
-                                ##
-                                if fileStartDate <= wpsStrDate and wpsStrDate <= fileEndDate:
-                                    ifileStart = ifile
-                                ##
-                                if fileStartDate <= wpsEndDate and wpsEndDate <= fileEndDate:
-                                    ifileEnd   = ifile
-                        else:
-                            ## for the surface files use all those that match
-                            ifileStart = 0
-                            ifileEnd = len(files)-1
-                        ##
-                        for ifile in range(ifileStart, ifileEnd+1):
-                            src = files[ifile]
-                            dst = os.path.join(analysisDir,os.path.basename(src))
-                            if not os.path.exists(dst):
-                                os.symlink(src, dst)
+            #         ## find the files matching the analysis pattern
+            #         patternTypes = ["analysis_pattern_surface", "analysis_pattern_upper"]
+            #         for patternType in patternTypes:
+            #             pattern = config[patternType]
+            #             files = set([])
+            #             for iDayWps in range(nDaysWps):
+            #                 wpsDate = wpsStrDate + datetime.timedelta(days = iDayWps)
+            #                 patternWithDates = wpsDate.strftime(pattern)
+            #                 files = files.union(set(glob.glob(patternWithDates)))
+            #             ##
+            #             files = list(files)
+            #             files.sort()
+            #             if patternType == "analysis_pattern_upper":
+            #                 ## for the upper-level files, be selective and use only those that contain the relevant range of dates
+            #                 for ifile, filename in enumerate(files):
+            #                     basepieces = os.path.basename(filename).split('_')
+            #                     fileStartDateStr = os.path.basename(filename).split('_')[-2]
+            #                     fileEndDateStr = os.path.basename(filename).split('_')[-1]
+            #                     fileStartDate = datetime.datetime.strptime(fileStartDateStr,'%Y%m%d').date()
+            #                     fileEndDate = datetime.datetime.strptime(fileEndDateStr,'%Y%m%d').date()
+            #                     ##
+            #                     if fileStartDate <= wpsStrDate and wpsStrDate <= fileEndDate:
+            #                         ifileStart = ifile
+            #                     ##
+            #                     if fileStartDate <= wpsEndDate and wpsEndDate <= fileEndDate:
+            #                         ifileEnd   = ifile
+            #             else:
+            #                 ## for the surface files use all those that match
+            #                 ifileStart = 0
+            #                 ifileEnd = len(files)-1
+            #             ##
+            #             for ifile in range(ifileStart, ifileEnd+1):
+            #                 src = files[ifile]
+            #                 dst = os.path.join(analysisDir,os.path.basename(src))
+            #                 if not os.path.exists(dst):
+            #                     os.symlink(src, dst)
 
-                        ## prepare to run link_grib.csh
-                        linkGribCmds = ['./link_grib.csh',os.path.join(analysisDir,'*')]
+            #             ## prepare to run link_grib.csh
+            #             linkGribCmds = ['./link_grib.csh',os.path.join(analysisDir,'*')]
 
-                else:
-                    ## consider the case that we are using the FNL datax
-                    nIntervals = int(round((job_end - job_start).total_seconds()/3600./6.)) + 1
-                    FNLtimes = [job_start + datetime.timedelta(hours=6*hi) for hi in range(nIntervals)]
-                    FNLfiles = [time.strftime('gdas1.fnl0p25.%Y%m%d%H.f00.grib2') for time in FNLtimes]
-                    ## if the FNL data exists, don't bother downloading
-                    allFNLfilesExist = all([os.path.exists(FNLfile) for FNLfile in FNLfiles])
-                    if allFNLfilesExist:
-                        print("\t\tAll FNL files were found - do not repeat the download")
-                    else:
-                        ## otherwise get it all
-                        FNLfiles = downloadFNL(email = config['rda_ucar_edu_email'],
-                                               pswd = config['rda_ucar_edu_pword'],
-                                               targetDir = run_dir_with_date,
-                                               times = FNLtimes)
-                    linkGribCmds = ['./link_grib.csh' ] + FNLfiles
-                    ## optionally take a regional subset
-                    if config['regional_subset_of_grib_data']:
-                        geoFile = 'geo_em.d01.nc'
-                        ## find the geographical region, and add a few degrees on either side
-                        geoStrs = {}
-                        nc = netCDF4.Dataset(geoFile)
-                        for varname in ['XLAT_M', 'XLONG_M']:
-                            coords = nc.variables[varname][:]
-                            coords = [coords.min(),coords.max()]
-                            coords = [math.floor((coords[0])/5.0 - 1)*5, math.ceil((coords[1])/5.0 + 1)*5 ]
-                            coordStr = '{}:{}'.format(coords[0],coords[1])
-                            geoStrs[varname] = coordStr
-                        nc.close()
-                        ## use wgrib2 that 
-                        for FNLfile in FNLfiles:
-                            tmpfile = os.path.join('/tmp',os.path.basename(FNLfile))
-                            print("\t\tSubset the grib file",os.path.basename(FNLfile))
-                            stdout, stderr = subprocess.Popen(['wgrib2',FNLfile,'-small_grib',geoStrs['XLONG_M'], geoStrs['XLAT_M'],tmpfile], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
-                            if len(stderr) > 0:
-                                raise RuntimeError("Errors found when running wgrib2...")
-                            ## use the subset instead - delete the original and put the subset in its place
-                            os.remove(FNLfile)
-                            shutil.copyfile(tmpfile,FNLfile)
+            #     else:
+            #         ## consider the case that we are using the FNL datax
+            #         nIntervals = int(round((job_end - job_start).total_seconds()/3600./6.)) + 1
+            #         FNLtimes = [job_start + datetime.timedelta(hours=6*hi) for hi in range(nIntervals)]
+            #         FNLfiles = [time.strftime('gdas1.fnl0p25.%Y%m%d%H.f00.grib2') for time in FNLtimes]
+            #         ## if the FNL data exists, don't bother downloading
+            #         allFNLfilesExist = all([os.path.exists(FNLfile) for FNLfile in FNLfiles])
+            #         if allFNLfilesExist:
+            #             print("\t\tAll FNL files were found - do not repeat the download")
+            #         else:
+            #             ## otherwise get it all
+            #             FNLfiles = downloadFNL(email = config['rda_ucar_edu_email'],
+            #                                    pswd = config['rda_ucar_edu_pword'],
+            #                                    targetDir = run_dir_with_date,
+            #                                    times = FNLtimes)
+            #         linkGribCmds = ['./link_grib.csh' ] + FNLfiles
+            #         ## optionally take a regional subset
+            #         if config['regional_subset_of_grib_data']:
+            #             geoFile = 'geo_em.d01.nc'
+            #             ## find the geographical region, and add a few degrees on either side
+            #             geoStrs = {}
+            #             nc = netCDF4.Dataset(geoFile)
+            #             for varname in ['XLAT_M', 'XLONG_M']:
+            #                 coords = nc.variables[varname][:]
+            #                 coords = [coords.min(),coords.max()]
+            #                 coords = [math.floor((coords[0])/5.0 - 1)*5, math.ceil((coords[1])/5.0 + 1)*5 ]
+            #                 coordStr = '{}:{}'.format(coords[0],coords[1])
+            #                 geoStrs[varname] = coordStr
+            #             nc.close()
+            #             ## use wgrib2 that 
+            #             for FNLfile in FNLfiles:
+            #                 tmpfile = os.path.join('/tmp',os.path.basename(FNLfile))
+            #                 print("\t\tSubset the grib file",os.path.basename(FNLfile))
+            #                 stdout, stderr = subprocess.Popen(['wgrib2',FNLfile,'-small_grib',geoStrs['XLONG_M'], geoStrs['XLAT_M'],tmpfile], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
+            #                 if len(stderr) > 0:
+            #                     raise RuntimeError("Errors found when running wgrib2...")
+            #                 ## use the subset instead - delete the original and put the subset in its place
+            #                 os.remove(FNLfile)
+            #                 shutil.copyfile(tmpfile,FNLfile)
                     
-                ## write out the namelist
-                if os.path.exists('namelist.wps'):
-                    os.remove('namelist.wps')
-                ##
-                ## EDIT: the following are the substitutions used for the WPS namelist
-                WPSnml['share']['start_date'] = [job_start.strftime('%Y-%m-%d_%H:%M:%S')] * nDom
-                WPSnml['share']['end_date']   = [job_end.strftime(  '%Y-%m-%d_%H:%M:%S')] * nDom
-                WPSnml['ungrib']['prefix'] = 'ERA'
-                WPSnml['share']['interval_seconds'] = 6*60*60
-                ## end edit section #####################################################
-                ## write out the namelist
-                if os.path.exists('namelist.wps'): os.remove('namelist.wps')
-                ##
-                WPSnml.write('namelist.wps')
-                ##
-                purge(run_dir_with_date, 'GRIBFILE*')
-                print("\t\tRun link_grib for the FNL data at {}".format(datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')))
-                p = subprocess.Popen(linkGribCmds, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                stdout, stderr = p.communicate()
-                stdout = decode_bytes(stdout) 
-                stderr = decode_bytes(stderr)
-                ##
-                f = open('link_grib_fnl.log.stdout', 'w')
-                f.writelines(stdout)
-                f.close()
-                ##
-                f = open('link_grib_fnl.log.stderr', 'w')
-                f.writelines(stderr)
-                f.close()
+            #     ## write out the namelist
+            #     if os.path.exists('namelist.wps'):
+            #         os.remove('namelist.wps')
+            #     ##
+            #     ## EDIT: the following are the substitutions used for the WPS namelist
+            #     WPSnml['share']['start_date'] = [job_start.strftime('%Y-%m-%d_%H:%M:%S')] * nDom
+            #     WPSnml['share']['end_date']   = [job_end.strftime(  '%Y-%m-%d_%H:%M:%S')] * nDom
+            #     WPSnml['ungrib']['prefix'] = 'ERA'
+            #     WPSnml['share']['interval_seconds'] = 6*60*60
+            #     ## end edit section #####################################################
+            #     ## write out the namelist
+            #     if os.path.exists('namelist.wps'): os.remove('namelist.wps')
+            #     ##
+            #     WPSnml.write('namelist.wps')
+            #     ##
+            #     purge(run_dir_with_date, 'GRIBFILE*')
+            #     print("\t\tRun link_grib for the FNL data at {}".format(datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')))
+            #     p = subprocess.Popen(linkGribCmds, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            #     stdout, stderr = p.communicate()
+            #     stdout = decode_bytes(stdout) 
+            #     stderr = decode_bytes(stderr)
+            #     ##
+            #     f = open('link_grib_fnl.log.stdout', 'w')
+            #     f.writelines(stdout)
+            #     f.close()
+            #     ##
+            #     f = open('link_grib_fnl.log.stderr', 'w')
+            #     f.writelines(stderr)
+            #     f.close()
 
-                ## check that it ran
-                gribmatches = [f for f in os.listdir(run_dir_with_date) if re.search('GRIBFILE', f) is not None ]
-                if len(gribmatches) == 0:
-                    raise RuntimeError("Gribfiles not linked successfully...")
+            #     ## check that it ran
+            #     gribmatches = [f for f in os.listdir(run_dir_with_date) if re.search('GRIBFILE', f) is not None ]
+            #     if len(gribmatches) == 0:
+            #         raise RuntimeError("Gribfiles not linked successfully...")
 
-                ###################
-                # Run ungrib
-                ###################
+            #     ###################
+            #     # Run ungrib
+            #     ###################
 
-                ## link to the relevant Vtable
-                src = config["analysis_vtable"]
-                assert os.path.exists(src), "Analysis Vtable expected at {}".format(src)
-                dst = os.path.join(run_dir_with_date,'Vtable')
-                if os.path.exists(dst): os.remove(dst)
-                os.symlink(src, dst)
+            #     ## link to the relevant Vtable
+            #     src = config["analysis_vtable"]
+            #     assert os.path.exists(src), "Analysis Vtable expected at {}".format(src)
+            #     dst = os.path.join(run_dir_with_date,'Vtable')
+            #     if os.path.exists(dst): os.remove(dst)
+            #     os.symlink(src, dst)
 
-                purge(run_dir_with_date, 'ERA:*')
-                ## with open('ungrib.log.era', 'w') as output_f:
-                print("\t\tRun ungrib for the ERA data at {}".format(datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')))
-                p = subprocess.Popen(['./ungrib.exe'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                stdout, stderr = p.communicate()
-                stdout = decode_bytes(stdout) 
-                stderr = decode_bytes(stderr)
-                ##
-                f = open('ungrib_era.log.stdout', 'w')
-                f.writelines(stdout)
-                f.close()
-                ##
-                f = open('ungrib_era.log.stderr', 'w')
-                f.writelines(stderr)
-                f.close()
+            #     purge(run_dir_with_date, 'ERA:*')
+            #     ## with open('ungrib.log.era', 'w') as output_f:
+            #     print("\t\tRun ungrib for the ERA data at {}".format(datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')))
+            #     p = subprocess.Popen(['./ungrib.exe'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            #     stdout, stderr = p.communicate()
+            #     stdout = decode_bytes(stdout) 
+            #     stderr = decode_bytes(stderr)
+            #     ##
+            #     f = open('ungrib_era.log.stdout', 'w')
+            #     f.writelines(stdout)
+            #     f.close()
+            #     ##
+            #     f = open('ungrib_era.log.stderr', 'w')
+            #     f.writelines(stderr)
+            #     f.close()
 
-                ## FIXME: check that it worked
-                matches = grep_lines('Successful completion of ungrib', stdout)
-                if len(matches) == 0:
-                    print(stdout)
-                    raise RuntimeError("Success message not found in ungrib logfile...")
+            #     ## FIXME: check that it worked
+            #     matches = grep_lines('Successful completion of ungrib', stdout)
+            #     if len(matches) == 0:
+            #         print(stdout)
+            #         raise RuntimeError("Success message not found in ungrib logfile...")
 
-                ## if we are using the FNL analyses, delete the downloaded FNL files
-                if config['analysis_source'] == 'FNL':
-                    for FNLfile in FNLfiles:
-                        os.remove(FNLfile)
+            #     ## if we are using the FNL analyses, delete the downloaded FNL files
+            #     if config['analysis_source'] == 'FNL':
+            #         for FNLfile in FNLfiles:
+            #             os.remove(FNLfile)
                 
-                #############
-                # Run metgrid
-                #############
-                print("\t\tRun metgrid at {}".format(datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')))
-                metgriddir = os.path.join(run_dir_with_date,'metgrid')
-                if not os.path.exists(metgriddir):
-                    mkdir_p(metgriddir)
-                WPSnml['metgrid']['fg_name']    = ['ERA']
-                if config['use_high_res_sst_data']:
-                    WPSnml['metgrid']['fg_name'].append('SST')
-                ##
-                ## link to the relevant METGRID.TBL
-                src = config['metgrid_tbl']
-                assert os.path.exists(src), "Cannot find METGRID.TBL at {} ...".format(src)
-                dst = os.path.join(metgriddir,'METGRID.TBL')
-                if not os.path.exists(dst):
-                    os.symlink(src, dst)
-                ## link to metgrid.exe
-                src = config['metgrid_exe']
-                assert os.path.exists(src), "Cannot find metgrid.exe at {} ...".format(src)
-                dst = os.path.join(run_dir_with_date,'metgrid.exe')
-                if not os.path.exists(dst):
-                    os.symlink(src, dst)
-                ##
-                ## logfile = 'metgrid_stderr_stdout.log'
-                ## with open(logfile, 'w') as output_f:
-                p = subprocess.Popen(['./metgrid.exe'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                stdout, stderr = p.communicate()
-                stdout = decode_bytes(stdout) 
-                stderr = decode_bytes(stderr)
-                ##
-                f = open('metgrid.log.stdout', 'w')
-                f.writelines(stdout)
-                f.close()
-                ##
-                f = open('metgrid.log.stderr', 'w')
-                f.writelines(stderr)
-                f.close()
+            #     #############
+            #     # Run metgrid
+            #     #############
+            #     print("\t\tRun metgrid at {}".format(datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')))
+            #     metgriddir = os.path.join(run_dir_with_date,'metgrid')
+            #     if not os.path.exists(metgriddir):
+            #         mkdir_p(metgriddir)
+            #     WPSnml['metgrid']['fg_name']    = ['ERA']
+            #     if config['use_high_res_sst_data']:
+            #         WPSnml['metgrid']['fg_name'].append('SST')
+            #     ##
+            #     ## link to the relevant METGRID.TBL
+            #     src = config['metgrid_tbl']
+            #     assert os.path.exists(src), "Cannot find METGRID.TBL at {} ...".format(src)
+            #     dst = os.path.join(metgriddir,'METGRID.TBL')
+            #     if not os.path.exists(dst):
+            #         os.symlink(src, dst)
+            #     ## link to metgrid.exe
+            #     src = config['metgrid_exe']
+            #     assert os.path.exists(src), "Cannot find metgrid.exe at {} ...".format(src)
+            #     dst = os.path.join(run_dir_with_date,'metgrid.exe')
+            #     if not os.path.exists(dst):
+            #         os.symlink(src, dst)
+            #     ##
+            #     ## logfile = 'metgrid_stderr_stdout.log'
+            #     ## with open(logfile, 'w') as output_f:
+            #     p = subprocess.Popen(['./metgrid.exe'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            #     stdout, stderr = p.communicate()
+            #     stdout = decode_bytes(stdout) 
+            #     stderr = decode_bytes(stderr)
+            #     ##
+            #     f = open('metgrid.log.stdout', 'w')
+            #     f.writelines(stdout)
+            #     f.close()
+            #     ##
+            #     f = open('metgrid.log.stderr', 'w')
+            #     f.writelines(stderr)
+            #     f.close()
                 
-                matches = grep_lines('Successful completion of metgrid', stdout)
-                if len(matches) == 0:
-                    raise RuntimeError("Success message not found in metgrid logfile...")
+            #     matches = grep_lines('Successful completion of metgrid', stdout)
+            #     if len(matches) == 0:
+            #         raise RuntimeError("Success message not found in metgrid logfile...")
                 
-                purge(run_dir_with_date, 'ERA:*')
-                if config['use_high_res_sst_data']:
-                    purge(run_dir_with_date, 'SST:*')
-                purge(run_dir_with_date, 'FILE:*')
-                purge(run_dir_with_date, 'PFILE:*')
-                purge(run_dir_with_date, 'GRIB:*')
-                purge(run_dir_with_date, 'fort.*')
+            #     purge(run_dir_with_date, 'ERA:*')
+            #     if config['use_high_res_sst_data']:
+            #         purge(run_dir_with_date, 'SST:*')
+            #     purge(run_dir_with_date, 'FILE:*')
+            #     purge(run_dir_with_date, 'PFILE:*')
+            #     purge(run_dir_with_date, 'GRIB:*')
+            #     purge(run_dir_with_date, 'fort.*')
                 
-                ## move the met_em files into the combined METEM_DIR directory
-                move_pattern_to_dir(sourceDir = run_dir_with_date,
-                                    pattern   = 'met_em*',
-                                    destDir   = config["metem_dir"])
+            #     ## move the met_em files into the combined METEM_DIR directory
+            #     move_pattern_to_dir(sourceDir = run_dir_with_date,
+            #                         pattern   = 'met_em*',
+            #                         destDir   = config["metem_dir"])
     
             ## link to the met_em files
-            os.chdir(run_dir_with_date)
-            print('\t\tlink to the met_em files')
-            for hour in range(0,run_length_total_hours+1,6):
-                metem_time = job_start + datetime.timedelta(seconds = hour*3600)
-                metem_time_str = metem_time.strftime('%Y-%m-%d_%H:%M:%S')
-                for iDom in range(nDom):
-                    dom = 'd0{}'.format(iDom+1)
-                    metem_file = 'met_em.{}.{}.nc'.format(dom,metem_time_str)
-                    src = os.path.join(config["metem_dir"],metem_file)
-                    assert os.path.exists(src), "Cannot find met_em file at {} ...".format(src)
-                    dst = os.path.join(run_dir_with_date,metem_file)
-                    if not os.path.exists(dst):
-                        os.symlink(src, dst)
+            # os.chdir(run_dir_with_date)
+            # print('\t\tlink to the met_em files')
+            # for hour in range(0,run_length_total_hours+1,6):
+            #     metem_time = job_start + datetime.timedelta(seconds = hour*3600)
+            #     metem_time_str = metem_time.strftime('%Y-%m-%d_%H:%M:%S')
+            #     for iDom in range(nDom):
+            #         dom = 'd0{}'.format(iDom+1)
+            #         metem_file = 'met_em.{}.{}.nc'.format(dom,metem_time_str)
+            #         src = os.path.join(config["metem_dir"],metem_file)
+            #         assert os.path.exists(src), "Cannot find met_em file at {} ...".format(src)
+            #         dst = os.path.join(run_dir_with_date,metem_file)
+            #         if not os.path.exists(dst):
+            #             os.symlink(src, dst)
 
-    if (not config['only_edit_namelists']) and (not wrfInitFilesExist):
-        ## find a met_em file and read the number of atmospheric and soil levels
-        metempattern = os.path.join(config["metem_dir"],"met_em.d*.nc")
-        ## 
-        metemfiles = glob.glob(metempattern)
-        assert len(metemfiles) > 0, "No met_em files found..."
-        metemfile = metemfiles[0]
-        nc = netCDF4.Dataset(metemfile)
-        nz_metem = len(nc.dimensions['num_metgrid_levels'])
-        nz_soil = len(nc.dimensions['num_st_layers'])
-        nc.close()
-    else:
-        if config['analysis_source'] == 'ERAI':
-            nz_metem = 38
-            nz_soil = 4
-        elif config['analysis_source'] == 'FNL':
-            nz_metem = 27
-            nz_soil = 4
+    # if (not config['only_edit_namelists']) and (not wrfInitFilesExist):
+    #     ## find a met_em file and read the number of atmospheric and soil levels
+    #     metempattern = os.path.join(config["metem_dir"],"met_em.d*.nc")
+    #     ## 
+    #     metemfiles = glob.glob(metempattern)
+    #     assert len(metemfiles) > 0, "No met_em files found..."
+    #     metemfile = metemfiles[0]
+    #     nc = netCDF4.Dataset(metemfile)
+    #     nz_metem = len(nc.dimensions['num_metgrid_levels'])
+    #     nz_soil = len(nc.dimensions['num_st_layers'])
+    #     nc.close()
+    # else:
+    #     if config['analysis_source'] == 'ERAI':
+    #         nz_metem = 38
+    #         nz_soil = 4
+    #     elif config['analysis_source'] == 'FNL':
+    #         nz_metem = 27
+    #         nz_soil = 4
 
     ## configure the WRF namelist
     print('\t\tconfigure the WRF namelist')
@@ -896,23 +903,35 @@ for ind_job in range(number_of_jobs):
     ##
     WRFnml['time_control']['restart']      = config['restart']
     ##
-    WRFnml['domains']['num_metgrid_levels'] = nz_metem
-    WRFnml['domains']['num_metgrid_soil_levels'] = nz_soil
+    # WRFnml['domains']['num_metgrid_levels'] = nz_metem
+    # WRFnml['domains']['num_metgrid_soil_levels'] = nz_soil
     ##
     nmlfile = 'namelist.input'
     if os.path.exists(nmlfile): os.remove(nmlfile)
     WRFnml.write(nmlfile)
     ## 
     # Get real.exe and WRF.exe
-    src = config['real_exe']
-    assert os.path.exists(src), "Cannot find real.exe at {} ...".format(src)
-    dst = os.path.join(run_dir_with_date,'real.exe')
-    if os.path.exists(dst): os.remove(dst)
-    os.symlink(src, dst)
+    # src = config['real_exe']
+    # assert os.path.exists(src), "Cannot find real.exe at {} ...".format(src)
+    # dst = os.path.join(run_dir_with_date,'real.exe')
+    # if os.path.exists(dst): os.remove(dst)
+    # os.symlink(src, dst)
     ##
     src = config['wrf_exe']
     assert os.path.exists(src), "Cannot find wrf.exe at {} ...".format(src)
     dst = os.path.join(run_dir_with_date,'wrf.exe')
+    if os.path.exists(dst): os.remove(dst)
+    os.symlink(src, dst)
+    ##
+    src = config['ideal_exe']
+    assert os.path.exists(src), "Cannot find ideal.exe at {} ...".format(src)
+    dst = os.path.join(run_dir_with_date,'ideal.exe')
+    if os.path.exists(dst): os.remove(dst)
+    os.symlink(src, dst)
+    ##
+    src = config['input_sounding']
+    assert os.path.exists(src), "Cannot find ideal.exe at {} ...".format(src)
+    dst = os.path.join(run_dir_with_date,'input_sounding')
     if os.path.exists(dst): os.remove(dst)
     os.symlink(src, dst)
 
@@ -930,44 +949,44 @@ for ind_job in range(number_of_jobs):
         if not os.path.exists(dst):
             os.symlink(src, dst)
 
-    if (not config['only_edit_namelists']) and (not wrfInitFilesExist):
+    if (not config['only_edit_namelists']):
         ##
-        logfile = 'real_stderr_stdout.log'
+        logfile = 'ideal_oe.log'
         
-        print("\t\tRun real.exe at {}".format(datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')))
-        p = subprocess.Popen(['mpirun','-np','1','./real.exe'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        print("\t\tRun ideal.exe at {}".format(datetime.datetime.now(datetime.UTC).strftime('%Y-%m-%d %H:%M:%S')))
+        p = subprocess.Popen(['mpirun','-np','1','./ideal.exe'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         stdout, stderr = p.communicate()
-        stdout = decode_bytes(stdout) 
+        stdout = decode_bytes(stdout)
         stderr = decode_bytes(stderr)
         ##
-        f = open('real.log.stdout', 'w')
+        f = open('ideal.log.stdout', 'w')
         f.writelines(stdout)
         f.close()
         ##
-        f = open('real.log.stderr', 'w')
+        f = open('ideal.log.stderr', 'w')
         f.writelines(stderr)
         f.close()
 
         rsloutfile = 'rsl.out.0000'
-        matches = grep_file('SUCCESS COMPLETE REAL_EM INIT', rsloutfile)
+        matches = grep_file('SUCCESS COMPLETE IDEAL INIT', rsloutfile)
         if len(matches) == 0:
-            raise RuntimeError("Success message not found in real.exe logfile (rsl.out.0000)...")
+            raise RuntimeError("Success message not found in ideal.exe logfile (rsl.out.0000)...")
         ##
-        if os.path.exists('link_grib.csh'): os.remove('link_grib.csh')
+        # if os.path.exists('link_grib.csh'): os.remove('link_grib.csh')
         if os.path.exists('Vtable'): os.remove('Vtable')
-        if os.path.exists('metgrid'): shutil.rmtree('metgrid')
-        if os.path.exists('metgrid.exe'): os.remove('metgrid.exe')
-        if os.path.exists('ungrib.exe'): os.remove('ungrib.exe')
+        # if os.path.exists('metgrid'): shutil.rmtree('metgrid')
+        # if os.path.exists('metgrid.exe'): os.remove('metgrid.exe')
+        # if os.path.exists('ungrib.exe'): os.remove('ungrib.exe')
 
         ## optionally delete the met_em files once they have been used
-        if config['delete_metem_files']:
-            purge(config["metem_dir"], 'met_em*')
+        # if config['delete_metem_files']:
+        #     purge(config["metem_dir"], 'met_em*')
 
     ## clean up the links to the met_em files regardless, as they are no longer needed
-    purge(run_dir_with_date, 'met_em*')
+    # purge(run_dir_with_date, 'met_em*')
 
     ## generate the run and cleanup scripts
-    print('\t\tGenerate the run and cleanup script')
+    # print('\t\tGenerate the run and cleanup script')
 
     ########## EDIT: the following are the substitutions used for the per-run cleanup and run scripts
     substitutions = {'RUN_DIR': run_dir_with_date,

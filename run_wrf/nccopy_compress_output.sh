@@ -1,11 +1,12 @@
 #!/bin/bash
-
 #PBS -N compNcSht
-#PBS -l walltime=24:00:00
-#PBS -l mem=2GB
-#PBS -l ncpus=1
 #PBS -q normal
+#PBS -l walltime=2:00:00
+#PBS -l mem=4GB
+#PBS -l ncpus=1
+#PBS -j oe
 #PBS -l wd
+#PBS -l storage=gdata/${PROJECT}
 
 module load netcdf/4.7.1
 
