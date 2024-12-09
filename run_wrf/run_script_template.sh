@@ -1,12 +1,12 @@
 #!/bin/bash
 #PBS -N ${RUNSHORT}_${STARTDATE}
 #PBS -q normal
-#PBS -l walltime=48:00:00
-#PBS -l mem=1536GB
-#PBS -l ncpus=384
+#PBS -l walltime=02:00:00
+#PBS -l mem=192GB
+#PBS -l ncpus=48
 #PBS -j oe
 #PBS -l wd
-#PBS -l storage=gdata/${PROJECT}
+#PBS -l storage=gdata/v46
 
 module purge
 module load dot
@@ -37,9 +37,9 @@ if [ "$issuccess" -eq 0 ] ; then
 fi
 
 # We don't need the linked restart files any more
-find . -name 'wrfrst*' -type f -delete
+# find . -name 'wrfrst*' -type f -delete
 
-if [ "$issuccess" -gt 0 ] ; then
-   echo "cleaning up now"
-   qsub cleanup.sh
-fi
+# if [ "$issuccess" -gt 0 ] ; then
+#    echo "cleaning up now"
+#    qsub cleanup.sh
+# fi

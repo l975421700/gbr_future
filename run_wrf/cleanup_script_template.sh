@@ -1,12 +1,12 @@
 #!/bin/bash
 #PBS -N cleanup
 #PBS -q normal
-#PBS -l walltime=2:00:00
+#PBS -l walltime=00:30:00
 #PBS -l mem=4GB
 #PBS -l ncpus=1
 #PBS -j oe
 #PBS -l wd
-#PBS -l storage=gdata/${PROJECT}
+#PBS -l storage=gdata/v46
 
 module purge
 module load pbs

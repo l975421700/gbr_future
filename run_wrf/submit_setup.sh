@@ -1,7 +1,7 @@
 #!/bin/bash
 #PBS -N setupWRF
 #PBS -q normal
-#PBS -l walltime=00:30:00
+#PBS -l walltime=00:10:00
 #PBS -l mem=4GB
 #PBS -l ncpus=1
 #PBS -j oe

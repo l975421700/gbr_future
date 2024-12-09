@@ -1,12 +1,12 @@
 #!/bin/bash
 #PBS -N ${RUNNAME}
 #PBS -q normal
-#PBS -l walltime=48:00:00
-#PBS -l mem=1536GB
-#PBS -l ncpus=384
+#PBS -l walltime=02:00:00
+#PBS -l mem=192GB
+#PBS -l ncpus=48
 #PBS -j oe
 #PBS -l wd
-#PBS -l storage=gdata/${PROJECT}
+#PBS -l storage=gdata/v46
 
 echo Start date is ${STARTDATE}
 echo Run directory is ${RUN_DIR}

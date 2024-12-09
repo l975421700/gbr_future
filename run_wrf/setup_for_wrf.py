@@ -83,13 +83,13 @@ while iterationCount < 10:
 # namelistParamsThatShouldAgree = [
 #     {'wrf_var': 'max_dom','wrf_group': 'domains', 'wps_var': 'max_dom','wps_group': 'share'},
 #     {'wrf_var': 'interval_seconds','wrf_group': 'time_control', 'wps_var': 'interval_seconds','wps_group': 'share'},
-#     {'wrf_var': 'parent_id','wrf_group': 'domains', 'wps_var': 'parent_id','wps_group': 'geogrid'}, 
-#     {'wrf_var': 'parent_grid_ratio','wrf_group': 'domains', 'wps_var': 'parent_grid_ratio','wps_group': 'geogrid'}, 
-#     {'wrf_var': 'i_parent_start','wrf_group': 'domains', 'wps_var': 'i_parent_start','wps_group': 'geogrid'}, 
-#     {'wrf_var': 'j_parent_start','wrf_group': 'domains', 'wps_var': 'j_parent_start','wps_group': 'geogrid'}, 
-#     {'wrf_var': 'e_we','wrf_group': 'domains', 'wps_var': 'e_we','wps_group': 'geogrid'}, 
-#     {'wrf_var': 'e_sn','wrf_group': 'domains', 'wps_var': 'e_sn','wps_group': 'geogrid'}, 
-#     {'wrf_var': 'dx','wrf_group': 'domains', 'wps_var': 'dx','wps_group': 'geogrid'}, 
+#     {'wrf_var': 'parent_id','wrf_group': 'domains', 'wps_var': 'parent_id','wps_group': 'geogrid'},
+#     {'wrf_var': 'parent_grid_ratio','wrf_group': 'domains', 'wps_var': 'parent_grid_ratio','wps_group': 'geogrid'},
+#     {'wrf_var': 'i_parent_start','wrf_group': 'domains', 'wps_var': 'i_parent_start','wps_group': 'geogrid'},
+#     {'wrf_var': 'j_parent_start','wrf_group': 'domains', 'wps_var': 'j_parent_start','wps_group': 'geogrid'},
+#     {'wrf_var': 'e_we','wrf_group': 'domains', 'wps_var': 'e_we','wps_group': 'geogrid'},
+#     {'wrf_var': 'e_sn','wrf_group': 'domains', 'wps_var': 'e_sn','wps_group': 'geogrid'},
+#     {'wrf_var': 'dx','wrf_group': 'domains', 'wps_var': 'dx','wps_group': 'geogrid'},
 #     {'wrf_var': 'dy','wrf_group': 'domains', 'wps_var': 'dy','wps_group': 'geogrid'}]
 
 assert iterationCount < 10, "Config key substitution exceeded iteration limit..."
@@ -103,9 +103,9 @@ for requisite_key in requisite_keys:
 truevals = ['true', '1', 't', 'y', 'yes']
 falsevals = ['false', '0', 'f', 'n', 'no']
 boolvals = truevals + falsevals
-bool_keys = ["restart", "run_as_one_job", "submit_wrf_now",
-             "submit_wps_component", "only_edit_namelists",
+bool_keys = ["restart", "run_as_one_job", "only_edit_namelists",
              "use_high_res_sst_data",
+            #  "submit_wps_component", "submit_wrf_now",
             #  'delete_metem_files', 'regional_subset_of_grib_data',
              ]
 for bool_key in bool_keys:
@@ -165,16 +165,16 @@ def decode_bytes(x):
         x = x.decode('utf-8')
     return x
 
-def purge(dir, pattern):
-    for f in os.listdir(dir):
-        if re.search(pattern, f) is not None:
-            print('deleting:',pattern,'- file:',f)
-            os.remove(os.path.join(dir, f))
+# def purge(dir, pattern):
+#     for f in os.listdir(dir):
+#         if re.search(pattern, f) is not None:
+#             print('deleting:',pattern,'- file:',f)
+#             os.remove(os.path.join(dir, f))
 
-def move_pattern_to_dir(sourceDir, pattern, destDir):
-    for f in os.listdir(sourceDir):
-        if re.search(pattern, f) is not None:
-            os.rename(os.path.join(sourceDir, f), os.path.join(destDir, f))
+# def move_pattern_to_dir(sourceDir, pattern, destDir):
+#     for f in os.listdir(sourceDir):
+#         if re.search(pattern, f) is not None:
+#             os.rename(os.path.join(sourceDir, f), os.path.join(destDir, f))
 
 def link_pattern_to_dir(sourceDir, pattern, destDir):
     for f in os.listdir(sourceDir):
@@ -190,59 +190,59 @@ def grep_file(regex, inFile):
     out = [ line for line in lines if line.find(regex) >= 0 ]
     return out
 
-def grep_lines(regex, lines):
-    if type(lines) == type(''):
-        lines = lines.split('\n')
-    out = [ line for line in lines if line.find(regex) >= 0 ]
-    return out
+# def grep_lines(regex, lines):
+#     if type(lines) == type(''):
+#         lines = lines.split('\n')
+#     out = [ line for line in lines if line.find(regex) >= 0 ]
+#     return out
 
-def compressNCfile(filename,ppc = None):
-    '''Compress a netCDF3 file to netCDF4 using ncks
-    
-    Args: 
-        filename: Path to the netCDF3 file to commpress
-        ppc: number of significant digits to retain (default is to retain all)
+# def compressNCfile(filename,ppc = None):
+#     '''Compress a netCDF3 file to netCDF4 using ncks
 
-    Returns:
-        Nothing
-    '''
-    
-    if os.path.exists(filename):
-        print("Compress file {} with ncks".format(filename))
-        command = 'ncks -4 -L4 -O {} {}'.format(filename, filename)
-        print('\t'+command)
-        commandList = command.split(' ')
-        if ppc is None:
-            ppcText = ''
-        else:
-            if not isinstance(ppc, int):
-                raise RuntimeError("Argument ppc should be an integer...")
-            elif ppc < 1 or ppc > 6:
-                raise RuntimeError("Argument ppc should be between 1 and 6...")
-            else:
-                ppcText = '--ppc default={}'.format(ppc)
-                commandList = [commandList[0]] + ppcText.split(' ') + commandList[1:]
-        ##
-        ##
-        p = subprocess.Popen(commandList, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        stdout, stderr = p.communicate()
-        stdout = decode_bytes(stdout) 
-        stderr = decode_bytes(stderr)
-        if len(stderr) > 0 or len(stdout) > 0:
-            print("stdout = " + stdout)
-            print("stderr = " + stderr)
-            raise RuntimeError("Error from ncks...")
-    else:
-        print("File {} not found...".format(filename))
+#     Args:
+#         filename: Path to the netCDF3 file to commpress
+#         ppc: number of significant digits to retain (default is to retain all)
+
+#     Returns:
+#         Nothing
+#     '''
+
+#     if os.path.exists(filename):
+#         print("Compress file {} with ncks".format(filename))
+#         command = 'ncks -4 -L4 -O {} {}'.format(filename, filename)
+#         print('\t'+command)
+#         commandList = command.split(' ')
+#         if ppc is None:
+#             ppcText = ''
+#         else:
+#             if not isinstance(ppc, int):
+#                 raise RuntimeError("Argument ppc should be an integer...")
+#             elif ppc < 1 or ppc > 6:
+#                 raise RuntimeError("Argument ppc should be between 1 and 6...")
+#             else:
+#                 ppcText = '--ppc default={}'.format(ppc)
+#                 commandList = [commandList[0]] + ppcText.split(' ') + commandList[1:]
+#         ##
+#         ##
+#         p = subprocess.Popen(commandList, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+#         stdout, stderr = p.communicate()
+#         stdout = decode_bytes(stdout)
+#         stderr = decode_bytes(stderr)
+#         if len(stderr) > 0 or len(stdout) > 0:
+#             print("stdout = " + stdout)
+#             print("stderr = " + stderr)
+#             raise RuntimeError("Error from ncks...")
+#     else:
+#         print("File {} not found...".format(filename))
 
 
-def check_file_status(filepath, filesize):
-    sys.stdout.write('\r')
-    sys.stdout.flush()
-    size = int(os.stat(filepath).st_size)
-    percent_complete = (size/filesize)*100
-    sys.stdout.write('%.3f %s' % (percent_complete, '% Completed'))
-    sys.stdout.flush()
+# def check_file_status(filepath, filesize):
+#     sys.stdout.write('\r')
+#     sys.stdout.flush()
+#     size = int(os.stat(filepath).st_size)
+#     percent_complete = (size/filesize)*100
+#     sys.stdout.write('%.3f %s' % (percent_complete, '% Completed'))
+#     sys.stdout.flush()
 
 
 # def downloadFNL(email,pswd,targetDir,times):
@@ -278,7 +278,7 @@ def check_file_status(filepath, filesize):
 #     downloaded_files = []
 
 #     FNLstartDate = pytz.UTC.localize(datetime.datetime(2015,7,8,0,0,0))
-    
+
 #     for time in times:
 #         assert (time.hour % 6) == 0 and time.minute == 0 and time.second == 0, "Analysis time should be staggered at 00Z, 06Z, 12Z, 18Z intervals"
 #         assert time > FNLstartDate, "Analysis times should not be before 2015-07-08"
@@ -369,8 +369,6 @@ run_length_total_hours = config["num_hours_per_run"] + config["num_hours_spin_up
 if not os.path.exists(config["run_dir"]):
     mkdir_p(config["run_dir"])
 
-# shutil.copy(configFile, os.path.join(config['run_dir'], 'config.json'))
-
 print('\t\tGenerate the main coordination script')
 
 ## write out the main coordination script
@@ -398,7 +396,7 @@ f = open(scriptPath,'w')
 f.writelines(thisScript)
 f.close()
 ## make executable
-os.chmod(scriptPath,os.stat(scriptPath).st_mode | stat.S_IEXEC) 
+os.chmod(scriptPath,os.stat(scriptPath).st_mode | stat.S_IEXEC)
 
 
 ## loop through the different days
@@ -467,7 +465,7 @@ for ind_job in range(number_of_jobs):
             #     print("\t\tRun geogrid at {}".format(datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')))
             #     p = subprocess.Popen(['./geogrid.exe'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             #     stdout, stderr = p.communicate()
-            #     stdout = decode_bytes(stdout) 
+            #     stdout = decode_bytes(stdout)
             #     stderr = decode_bytes(stderr)
             #     ##
             #     f = open('geogrid.log.stdout', 'w')
@@ -588,7 +586,7 @@ for ind_job in range(number_of_jobs):
             #             print("\t\tRun link_grib for the SST data at {}".format(datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')))
             #             p = subprocess.Popen(['./link_grib.csh',os.path.join(sstDir,'*')], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             #             stdout, stderr = p.communicate()
-            #             stdout = decode_bytes(stdout) 
+            #             stdout = decode_bytes(stdout)
             #             stderr = decode_bytes(stderr)
             #             ##
             #             f = open('link_grib_sst.log.stdout', 'w')
@@ -615,7 +613,7 @@ for ind_job in range(number_of_jobs):
             #             print("\t\tRun ungrib for the SST data at {}".format(datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')))
             #             p = subprocess.Popen(['./ungrib.exe'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             #             stdout, stderr = p.communicate()
-            #             stdout = decode_bytes(stdout) 
+            #             stdout = decode_bytes(stdout)
             #             stderr = decode_bytes(stderr)
             #             ##
             #             f = open('ungrib_sst.log.stdout', 'w')
@@ -709,7 +707,7 @@ for ind_job in range(number_of_jobs):
             #                 coordStr = '{}:{}'.format(coords[0],coords[1])
             #                 geoStrs[varname] = coordStr
             #             nc.close()
-            #             ## use wgrib2 that 
+            #             ## use wgrib2 that
             #             for FNLfile in FNLfiles:
             #                 tmpfile = os.path.join('/tmp',os.path.basename(FNLfile))
             #                 print("\t\tSubset the grib file",os.path.basename(FNLfile))
@@ -719,7 +717,7 @@ for ind_job in range(number_of_jobs):
             #                 ## use the subset instead - delete the original and put the subset in its place
             #                 os.remove(FNLfile)
             #                 shutil.copyfile(tmpfile,FNLfile)
-                    
+
             #     ## write out the namelist
             #     if os.path.exists('namelist.wps'):
             #         os.remove('namelist.wps')
@@ -739,7 +737,7 @@ for ind_job in range(number_of_jobs):
             #     print("\t\tRun link_grib for the FNL data at {}".format(datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')))
             #     p = subprocess.Popen(linkGribCmds, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             #     stdout, stderr = p.communicate()
-            #     stdout = decode_bytes(stdout) 
+            #     stdout = decode_bytes(stdout)
             #     stderr = decode_bytes(stderr)
             #     ##
             #     f = open('link_grib_fnl.log.stdout', 'w')
@@ -771,7 +769,7 @@ for ind_job in range(number_of_jobs):
             #     print("\t\tRun ungrib for the ERA data at {}".format(datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')))
             #     p = subprocess.Popen(['./ungrib.exe'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             #     stdout, stderr = p.communicate()
-            #     stdout = decode_bytes(stdout) 
+            #     stdout = decode_bytes(stdout)
             #     stderr = decode_bytes(stderr)
             #     ##
             #     f = open('ungrib_era.log.stdout', 'w')
@@ -792,7 +790,7 @@ for ind_job in range(number_of_jobs):
             #     if config['analysis_source'] == 'FNL':
             #         for FNLfile in FNLfiles:
             #             os.remove(FNLfile)
-                
+
             #     #############
             #     # Run metgrid
             #     #############
@@ -821,7 +819,7 @@ for ind_job in range(number_of_jobs):
             #     ## with open(logfile, 'w') as output_f:
             #     p = subprocess.Popen(['./metgrid.exe'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             #     stdout, stderr = p.communicate()
-            #     stdout = decode_bytes(stdout) 
+            #     stdout = decode_bytes(stdout)
             #     stderr = decode_bytes(stderr)
             #     ##
             #     f = open('metgrid.log.stdout', 'w')
@@ -867,7 +865,7 @@ for ind_job in range(number_of_jobs):
     # if (not config['only_edit_namelists']) and (not wrfInitFilesExist):
     #     ## find a met_em file and read the number of atmospheric and soil levels
     #     metempattern = os.path.join(config["metem_dir"],"met_em.d*.nc")
-    #     ## 
+    #     ##
     #     metemfiles = glob.glob(metempattern)
     #     assert len(metemfiles) > 0, "No met_em files found..."
     #     metemfile = metemfiles[0]
@@ -909,7 +907,7 @@ for ind_job in range(number_of_jobs):
     nmlfile = 'namelist.input'
     if os.path.exists(nmlfile): os.remove(nmlfile)
     WRFnml.write(nmlfile)
-    ## 
+    ##
     # Get real.exe and WRF.exe
     # src = config['real_exe']
     # assert os.path.exists(src), "Cannot find real.exe at {} ...".format(src)
@@ -952,7 +950,7 @@ for ind_job in range(number_of_jobs):
     if (not config['only_edit_namelists']):
         ##
         logfile = 'ideal_oe.log'
-        
+
         print("\t\tRun ideal.exe at {}".format(datetime.datetime.now(datetime.UTC).strftime('%Y-%m-%d %H:%M:%S')))
         p = subprocess.Popen(['mpirun','-np','1','./ideal.exe'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         stdout, stderr = p.communicate()
@@ -973,7 +971,7 @@ for ind_job in range(number_of_jobs):
             raise RuntimeError("Success message not found in ideal.exe logfile (rsl.out.0000)...")
         ##
         # if os.path.exists('link_grib.csh'): os.remove('link_grib.csh')
-        if os.path.exists('Vtable'): os.remove('Vtable')
+        # if os.path.exists('Vtable'): os.remove('Vtable')
         # if os.path.exists('metgrid'): shutil.rmtree('metgrid')
         # if os.path.exists('metgrid.exe'): os.remove('metgrid.exe')
         # if os.path.exists('ungrib.exe'): os.remove('ungrib.exe')
@@ -986,7 +984,7 @@ for ind_job in range(number_of_jobs):
     # purge(run_dir_with_date, 'met_em*')
 
     ## generate the run and cleanup scripts
-    # print('\t\tGenerate the run and cleanup script')
+    print('\t\tGenerate the run and cleanup script')
 
     ########## EDIT: the following are the substitutions used for the per-run cleanup and run scripts
     substitutions = {'RUN_DIR': run_dir_with_date,
@@ -1010,6 +1008,4 @@ for ind_job in range(number_of_jobs):
         f.writelines(thisScript)
         f.close()
         ## make executable
-        os.chmod(scriptPath,os.stat(scriptPath).st_mode | stat.S_IEXEC) 
-            
-            
+        os.chmod(scriptPath,os.stat(scriptPath).st_mode | stat.S_IEXEC)

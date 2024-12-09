@@ -1,5 +1,5 @@
 {
-    "run_name" : "test",
+    "run_name" : "test0",
     "start_date" : "2016-01-01 00:00:00 UTC",
     "end_date" : "2016-01-01 02:00:00 UTC",
     "num_hours_per_run":1,
@@ -8,8 +8,6 @@
     "run_as_one_job" : "true",
     // no need to change
     "restart" : "false",
-    "submit_wrf_now" : "false",
-    "submit_wps_component" : "false",
     "only_edit_namelists" : "false",
     "environment_variables_for_substitutions":"HOME,USER,PROJECT,TMPDIR",
     "use_high_res_sst_data" : "false",
@@ -24,7 +22,9 @@
     "wrf_exe" : "${wrf_dir}/test/em_les/wrf.exe",
     "ideal_exe" : "${wrf_dir}/test/em_les/ideal.exe",
     "wrf_run_dir" : "${wrf_dir}/run",
-    "wrf_run_tables_pattern" : "(DAT|formatted|CAM|asc|TBL|dat|tbl|txt|tr)",
+    "wrf_run_tables_pattern" : "(DAT|formatted|CAM|asc|TBL|dat|tbl|txt|tr)"
+    // "submit_wrf_now" : "false",
+    // "submit_wps_component" : "false",
     // "wps_dir" : "${HOME}/code/WRF/WPS",
     // "metem_dir" : "${HOME}/data/sim/wrf/${run_name}/METEM",
     // "namelist_wps" : "${nml_dir}/namelist.wps",
@@ -38,7 +38,7 @@
     // "delete_metem_files" : "true",
     // "analysis_source" : "FNL",
     // "rda_ucar_edu_email" : "gaoqg229@gmail.com",
-    // "rda_ucar_edu_pword" : "5ff2361683ad014729474b797c9f",
+    // "rda_ucar_edu_pword" : "xxx",
     // "regional_subset_of_grib_data" : "true",
     // "sst_monthly_dir" : "/g/data/ua8/NCEP_Polar/sst/rtg_high_res",
     // "sst_daily_dir" : "/g/data/ua8/NCEP_Polar/sst/rtg_high_res",
