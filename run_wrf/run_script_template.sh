@@ -39,7 +39,7 @@ fi
 # We don't need the linked restart files any more
 # find . -name 'wrfrst*' -type f -delete
 
-# if [ "$issuccess" -gt 0 ] ; then
-#    echo "cleaning up now"
-#    qsub cleanup.sh
-# fi
+if [ "$issuccess" -gt 0 ] ; then
+   echo "cleaning up now"
+   qsub cleanup.sh
+fi
