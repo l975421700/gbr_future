@@ -14,12 +14,12 @@
  target_cfl                          = 0.7,
  target_hcfl                         = 0.7,
  max_dom                             = 1,
- e_we                                = 100,
- e_sn                                = 100,
- e_vert                              = 225,
+ e_we                                = 97,
+ e_sn                                = 97,
+ e_vert                              = 251,
  dx                                  = 50,
  dy                                  = 50,
- ztop                                = 2250,
+ ztop                                = 2500,
  /
 
  &physics
@@ -50,6 +50,7 @@
  scalar_adv_opt                      = 4,
  tracer_adv_opt                      = 4,
  chem_adv_opt                        = 4,
+ ! tke_heat_flux                       = 0.24,
  /
 
  &bdy_control

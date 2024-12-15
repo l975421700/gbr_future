@@ -33,10 +33,10 @@ echo "Remove temporary files"
 # rm -f SST\:*
 # rm -f ERA\:*
 # rm -f fort.*
-rm -r realrsl rsl*
+rm -r rsl*
 rm -f wrf.log wrf.exe ideal.exe ideal.log*
 rm -f *{DAT,formatted,CAM,asc,TBL,dat,tbl,txt,tr}*
-rm -f wrfbdy* wrfinput* wrflow* nco* wrffdda*
+# rm -f wrfbdy* wrfinput* wrflow* nco* wrffdda*
 # rm -f namelist.output
 # rm -f *DATA *TBL
 

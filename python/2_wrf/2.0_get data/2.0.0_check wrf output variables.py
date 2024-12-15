@@ -78,46 +78,51 @@ from component_plot import (
     plt_mesh_pars,
 )
 
-from metplot import (
-    get_wyoming_sounding,
-    plot_wyoming_sounding,
-    output_wyoming_sounding,
-    )
 
 # endregion
 
 
-# region get and plot Wyoming sounding
+# region import data
 
-date = datetime(2021, 12, 8, 0)
-station = '94299'
-output_png='figures/test.png'
+wrf_output = xr.open_dataset('data/sim/wrf/test3/2021120803/wrfout_d01_2021-12-08_03:00:00')
+# wrf_output = xr.open_dataset('data/sim/wrf/test4/2021120803/wrfout_d01_2021-12-08_04:00:00')
 
-df = WyomingUpperAir.request_data(date, station)
-plot_wyoming_sounding(df, date, output_png=output_png,)
-
-
-
-
-'''
-df = get_wyoming_sounding(date, station)
-print(df.columns)
-'''
 # endregion
 
 
-# region get and output Wyoming sounding
+# region check data
 
-date = datetime(2021, 12, 8, 0)
-station = '94299'
-outf = 'data/sim/wrf/input/sounding/willis_island_' + str(date)[:13]
+pressure = (wrf_output.P + wrf_output.PB) * 0.01
+geop_height = (wrf_output.PH + wrf_output.PHB) / 9.81
+pot_temp = wrf_output.T + 300
+qcloud = wrf_output.QCLOUD
+qrain = wrf_output.QRAIN
+qvapor = wrf_output.QVAPOR
 
-df = WyomingUpperAir.request_data(date, station)
-output_wyoming_sounding(df, outf)
+temp = mpcalc.temperature_from_potential_temperature(pressure * units('hPa'), pot_temp * units('K'))
+dz = geop_height[:,1:,:,:] - geop_height[:,:-1,:,:]
+rho = mpcalc.density(pressure * units('hPa'), temp, qvapor,)
+
+lwp = ((qcloud+qrain) * rho.values * dz.values).sum(dim='bottom_top')
+
+lwp.to_netcdf('data/others/test.nc')
+
+
+lwp = xr.open_dataset('data/others/test.nc')['__xarray_dataarray_variable__']
+# lwp1 = xr.open_dataset('data/others/test1.nc')['__xarray_dataarray_variable__']
+
+np.max(lwp.values)
+# np.max(lwp1.values)
 
 
 '''
+stats.describe(wrf_output.QCLOUD.values, nan_policy='omit', axis=None)
+stats.describe(wrf_output.CLDFRA.values, nan_policy='omit', axis=None)
+stats.describe(wrf_output.QCLOUD[-1, ].mean(dim='bottom_top').values, nan_policy='omit', axis=None)
+
+(dz.values == np.diff(geop_height, axis=1)).all()
+wrf_output.THM
+wrf_output.P_HYD
 '''
 # endregion
-
 
