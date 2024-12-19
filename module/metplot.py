@@ -20,7 +20,7 @@ def plot_wyoming_sounding(
     fig=None, figsize=np.array([8.8, 6.4]) / 2.54,
     ilev=1, plot_barbs=False, ihodograph=True, plot_ccl=False,
     xmin=-40, xmax=40, ymin=1030, ymax=200,
-    fm_left=0.18, fm_right=0.96, fm_bottom=0.14, fm_top=0.98,
+    fm_left=0.18, fm_bottom=0.14, fm_right=0.96, fm_top=0.98,
     hodo_ratio='35%', hodo_bbox=(0.05, 0, 1, 1), hodorange=14,
     hodo_interval=2, hodo_label=r'Wind [$m \; s^{-1}$]',
     ):
@@ -130,4 +130,64 @@ def output_wyoming_sounding(df, outf):
 
 
 # endregion
+
+
+# region plot_wyoming_sounding_vertical
+
+def plot_wyoming_sounding_vertical(
+    df, date, axs=None, output_png=None,
+    figsize=np.array([8.8, 6.4]) / 2.54,
+    xmin=290, xmax=330, ymin=1000, ymax=600,
+    ):
+    
+    from metpy.units import units
+    import metpy.calc as mpcalc
+    import matplotlib.pyplot as plt
+    from metpy.calc import pressure_to_height_std
+    
+    df = df[['pressure', 'height', 'temperature', 'dewpoint', 'direction', 'speed']].dropna(subset=('temperature', 'dewpoint', 'direction', 'speed'), how='any').reset_index(drop=True)
+    
+    p = df['pressure'].values * units.hPa
+    T = (df['temperature'].values * units.degC).to(units('K'))
+    Td = (df['dewpoint'].values * units.degC).to(units('K'))
+    height = df['height'].values * units.m
+    
+    thta = mpcalc.potential_temperature(p, T)
+    RH = mpcalc.relative_humidity_from_dewpoint(T, Td).to('percent')
+    
+    if axs is None: fig, axs = plt.subplots(1, 2, sharey=True, figsize=figsize)
+    
+    axs[0].plot(thta, p)
+    axs[1].plot(RH, p)
+    
+    axs[0].invert_yaxis()
+    axs[0].set_ylim(ymin, ymax)
+    axs[0].set_xlim(xmin, xmax)
+    axs[1].set_xlim(0, 100)
+    axs[0].set_ylabel('Pressure [$hPa$]')
+    axs[0].set_xlabel(r'$\theta$ [$K$]')
+    axs[1].set_xlabel(r'RH [$\%$]')
+    axs[0].grid(lw=0.2, alpha=0.5, ls='--')
+    axs[1].grid(lw=0.2, alpha=0.5, ls='--')
+    
+    # 2nd y-axis
+    height = np.round(pressure_to_height_std(
+        pressure=np.arange(ymin, ymax-1e-4, -100) * units('hPa')), 1,)
+    ax2 = axs[1].twinx()
+    ax2.invert_yaxis()
+    ax2.set_ylim(ymin, ymax)
+    ax2.set_yticks(np.arange(ymin, ymax-1e-4, -100))
+    ax2.set_yticklabels(height.magnitude, c = 'gray')
+    ax2.set_ylabel('Altitude in a standard atmosphere [$km$]', c = 'gray')
+    
+    plt.suptitle(str(date)[:13] + ' UTC', fontsize=10)
+    
+    if not output_png is None:
+        plt.subplots_adjust(0.18, 0.18, 0.85, 0.88)
+        plt.savefig(output_png)
+    else:
+        return(axs)
+
+# endregion
+
 

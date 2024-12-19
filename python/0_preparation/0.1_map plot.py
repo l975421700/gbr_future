@@ -17,6 +17,7 @@ from statsmodels.stats import multitest
 from metpy.calc import pressure_to_height_std, geopotential_to_height
 from metpy.units import units
 import metpy.calc as mpcalc
+import requests
 
 # plot
 import matplotlib as mpl
@@ -70,6 +71,7 @@ from component_plot import (
     cplot_lon180,
     cplot_lon180_ctr,
     plt_mesh_pars,
+    plot_loc,
 )
 
 
@@ -78,9 +80,18 @@ from component_plot import (
 
 # region plot the globe
 
-fig, ax = globe_plot()
+igra2_station = pd.read_fwf(
+    'https://www1.ncdc.noaa.gov/pub/data/igra/igra2-station-list.txt',
+    names=['id', 'lat', 'lon', 'altitude', 'name', 'starty', 'endy', 'count'])
+
+subset = igra2_station.loc[[sid.startswith('AS') for sid in igra2_station['id']]]
+
+fig, ax = globe_plot(figsize=np.array([17.6, 8.8]) / 2.54)
+
+plot_loc(igra2_station['lon'], igra2_station['lat'], ax, s=6,lw=0.6)
 
 fig.savefig('figures/test.png')
+
 
 '''
 ax.add_feature(
@@ -93,10 +104,33 @@ ax.add_feature(
 
 # region plot Australia
 
+gbr_shp = gpd.read_file('data/others/Great_Barrier_Reef_Marine_Park_Boundary/Great_Barrier_Reef_Marine_Park_Boundary.shp')
+WillisIsland_loc={'lat':-16.3,'lon':149.98}
 
-fig, ax = regional_plot(extent=[140, 157, -27, -8], figsize = np.array([4.4, 4.4]) / 2.54)
-fig.savefig('figures/test.png')
+
+lats = [-10.7, -24.5]
+lons = [145, 154]
+
+fig, ax = regional_plot(
+    extent=[140, 155, -25, -10], figsize = np.array([6.6, 6.6]) / 2.54,
+    ticks_and_labels = True, fontsize=10,)
+gbr_shp.plot(ax=ax, edgecolor='tab:blue', facecolor='none', lw=0.8, zorder=2)
+plot_loc(WillisIsland_loc['lon'], WillisIsland_loc['lat'], ax)
+
+plot_loc(lons[0], lats[0], ax)
+plot_loc(lons[1], lats[1], ax)
+
+fig.savefig('figures/0_gbr/0.1_study region/0.0_gbr.png')
 
 
+
+
+'''
+ax.scatter(
+    x = WillisIsland_loc['lon'], y = WillisIsland_loc['lat'],
+    s=10, c='none', lw=0.8, marker='o', edgecolors='tab:blue', zorder=2,
+    transform=ccrs.PlateCarree(),)
+
+'''
 # endregion
 

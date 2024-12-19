@@ -84,8 +84,7 @@ from component_plot import (
 
 # region import data
 
-wrf_output = xr.open_dataset('data/sim/wrf/test3/2021120803/wrfout_d01_2021-12-08_03:00:00')
-# wrf_output = xr.open_dataset('data/sim/wrf/test4/2021120803/wrfout_d01_2021-12-08_04:00:00')
+wrf_output = xr.open_dataset('data/sim/wrf/test4/2021120803/wrfout_d01_2021-12-08_04:00:00')
 
 # endregion
 
@@ -103,19 +102,41 @@ temp = mpcalc.temperature_from_potential_temperature(pressure * units('hPa'), po
 dz = geop_height[:,1:,:,:] - geop_height[:,:-1,:,:]
 rho = mpcalc.density(pressure * units('hPa'), temp, qvapor,)
 
-lwp = ((qcloud+qrain) * rho.values * dz.values).sum(dim='bottom_top')
-
-lwp.to_netcdf('data/others/test.nc')
+lwp = ((qcloud+qrain) * rho.values * dz.values).sum(dim='bottom_top').squeeze() * 1000 * units('g/m**2')
 
 
-lwp = xr.open_dataset('data/others/test.nc')['__xarray_dataarray_variable__']
-# lwp1 = xr.open_dataset('data/others/test1.nc')['__xarray_dataarray_variable__']
+# plot it
 
-np.max(lwp.values)
-# np.max(lwp1.values)
+output_png = 'figures/test.png'
+cbar_label = r'LWP [$\mu m$]'
+
+pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+    cm_min=0, cm_max=100, cm_interval1=10, cm_interval2=20, cmap='Blues',)
+
+fig, ax = plt.subplots(1, 1, figsize=np.array([5, 6]) / 2.54,)
+
+plt_mesh = ax.pcolormesh(np.arange(0,4800,50), np.arange(0,4800,50),
+                         lwp, norm=pltnorm, cmap=pltcmp)
+
+cbar = fig.colorbar(
+    plt_mesh, ax=ax, aspect=20, format=remove_trailing_zero_pos,
+    orientation="horizontal", shrink=0.9, ticks=pltticks, extend='max',
+    fraction=0.08, pad=0.05,)
+cbar.ax.set_xlabel(cbar_label)
+
+ax.get_xaxis().set_visible(False)
+ax.get_yaxis().set_visible(False)
+plt.gca().set_aspect('equal')
+fig.subplots_adjust(left=0.02, right = 0.98, bottom = 0.16, top = 0.98)
+fig.savefig(output_png)
 
 
 '''
+lwp.to_netcdf('data/others/test.nc')
+lwp = xr.open_dataset('data/others/test.nc')['__xarray_dataarray_variable__']
+np.max(lwp.values)
+
+
 stats.describe(wrf_output.QCLOUD.values, nan_policy='omit', axis=None)
 stats.describe(wrf_output.CLDFRA.values, nan_policy='omit', axis=None)
 stats.describe(wrf_output.QCLOUD[-1, ].mean(dim='bottom_top').values, nan_policy='omit', axis=None)

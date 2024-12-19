@@ -257,4 +257,17 @@ pltnorm = BoundaryNorm(pltlevel, ncolors=len(pltlevel)-1, clip=True)
 # endregion
 
 
+# region plot_loc
+
+def plot_loc(
+    lon, lat, ax,
+    s=10, c='none', lw=0.8, marker='o', edgecolors='tab:blue', zorder=2,):
+    import cartopy.crs as ccrs
+    plt_scatter = ax.scatter(
+        x = lon, y = lat,
+        s=s, c=c, lw=lw, marker=marker, edgecolors=edgecolors, zorder=zorder,
+        transform=ccrs.PlateCarree(),)
+    return(plt_scatter)
+
+# endregion
 
