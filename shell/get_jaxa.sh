@@ -2,9 +2,9 @@
 
 year=$1
 month=$2
-hour=$3
+day=$3
 
-echo "Start processing: Year $year, Month $month, Hour $hour"
+echo "Start processing: Year $year, Month $month, Day $day"
 
 if [ $month -eq 01 ]; then
     ftp_user='gaoqg229_gmail.com'
@@ -35,9 +35,9 @@ fi
 ftp_server='ftp.ptree.jaxa.jp'
 ftp_password='SP+wari8'
 
-for day in $(seq 1 31); do
-    day=$(printf '%02d' $day)
-    echo 'Day' $day
+for hour in $(seq 0 23); do
+    hour=$(printf '%02d' $hour)
+    echo 'Hour' $hour
 
     ftp_path=/pub/himawari/L2/CLP/010/$year$month/$day/$hour/*
     local_path=/g/data/v46/qg8515/data/obs/jaxa/clp
