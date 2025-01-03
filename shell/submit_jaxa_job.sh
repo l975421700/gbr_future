@@ -8,7 +8,7 @@ for day in $(seq 1 31); do
 #!/bin/bash
 #PBS -N qjob_$month_$day
 #PBS -q copyq
-#PBS -l walltime=10:00:00
+#PBS -l walltime=3:00:00
 #PBS -l mem=6550MB
 #PBS -l ncpus=1
 #PBS -j oe
