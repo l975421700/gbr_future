@@ -86,4 +86,4 @@ pip install f90nml
 
 # conda create --prefix /g/data/v46/qg8515/conda_envs/test
 # conda activate /g/data/v46/qg8515/conda_envs/test
-
+# conda config --set auto_activate_base False   # remove (base) (base)

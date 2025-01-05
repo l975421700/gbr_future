@@ -44,3 +44,7 @@ for hour in $(seq 0 23); do
 
     wget -r -nH --cut-dirs=5 --continue --no-remove-listing --ftp-user=$ftp_user --ftp-password=$ftp_password ftp://$ftp_server$ftp_path -P $local_path
 done
+
+# wget -r -nH --cut-dirs=5 --continue --no-remove-listing --ftp-user='gaoqg229_gmail.com' --ftp-password='SP+wari8' ftp://ftp.ptree.jaxa.jp/pub/himawari/L2/CLP/010/201601/03/01/* -P /g/data/v46/qg8515/data/obs/jaxa/clp
+
+
