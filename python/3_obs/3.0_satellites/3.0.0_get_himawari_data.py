@@ -48,8 +48,7 @@ for ifile in himawari_fl[:6]:
     
     ds = xr.open_dataset(ifile)
     print('get ds_out')
-    ds_out = ds.CLTYPE.copy().expand_dims(dim={'time': [time]}, axis=0).chunk({'latitude': 100, 'longitude': 100})
-    ds_out.attrs.clear()
+    ds_out = ds.CLTYPE.copy().expand_dims(dim={'time': [time]}, axis=0)
     
     print('get ofile')
     ofile = f'{ifile[:31]}CLTYPE_{year}{month}{day}{hour}{minute}.nc'
@@ -70,6 +69,8 @@ import xarray as xr
 import glob
 aaa = xr.open_dataset('data/obs/jaxa/clp/201601/01/01/CLTYPE_201601010100.nc')
 # , decode_times=True, use_cftime=True
+aaa = xr.open_dataset('/home/563/qg8515/data/obs/jaxa/clp/201601/01/04/CLTYPE_201601010450.nc')
+bbb = xr.open_dataset('/home/563/qg8515/data/obs/jaxa/clp/201601/01/03/CLTYPE_201601010350.nc')
 
 aaa.CLTYPE
 bbb = xr.open_mfdataset(sorted(glob.glob('data/obs/jaxa/clp/201601/01/01/CLTYPE_*')))
