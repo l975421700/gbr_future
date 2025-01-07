@@ -1,4 +1,3 @@
-#!/bin/bash
 
 year=$1
 month=$2
@@ -40,11 +39,11 @@ for hour in $(seq 0 23); do
     echo 'Hour' $hour
 
     ftp_path=/pub/himawari/L2/CLP/010/$year$month/$day/$hour/*
-    local_path=/g/data/v46/qg8515/data/obs/jaxa/clp
+    local_path=/scratch/v46/qg8515/data/obs/jaxa/clp
 
     wget -r -nH --cut-dirs=5 --continue --no-remove-listing --ftp-user=$ftp_user --ftp-password=$ftp_password ftp://$ftp_server$ftp_path -P $local_path
 done
 
-# wget -r -nH --cut-dirs=5 --continue --no-remove-listing --ftp-user='gaoqg229_gmail.com' --ftp-password='SP+wari8' ftp://ftp.ptree.jaxa.jp/pub/himawari/L2/CLP/010/201601/03/01/* -P /g/data/v46/qg8515/data/obs/jaxa/clp
+# wget -r -nH --cut-dirs=5 --continue --no-remove-listing --ftp-user='gaoqg229_gmail.com' --ftp-password='SP+wari8' ftp://ftp.ptree.jaxa.jp/pub/himawari/L2/CLP/010/201601/03/01/NC_H08_20160103_0140_L2CLP010_FLDK.02401_02401.nc -P /home/563/qg8515/data/obs/jaxa/clp
 
 

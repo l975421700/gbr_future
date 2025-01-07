@@ -1,5 +1,70 @@
 
 
+# region get CL_Frequency
+
+ISCCP_types = {'Clear': 0,
+               'Cirrus': 1, 'Cirrostratus': 2, 'Deep convection': 3,
+               'Altocumulus': 4, 'Altostratus': 5, 'Nimbostratus':6,
+               'Cumulus':7, 'Stratocumulus': 8, 'Stratus': 9,
+               'Unknown':10}
+
+# loop through each day
+daterange = pd.date_range(start='1/1/2016', end='12/31/2016')
+
+for idate in daterange:
+    # idate = daterange[0]
+    print(idate)
+    
+    year=str(idate)[:4]
+    month=str(idate)[5:7]
+    day=str(idate)[8:10]
+    
+    clp_fl = sorted(glob.glob(f'scratch/data/obs/jaxa/clp/{year}{month}/{day}/*/CLP_{year}{month}{day}????.nc'))
+    
+    clp_ds = xr.open_mfdataset(clp_fl)
+    
+    CLTYPE_values = clp_ds.CLTYPE.values
+    
+    CL_Frequency = xr.DataArray(
+        name='CL_Frequency',
+        data=np.zeros((1, 12, clp_ds.CLTYPE.shape[1], clp_ds.CLTYPE.shape[2])),
+        dims=['time', 'types', 'latitude', 'longitude',],
+        coords={
+            'time': [datetime.strptime(f'{year}-{month}-{day}', '%Y-%m-%d')],
+            'types': ['finite'] + list(ISCCP_types.keys()),
+            'latitude': clp_ds.CLTYPE.latitude.values,
+            'longitude': clp_ds.CLTYPE.longitude.values,
+        }
+    )
+    
+    CL_Frequency.loc[{'types': 'finite'}][0] = np.isfinite(CLTYPE_values).sum(axis=0)
+    
+    for itype in list(ISCCP_types.keys()):
+        # print(itype)
+        CL_Frequency.loc[{'types': itype}][0] = (CLTYPE_values == ISCCP_types[itype]).sum(axis=0)
+    
+    print((CL_Frequency[0, 0] == CL_Frequency[0, 1:].sum(axis=0)).all().values)
+    print(CL_Frequency[0, 0].sum().values)
+    
+    ofile = f'scratch/data/obs/jaxa/clp/{year}{month}/{day}/CL_Frequency_{year}{month}{day}.nc'
+    if os.path.exists(ofile): os.remove(ofile)
+    CL_Frequency.to_netcdf(ofile)
+    
+    print("Current time:", datetime.now())
+
+
+aaa = xr.open_dataset('scratch/data/obs/jaxa/clp/201601/01/CL_Frequency_20160101.nc')
+
+
+'''
+himawari_fl = sorted(glob.glob('data/obs/jaxa/clp/*/*/*/NC_*'))
+clp_fl = sorted(glob.glob('scratch/data/obs/jaxa/clp/*/*/*/CLP_*'))
+print(len(himawari_fl))
+print(len(clp_fl))
+'''
+# endregion
+
+
 # region animate sounding profiles (theta, RH)
 
 start_date = datetime(2021, 1, 1, 0)
