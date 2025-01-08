@@ -18,6 +18,7 @@ from metpy.calc import pressure_to_height_std, geopotential_to_height
 from metpy.units import units
 import metpy.calc as mpcalc
 import pickle
+import glob
 
 # plot
 import matplotlib as mpl
@@ -84,42 +85,67 @@ from calculations import (
 # endregion
 
 
-# region plot the frequency
+# region import data
 
-testdata = xr.open_dataset('/home/563/qg8515/scratch/data/obs/jaxa/clp/201601/01/CL_Frequency_20160101.nc')
+
+CL_RelFreq = xr.open_dataset('scratch/data/obs/jaxa/clp/CL_RelFreq_2016.nc').CL_RelFreq
 
 cloudtypes = [
     'Cirrus', 'Cirrostratus', 'Deep convection',
     'Altocumulus', 'Altostratus', 'Nimbostratus',
     'Cumulus', 'Stratocumulus', 'Stratus']
 
+
+# endregion
+
+
+# region plot the frequency
+
 opng = 'figures/test.png'
 nrow = 3
 ncol = 3
-fm_bottom = 2 / (8.8*nrow + 3)
+fm_bottom = 1.5 / (6.6*nrow + 2)
+
+cbar_label = r'Cloud occurrence frequency [$\%$]'
+pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+    cm_min=0, cm_max=30, cm_interval1=5, cm_interval2=5, cmap='Blues_r',)
 
 fig, axs = plt.subplots(
-    nrow, ncol, figsize=np.array([8.8*ncol, 8.8*nrow + 3]) / 2.54,
+    nrow, ncol, figsize=np.array([6.6*ncol, 6.6*nrow + 2]) / 2.54,
     subplot_kw={'projection': ccrs.PlateCarree(central_longitude=180)},
-    gridspec_kw={'hspace': 0.12, 'wspace': 0.03},)
+    gridspec_kw={'hspace': 0.1, 'wspace': 0.02},)
 
+ipanel=0
 for irow in range(nrow):
     for jcol in range(ncol):
+        print(cloudtypes[ipanel])
         axs[irow, jcol] = regional_plot(
             extent=[80, 200, -60, 60], central_longitude=180,
             ax_org=axs[irow, jcol],)
+        
+        plt.text(
+            0, 1.02, f'{panel_labels[ipanel]} {cloudtypes[ipanel]}',
+            transform=axs[irow, jcol].transAxes, fontsize=10,
+            ha='left', va='bottom', rotation='horizontal')
+        
+        plt_data = CL_RelFreq.sel(types=cloudtypes[ipanel])
+        plt_mesh = axs[irow, jcol].pcolormesh(
+            plt_data.longitude, plt_data.latitude, plt_data,
+            norm=pltnorm, cmap=pltcmp, transform=ccrs.PlateCarree(),)
+        ipanel += 1
 
-fig.subplots_adjust(left=0.04, right = 0.99, bottom = fm_bottom, top = 0.96)
+cbar = fig.colorbar(
+    plt_mesh, # cm.ScalarMappable(norm=pltnorm, cmap=pltcmp),
+    ax=axs, aspect=30, format=remove_trailing_zero_pos,
+    orientation="horizontal", shrink=0.5, ticks=pltticks, extend='max',
+    anchor=(0.5, -0.56),)
+cbar.ax.set_xlabel(cbar_label)
+
+fig.subplots_adjust(left=0.04, right = 0.99, bottom = fm_bottom, top = 0.97)
 fig.savefig(opng)
 
 
-
-
-
-
-# fig, ax = regional_plot(
-#     extent=[140, 155, -25, -10], figsize = np.array([6.6, 6.6]) / 2.54,
-#     ticks_and_labels = True, fontsize=10,)
-
 # endregion
+
+
 

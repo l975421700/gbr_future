@@ -1,5 +1,5 @@
 
-for month in $(seq 8 12); do
+for month in $(seq 1 12); do
     month=$(printf '%02d' $month)
     qsub -v month=$month <<EOF
 #PBS -N qjob_${month}

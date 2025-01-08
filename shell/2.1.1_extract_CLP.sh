@@ -4,8 +4,8 @@ month=$2
 module load cdo/2.4.3
 shopt -s nullglob
 
-# for day in $(ls /home/563/qg8515/data/obs/jaxa/clp/${year}${month}); do
-for day in 29 30 31; do
+for day in $(ls /home/563/qg8515/data/obs/jaxa/clp/${year}${month}); do
+# for day in 29 30 31; do
   for hour in $(ls /home/563/qg8515/data/obs/jaxa/clp/${year}${month}/${day}); do
     mkdir -p /scratch/v46/qg8515/data/obs/jaxa/clp/${year}${month}/${day}/${hour}
     for minute in 00 10 20 30 40 50; do

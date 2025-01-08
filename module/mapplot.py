@@ -210,7 +210,7 @@ def regional_plot(
     grid_color = 'gray',
     set_figure_margin = False, figure_margin=None,
     ticks_and_labels = False,
-    ax_org=None, fontsize=8,
+    ax_org=None, fontsize=10,
     ):
     '''
     ----Input

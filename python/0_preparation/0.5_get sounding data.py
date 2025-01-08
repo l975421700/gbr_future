@@ -89,9 +89,9 @@ from metplot import (
 
 # region get and plot Wyoming sounding skew-T
 
-date = datetime(2016, 4, 28, 0)
+date = datetime(2016, 4, 29, 0)
 station = '94299'
-output_png='figures/test.png'
+output_png=f'figures/0_gbr/0.0_sounding/0.0.0 sounding {str(date)[:13]} {station}.png'
 
 df = WyomingUpperAir.request_data(date, station)
 plot_wyoming_sounding(df, date, output_png=output_png,)
@@ -108,9 +108,9 @@ print(df.columns)
 
 # region get and output Wyoming sounding
 
-date = datetime(2016, 4, 28, 0)
+date = datetime(2016, 4, 29, 0)
 station = '94299'
-outf = 'data/sim/wrf/input/sounding/willis_island_' + str(date)[:13]
+outf = f'data/sim/wrf/input/sounding/willis_island_{str(date)[:13]}'
 
 df = WyomingUpperAir.request_data(date, station)
 output_wyoming_sounding(df, outf)
@@ -123,9 +123,9 @@ output_wyoming_sounding(df, outf)
 
 # region get and plot Wyoming sounding (T, theta, RH, qv)
 
-date = datetime(2016, 4, 28, 0)
+date = datetime(2016, 4, 29, 0)
 station = '94299'
-output_png='figures/test1.png'
+output_png=f'figures/0_gbr/0.0_sounding/0.0.0 vertical profiles {str(date)[:13]} {station}.png'
 
 df = WyomingUpperAir.request_data(date, station)
 df = df[['pressure', 'temperature', 'dewpoint']].dropna(subset=('temperature', 'dewpoint'), how='all').reset_index(drop=True)
