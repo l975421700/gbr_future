@@ -1,4 +1,3 @@
-#!/bin/bash
 #PBS -N setupWRF
 #PBS -q normal
 #PBS -l walltime=00:10:00
@@ -21,5 +20,5 @@ module load wgrib2
 ulimit -s unlimited
 
 source ${HOME}/miniconda3/bin/activate rcm_gbr
-python setup_for_wrf.py -c config.json
+python /home/563/qg8515/code/gbr_future/run_wrf/setup_for_wrf.py -c /home/563/qg8515/code/gbr_future/run_wrf/config.json
 

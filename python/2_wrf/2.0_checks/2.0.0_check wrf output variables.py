@@ -84,12 +84,22 @@ from component_plot import (
 
 # region import data
 
-wrf_output = xr.open_dataset('data/sim/wrf/test4/2021120803/wrfout_d01_2021-12-08_04:00:00')
+wrf_output = xr.open_dataset('data/sim/wrf/20160428_test/2016042800/wrfout_d01_2016-04-28_00:00:00')
 
+var = 'LANDMASK'
+wrf_output[var].values
+np.max(wrf_output[var].values)
+np.sum(wrf_output[var].values)
+
+
+'''
+wrf_output = xr.open_dataset('data/sim/wrf/20160428_test/2016042801/wrfout_d01_2016-04-28_01:00:00')
+
+'''
 # endregion
 
 
-# region check data
+# region plot LWP
 
 pressure = (wrf_output.P + wrf_output.PB) * 0.01
 geop_height = (wrf_output.PH + wrf_output.PHB) / 9.81

@@ -1,4 +1,3 @@
-#!/bin/bash
 #PBS -N cleanup
 #PBS -q normal
 #PBS -l walltime=00:30:00

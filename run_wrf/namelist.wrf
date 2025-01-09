@@ -1,7 +1,7 @@
  &time_control
- history_interval_m                  = 5,
- frames_per_outfile                  = 12,
- restart_interval                    = 60,
+ history_interval_m                  = 10,
+ frames_per_outfile                  = 6,
+ restart_interval                    = 1440,
  iofields_filename                   = 'add_remove_var.txt',
  /
 

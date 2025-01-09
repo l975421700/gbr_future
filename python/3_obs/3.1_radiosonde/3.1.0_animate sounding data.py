@@ -256,3 +256,85 @@ ani.save(
 # endregion
 
 
+# region animate IGRA2 sounding profiles (T, theta, RH, qv)
+
+daterange = [datetime(1960, 6, 5, 0), datetime(2025, 1, 1, 0)]
+station = 'ASM00094299'
+ofile1 = f'data/obs/radiosonde/IGRA2 {station} {str(daterange[0])[:13]} to {str(daterange[1])[:13]} df_drvd.pkl'
+ofile2 = f'data/obs/radiosonde/IGRA2 {station} {str(daterange[0])[:13]} to {str(daterange[1])[:13]} header_drvd.pkl'
+
+df_drvd = pd.read_pickle(ofile1)
+header_drvd = pd.read_pickle(ofile2)
+
+dates = pd.DatetimeIndex(np.unique(df_drvd.date))
+
+# animate the data
+year = 2016
+output_mp4 = f'figures/0_gbr/0.0_sounding/0.0.0 IGRA2 {station} {year} sounding vertical profiles.mp4'
+
+icol=4
+fig, axs = plt.subplots(1,icol,sharey=True, figsize=np.array([icol*2+3, 6.4]) / 2.54)
+ims = []
+
+for idate in dates[dates.year == year]:
+    # idate = dates[dates.year == year][0]
+    print(str(idate)[:13])
+    
+    idf = df_drvd[df_drvd['date'] == idate]
+    idf = idf[['pressure', 'temperature', 'potential_temperature', 'calculated_relative_humidity']].dropna(how='all').reset_index(drop=True)
+    
+    p = idf['pressure'].values * units.hPa
+    T = idf['temperature'].values * units.K
+    thta = idf['potential_temperature'].values * units.K
+    RH = idf['calculated_relative_humidity'].values * units('%')
+    
+    mixr = mpcalc.mixing_ratio_from_relative_humidity(p, T, RH).to('g/kg')
+    
+    plt1 = axs[0].plot(T, p, c='tab:blue', marker='o', markersize=1)
+    plt2 = axs[1].plot(thta, p, c='tab:blue', marker='o', markersize=1)
+    plt3 = axs[2].plot(RH/100, p, c='tab:blue', marker='o', markersize=1)
+    plt4 = axs[3].plot(mixr, p, c='tab:blue', marker='o', markersize=1)
+    plt5 = plt.text(0.5, 0.95, f'{str(idate)[:13]} UTC', ha='center', fontsize=10, transform=fig.transFigure)
+    
+    ims.append(plt1+plt2+plt3+plt4 + [plt5])
+
+axs[0].invert_yaxis()
+axs[0].set_ylim(1000, 600)
+axs[0].set_xlim(270, 310)
+axs[1].set_xlim(290, 330)
+axs[2].set_xlim(0, 1)
+axs[3].set_xlim(0, 20)
+axs[0].set_ylabel('Pressure [$hPa$]')
+axs[0].set_xlabel(r'T [$K$]')
+axs[1].set_xlabel(r'$\theta$ [$K$]')
+axs[2].set_xlabel(r'RH [-]')
+axs[3].set_xlabel(r'$q_v$ [$g\;kg^{-1}$]')
+axs[0].grid(lw=0.2, alpha=0.5, ls='--')
+axs[1].grid(lw=0.2, alpha=0.5, ls='--')
+axs[2].grid(lw=0.2, alpha=0.5, ls='--')
+axs[3].grid(lw=0.2, alpha=0.5, ls='--')
+
+# 2nd y-axis
+height = np.round(pressure_to_height_std(
+    pressure=np.arange(1000, 600-1e-4, -100) * units('hPa')), 1,)
+ax2 = axs[3].twinx()
+ax2.invert_yaxis()
+ax2.set_ylim(1000, 600)
+ax2.set_yticks(np.arange(1000, 600-1e-4, -100))
+ax2.set_yticklabels(height.magnitude, c = 'gray')
+ax2.set_ylabel('Altitude in a standard atmosphere [$km$]', c = 'gray')
+
+fig.subplots_adjust(1.5/(icol*2+3), 0.2, 1.02-1.5/(icol*2+3), 0.88)
+ani = animation.ArtistAnimation(fig, ims, interval=500, blit=True)
+ani.save(
+    output_mp4,
+    progress_callback=lambda iframe, n: print(f'Frame {iframe} of {n}'),)
+
+
+'''
+np.max(dates[dates.year == 2016].hour)
+'''
+# endregion
+
+
+

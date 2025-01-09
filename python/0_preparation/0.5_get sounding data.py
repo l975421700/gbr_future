@@ -20,6 +20,7 @@ import metpy.calc as mpcalc
 from metpy.plots import Hodograph, SkewT
 from datetime import datetime
 from siphon.simplewebservice.wyoming import WyomingUpperAir
+from siphon.simplewebservice.igra2 import IGRAUpperAir
 
 # plot
 import matplotlib as mpl
@@ -182,5 +183,32 @@ plt.savefig(output_png)
 # mpcalc.mixing_ratio_from_relative_humidity(1000 * units.hPa, 300 * units.K, 100 * units('%')).to('g/kg')
 '''
 # endregion
+
+
+
+
+# region get IGRA2 data
+
+daterange = [datetime(1960, 6, 5, 0), datetime(2025, 1, 1, 0)]
+station = 'ASM00094299'
+ofile1 = f'data/obs/radiosonde/IGRA2 {station} {str(daterange[0])[:13]} to {str(daterange[1])[:13]} df_drvd.pkl'
+ofile2 = f'data/obs/radiosonde/IGRA2 {station} {str(daterange[0])[:13]} to {str(daterange[1])[:13]} header_drvd.pkl'
+
+df_drvd, header_drvd = IGRAUpperAir.request_data(daterange, station, derived=True)
+
+df_drvd.to_pickle(ofile1)
+header_drvd.to_pickle(ofile2)
+
+
+'''
+print(df_drvd.columns)
+print(header_drvd.columns)
+print(df_drvd.units)
+print(header_drvd.units)
+'''
+# endregion
+
+
+
 
 

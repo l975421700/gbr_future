@@ -1,7 +1,6 @@
-#!/bin/bash
 #PBS -N ${RUNSHORT}_${STARTDATE}
 #PBS -q normal
-#PBS -l walltime=02:00:00
+#PBS -l walltime=01:00:00
 #PBS -l mem=192GB
 #PBS -l ncpus=48
 #PBS -j oe
@@ -39,7 +38,7 @@ fi
 # We don't need the linked restart files any more
 # find . -name 'wrfrst*' -type f -delete
 
-if [ "$issuccess" -gt 0 ] ; then
-   echo "cleaning up now"
-   qsub cleanup.sh
-fi
+# if [ "$issuccess" -gt 0 ] ; then
+#    echo "cleaning up now"
+#    qsub cleanup.sh
+# fi

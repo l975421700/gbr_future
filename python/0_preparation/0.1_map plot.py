@@ -84,7 +84,7 @@ igra2_station = pd.read_fwf(
     'https://www1.ncdc.noaa.gov/pub/data/igra/igra2-station-list.txt',
     names=['id', 'lat', 'lon', 'altitude', 'name', 'starty', 'endy', 'count'])
 
-subset = igra2_station.loc[[sid.startswith('AS') for sid in igra2_station['id']]]
+# subset = igra2_station.loc[[sid.startswith('AS') for sid in igra2_station['id']]]
 
 fig, ax = globe_plot(figsize=np.array([17.6, 8.8]) / 2.54)
 

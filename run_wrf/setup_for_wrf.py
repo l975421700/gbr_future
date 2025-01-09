@@ -928,7 +928,7 @@ for ind_job in range(number_of_jobs):
     os.symlink(src, dst)
     ##
     src = config['input_sounding']
-    assert os.path.exists(src), "Cannot find ideal.exe at {} ...".format(src)
+    assert os.path.exists(src), "Cannot find input_sounding at {} ...".format(src)
     dst = os.path.join(run_dir_with_date,'input_sounding')
     if os.path.exists(dst): os.remove(dst)
     os.symlink(src, dst)
