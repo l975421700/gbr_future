@@ -1,0 +1,34 @@
+&share
+ wrf_core           = 'ARW'
+ max_dom            = 4
+ interval_seconds   = 3600
+ io_form_geogrid    = 2
+/
+
+&geogrid
+ parent_id          = 0,1,2,3
+ parent_grid_ratio  = 1,5,5,4
+ i_parent_start     = 1,39,39,36
+ j_parent_start     = 1,39,39,36
+ e_we               = 96,91,91,97
+ e_sn               = 96,91,91,97
+ geog_data_res      = 'default','default','default','default'
+ dx                 = 5000
+ dy                 = 5000
+ map_proj           = 'mercator'
+ ref_lat            = -16.2876     ! -17.5
+ ref_lon            = 149.962    ! 146.5
+ truelat1           = -16.2876     ! -17.5
+ geog_data_path     = '/home/563/qg8515/data/sim/wrf/input/WPS_GEOG/'
+/
+
+&ungrib
+ out_format         = 'WPS'
+ prefix             = 'ERA5'
+/
+
+&metgrid
+ fg_name            = 'ERA5'
+ io_form_metgrid    = 2
+ constants_name     = '/home/563/qg8515/data/sim/wrf/input/QNWFA_QNIFA_SIGMA_MONTHLY.dat'
+/

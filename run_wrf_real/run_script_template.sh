@@ -1,0 +1,43 @@
+#PBS -N ${RUNNAME}_${STARTTIME}
+#PBS -q normal
+#PBS -l walltime=05:00:00
+#PBS -l mem=192GB
+#PBS -l ncpus=48
+#PBS -j oe
+#PBS -l storage=gdata/v46+scratch/v46
+
+module purge
+module load dot
+module load pbs
+module load intel-compiler/2019.3.199
+module load openmpi/4.0.2
+module load ncl/6.6.2
+module load hdf5/1.10.5
+module load netcdf/4.7.1
+
+ulimit -s unlimited
+cd ${RUN_DIR}
+
+echo running with $PBS_NCPUS mpi ranks
+time mpirun -np $PBS_NCPUS ./wrf.exe >& wrf.log
+
+if [ ! -e rsl.out.0000 ] ; then
+    echo "wrf.exe did not complete successfully - exiting"
+    exit
+fi
+
+issuccess=`grep -c "SUCCESS COMPLETE WRF" rsl.out.0000`
+echo $issuccess
+
+if [ "$issuccess" -eq 0 ] ; then
+    echo "wrf.exe did not complete successfully - exiting"
+    exit
+fi
+
+# We don't need the linked restart files any more
+# find . -name 'wrfrst*' -type f -delete
+
+# if [ "$issuccess" -gt 0 ] ; then
+#    echo "cleaning up now"
+#    qsub cleanup.sh
+# fi
