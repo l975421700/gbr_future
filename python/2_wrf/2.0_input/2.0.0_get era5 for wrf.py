@@ -17,7 +17,7 @@ from wrf import get_era5_for_wrf
 # setting
 year_str    = '2016'
 month_strs  = np.arange(4, 5, 1).astype(str).tolist()
-day_strs    = np.arange(27, 29, 1).astype(str).tolist()
+day_strs    = np.arange(27, 30, 1).astype(str).tolist()
 nlat        = -10
 slat        = -25
 wlon        = 140

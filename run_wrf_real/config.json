@@ -2,7 +2,7 @@
     "run_name" : "20160427_4nests",
     "start_date" : "2016-04-27 00:00:00 UTC",
     "end_date" : "2016-04-29 00:00:00 UTC",
-    "era5_input" : "${HOME}/data/sim/wrf/input/era5/era5_?l_2016427_2016428_-10.-25.140.155.grib",
+    "era5_input" : "${HOME}/data/sim/wrf/input/era5/era5_?l_2016427_2016429_-10.-25.140.155.grib",
     // check first
     "num_hours_per_run" : 1,
     "num_hours_spin_up" : 0,
@@ -47,5 +47,5 @@
     "wrf_exe" : "${wrf_dir}/main/wrf.exe",
     "real_exe" : "${wrf_dir}/main/real.exe",
     "wrf_run_dir" : "${wrf_dir}/run",
-    "wrf_run_tables_pattern" : "(DAT|formatted|CAM|asc|TBL|dat|tbl|txt|tr)"
+    "wrf_run_tables_pattern" : "(DAT|formatted|CAM|asc|TBL|dat|tbl|txt|tr|CCN)"
 }

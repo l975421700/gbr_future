@@ -1,5 +1,20 @@
 
 
+# region draw_polygon
+
+def draw_polygon(ax, min_lat, max_lat, min_lon, max_lon):
+    vertices = [
+        (min_lon, min_lat),  # Bottom-left corner
+        (max_lon, min_lat),  # Bottom-right corner
+        (max_lon, max_lat),  # Top-right corner
+        (min_lon, max_lat),  # Top-left corner
+        (min_lon, min_lat)   # Closing the polygon
+    ]
+    lons, lats = zip(*vertices)
+    ax.plot(lons, lats, linestyle='-', color='red', lw=0.5)
+
+# endregion
+
 # region rainbow_text: partial colouring of text
 
 def rainbow_text(x,y,ls,lc,ax,**kw):

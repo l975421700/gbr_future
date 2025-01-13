@@ -1,5 +1,8 @@
 
 
+# qsub -I -q normal -l walltime=08:00:00,ncpus=1,mem=192GB,storage=gdata/v46+gdata/rt52
+
+
 # region import packages
 
 # data analysis
@@ -17,7 +20,8 @@ from statsmodels.stats import multitest
 from metpy.calc import pressure_to_height_std, geopotential_to_height
 from metpy.units import units
 import metpy.calc as mpcalc
-import requests
+import pickle
+import glob
 
 # plot
 import matplotlib as mpl
@@ -43,6 +47,10 @@ import cartopy.feature as cfeature
 import os
 import sys  # print(sys.path)
 sys.path.append(os.getcwd() + '/code/gbr_future/module')
+import psutil
+process = psutil.Process()
+# print(process.memory_info().rss / 2**30)
+import string
 
 # self defined
 from mapplot import (
@@ -71,66 +79,62 @@ from component_plot import (
     cplot_lon180,
     cplot_lon180_ctr,
     plt_mesh_pars,
-    plot_loc,
 )
 
+from calculations import (
+    mon_sea_ann,
+    cdo_regrid,)
 
 # endregion
 
 
-# region plot the globe
+# region get data
 
-igra2_station = pd.read_fwf(
-    'https://www1.ncdc.noaa.gov/pub/data/igra/igra2-station-list.txt',
-    names=['id', 'lat', 'lon', 'altitude', 'name', 'starty', 'endy', 'count'])
+year=2016
 
-# subset = igra2_station.loc[[sid.startswith('AS') for sid in igra2_station['id']]]
+era5_cc = {}
+era5_ccf_mon = {}
+era5_ccf_ann = {}
 
-fig, ax = globe_plot(figsize=np.array([17.6, 8.8]) / 2.54)
-
-plot_loc(igra2_station['lon'], igra2_station['lat'], ax, s=6,lw=0.6)
-
-fig.savefig('figures/test.png')
+for cc in ['hcc', 'mcc', 'lcc', 'tcc']:
+    # cc='hcc'
+    print(cc)
+    
+    era5_cc[cc] = xr.open_mfdataset(sorted(glob.glob(f'/g/data/rt52/era5/single-levels/reanalysis/{cc}/{year}/*')))[cc]
+    
+    era5_ccf_mon[cc] = era5_cc[cc].groupby('time.month').mean(dim='time').compute()
+    era5_ccf_ann[cc] = era5_cc[cc].mean(dim='time').compute()
+    
+    era5_ccf_mon[cc].to_netcdf(f'data/obs/era5/hourly/era5_{cc}f_{year}_mon.nc')
+    era5_ccf_ann[cc].to_netcdf(f'data/obs/era5/hourly/era5_{cc}f_{year}_ann.nc')
+    
+    del era5_cc[cc], era5_ccf_mon[cc], era5_ccf_ann[cc]
 
 
 '''
-ax.add_feature(
-    cfeature.LAND, color='green', zorder=2, edgecolor=None,lw=0)
-ax.add_feature(
-    cfeature.OCEAN, color='blue', zorder=2, edgecolor=None,lw=0)
+# check
+cc='hcc'
+year=2016
+
+era5_cc = {}
+era5_ccf_mon = {}
+era5_ccf_ann = {}
+
+era5_cc[cc] = xr.open_mfdataset(sorted(glob.glob(f'/g/data/rt52/era5/single-levels/reanalysis/{cc}/{year}/*')))[cc]
+era5_ccf_mon[cc] = xr.open_dataset(f'data/obs/era5/hourly/era5_{cc}f_{year}_mon.nc')[cc]
+era5_ccf_ann[cc] = xr.open_dataset(f'data/obs/era5/hourly/era5_{cc}f_{year}_ann.nc')[cc]
+
+era5_cc[cc][:, 0, 0]
+np.max(np.abs(era5_cc[cc][:, 0, 0].groupby('time.month').mean(dim='time').values - era5_ccf_mon[cc][:, 0, 0].values))
+era5_cc[cc][:, 0, 0].mean(dim='time').values == era5_ccf_ann[cc][0, 0].values
+
+
 '''
 # endregion
 
 
-# region plot Australia
-
-gbr_shp = gpd.read_file('data/others/Great_Barrier_Reef_Marine_Park_Boundary/Great_Barrier_Reef_Marine_Park_Boundary.shp')
-WillisIsland_loc={'lat':-16.3,'lon':149.98}
+# region plot data
 
 
-lats = [-10.7, -24.5]
-lons = [145, 154]
-
-fig, ax = regional_plot(
-    extent=[140, 155, -25, -10], figsize = np.array([6.6, 6.6]) / 2.54,
-    ticks_and_labels = True, fontsize=10,)
-gbr_shp.plot(ax=ax, edgecolor='tab:blue', facecolor='none', lw=0.8, zorder=2)
-plot_loc(WillisIsland_loc['lon'], WillisIsland_loc['lat'], ax)
-
-plot_loc(lons[0], lats[0], ax)
-plot_loc(lons[1], lats[1], ax)
-
-fig.savefig('figures/0_gbr/0.1_study region/0.0_gbr.png')
-
-
-
-
-'''
-ax.scatter(
-    x = WillisIsland_loc['lon'], y = WillisIsland_loc['lat'],
-    s=10, c='none', lw=0.8, marker='o', edgecolors='tab:blue', zorder=2,
-    transform=ccrs.PlateCarree(),)
-
-'''
 # endregion
 

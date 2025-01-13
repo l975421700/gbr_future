@@ -1,7 +1,7 @@
 #PBS -N setupWRF
 #PBS -q normal
-#PBS -l walltime=01:00:00
-#PBS -l mem=4GB
+#PBS -l walltime=04:00:00
+#PBS -l mem=16GB
 #PBS -l ncpus=1
 #PBS -j oe
 #PBS -l storage=gdata/v46+scratch/v46

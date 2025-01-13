@@ -88,7 +88,7 @@ from calculations import (
 # region import data
 
 
-CL_RelFreq = xr.open_dataset('scratch/data/obs/jaxa/clp/CL_RelFreq_2016.nc').CL_RelFreq
+CL_RelFreq = xr.open_dataset('data/obs/jaxa/clp/CL_RelFreq_2016.nc').CL_RelFreq
 
 cloudtypes = [
     'Cirrus', 'Cirrostratus', 'Deep convection',
@@ -101,12 +101,12 @@ cloudtypes = [
 
 # region plot the frequency
 
-opng = 'figures/test.png'
+opng = 'figures/3_satellites/3.0_hamawari_cl/3.0.0_CL_RelFreq_2016.png'
 nrow = 3
 ncol = 3
 fm_bottom = 1.5 / (6.6*nrow + 2)
 
-cbar_label = r'Cloud occurrence frequency [$\%$]'
+cbar_label = r'Cloud occurrence frequency in 2016 from Himawari 8 [$\%$]'
 pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
     cm_min=0, cm_max=30, cm_interval1=5, cm_interval2=5, cmap='Blues_r',)
 
@@ -144,6 +144,57 @@ cbar.ax.set_xlabel(cbar_label)
 fig.subplots_adjust(left=0.04, right = 0.99, bottom = fm_bottom, top = 0.97)
 fig.savefig(opng)
 
+
+# endregion
+
+
+# region plot high, medium, and low cloud frequency
+
+opng = 'figures/3_satellites/3.0_hamawari_cl/3.0.0_CL_RelFreq_2016_HML.png'
+
+nrow = 1
+ncol = 3
+fm_bottom = 1.6 / (6.6*nrow + 2)
+
+cloudgroups = ['High cloud', 'Medium cloud', 'Low cloud', 'Total cloud', ]
+
+cbar_label = r'Cloud occurrence frequency in 2016 from Himawari 8 [$\%$]'
+pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+    cm_min=0, cm_max=50, cm_interval1=5, cm_interval2=5, cmap='Blues_r',)
+
+fig, axs = plt.subplots(
+    nrow, ncol, figsize=np.array([6.6*ncol, 6.6*nrow + 2]) / 2.54,
+    subplot_kw={'projection': ccrs.PlateCarree(central_longitude=180)},
+    gridspec_kw={'hspace': 0.1, 'wspace': 0.02},)
+
+for jcol in range(ncol):
+    print(f'{panel_labels[jcol]} {cloudgroups[jcol]}')
+    axs[jcol] = regional_plot(
+        extent=[80, 200, -60, 60], central_longitude=180, ax_org=axs[jcol],)
+    plt.text(
+        0, 1.02, f'{panel_labels[jcol]} {cloudgroups[jcol]}',
+        transform=axs[jcol].transAxes, fontsize=10,
+        ha='left', va='bottom', rotation='horizontal')
+    
+    if jcol < 3:
+        print(CL_RelFreq[(jcol*3+1):(jcol*3+4)].types.values)
+        plt_data = CL_RelFreq[(jcol*3+1):(jcol*3+4)].sum(dim='types')
+    elif jcol == 3:
+        print('Total cloud')
+        # plt_data = CL_RelFreq[1:].sum(dim='types')
+    
+    plt_mesh = axs[jcol].pcolormesh(
+        plt_data.longitude, plt_data.latitude, plt_data,
+        norm=pltnorm, cmap=pltcmp, transform=ccrs.PlateCarree(),)
+
+cbar = fig.colorbar(
+    plt_mesh, ax=axs, aspect=30, format=remove_trailing_zero_pos,
+    orientation="horizontal", shrink=0.5, ticks=pltticks, extend='max',
+    anchor=(0.5, 0.2),)
+cbar.ax.set_xlabel(cbar_label)
+
+fig.subplots_adjust(left=0.01, right = 0.99, bottom = fm_bottom, top = 0.99)
+fig.savefig(opng)
 
 # endregion
 

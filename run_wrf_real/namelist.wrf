@@ -3,8 +3,11 @@
  history_interval                    = 10,10,10,10
  frames_per_outfile                  = 1,1,1,1
  iofields_filename                   = 'add_remove_var.txt','add_remove_var.txt','add_remove_var.txt','add_remove_var.txt'
- auxinput4_interval                  = 60
+ auxinput4_inname                    = "wrflowinp_d<domain>"
+ auxinput4_interval                  = 60,60,60,60
  io_form_auxinput4                   = 2
+ input_from_file                     = .true.,.true.,.true.,.true.
+ restart_interval                    = 60
  /
 
  &domains
@@ -31,12 +34,13 @@
  parent_time_step_ratio              = 1,5,5,4
  i_parent_start                      = 1,39,39,36
  j_parent_start                      = 1,39,39,36
- e_we                                = 96,91,91,97
- e_sn                                = 96,91,91,97
+ e_we                                = 96,96,96,97
+ e_sn                                = 96,96,96,97
  e_vert                              = 65,65,65,65
  p_top_requested                     = 5000
  feedback                            = 0
  wif_input_opt                       = 1
+ rebalance                           = 1
  /
 
  &physics
@@ -46,7 +50,7 @@
  sf_sfclay_physics                   = 1,1,1,1
  sf_surface_physics                  = 2,2,2,2
  bl_pbl_physics                      = 1,1,1,0
- cu_physics                          = 1,1,1,0
+ cu_physics                          = 1,0,0,0
  radt                                = 0,0,0,0
  bldt                                = 0,0,0,0
  cudt                                = 0,0,0,0
@@ -56,7 +60,6 @@
  surface_input_source                = 3
  num_soil_layers                     = 4
  sf_urban_physics                    = 0,0,0,0
- topo_wind                           = 1,1,1,1
  sst_update                          = 1
  sst_skin                            = 1
  progn                               = 1,1,1,1
@@ -104,6 +107,8 @@
  scalar_adv_opt                      = 4,4,4,4
  tracer_adv_opt                      = 4,4,4,4
  chem_adv_opt                        = 4,4,4,4
+ tke_adv_opt                         = 4,4,4,4
+ mix_full_fields                     = .true.,.true.,.true.,.true.
  /
 
  &bdy_control

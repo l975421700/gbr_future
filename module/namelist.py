@@ -4,7 +4,7 @@ import numpy as np
 import cartopy as ctp
 
 
-# region seasons
+# region names
 
 month = np.array(
     ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -32,6 +32,10 @@ months = ['01', '02', '03', '04', '05', '06',
 month_days = np.array([31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31])
 
 seconds_per_d = 86400
+
+nci_ds = {
+    'era5': '/g/data/rt52/era5/'
+}
 
 # endregion
 
