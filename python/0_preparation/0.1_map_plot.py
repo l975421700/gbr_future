@@ -28,7 +28,7 @@ from matplotlib.colors import BoundaryNorm
 from matplotlib import cm
 import cartopy.crs as ccrs
 plt.rcParams['pcolor.shading'] = 'auto'
-mpl.rcParams['figure.dpi'] = 600
+mpl.rcParams['figure.dpi'] = 300
 mpl.rc('font', family='Times New Roman', size=10)
 mpl.rcParams['axes.linewidth'] = 0.2
 plt.rcParams.update({"mathtext.fontset": "stix"})
@@ -106,9 +106,12 @@ ax.add_feature(
 
 # region plot Australia
 
-dem_data = rioxarray.open_rasterio('/g/data/rr1/Elevation/1secSRTM_DEMs_v1.0/DEM/Mosaic/dem1sv1_0')
+# dem_data = rioxarray.open_rasterio('/g/data/rr1/Elevation/1secSRTM_DEMs_v1.0/DEM/Mosaic/dem1sv1_0')
+dem_data = rioxarray.open_rasterio('/g/data/rr1/Elevation/3sec_SRTM_DEMsv1.0/DEMS_ESRI_GRID_32bit_Float/dems3sv1_0')
 dem_data = dem_data.sel(x=slice(140, 155), y=slice(-10, -25)).squeeze()
 dem_data = dem_data.where((dem_data!=-3.4028235e+38)&(dem_data!=0), np.nan)
+dem_data = dem_data.astype("float16")
+# dem_data = dem_data.coarsen(x=8, y=8, boundary="trim").mean()
 
 bathy_data = rioxarray.open_rasterio('data/others/AusBathyTopo (Australia) 2024 250m/AusBathyTopo__Australia__2024_250m_MSL_cog.tif')
 bathy_data = bathy_data.sel(x=slice(140, 155), y=slice(-10, -25)).squeeze()
@@ -132,12 +135,12 @@ plt_mesh1 = ax.pcolormesh(
     dem_data.x,
     dem_data.y,
     dem_data.values,
-    norm=pltnorm, cmap=pltcmp,transform=ccrs.PlateCarree(),)
+    norm=pltnorm, cmap=pltcmp,transform=ccrs.PlateCarree(), rasterized=True)
 plt_mesh2 = ax.pcolormesh(
     bathy_data.x,
     bathy_data.y,
     bathy_data.values,
-    norm=pltnorm, cmap=pltcmp,transform=ccrs.PlateCarree(),)
+    norm=pltnorm, cmap=pltcmp,transform=ccrs.PlateCarree(), rasterized=True)
 
 gbr_shp.plot(ax=ax, edgecolor='tab:blue', facecolor='none', lw=0.8, zorder=2)
 for iregion in range(4):
@@ -153,7 +156,7 @@ cbar = fig.colorbar(
     pad=0.06, fraction=0.06,)
 cbar.ax.set_xlabel('Topography and bathymetry [$m$]')
 fig.subplots_adjust(left=0.07, right=0.97, bottom=0.06, top=0.98)
-fig.savefig('/scratch/v46/qg8515/0.0_gbr.png')
+fig.savefig('figures/0_gbr/0.1_study region/0.0_gbr.png')
 
 
 

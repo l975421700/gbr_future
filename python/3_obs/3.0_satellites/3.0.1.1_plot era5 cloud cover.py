@@ -133,8 +133,84 @@ era5_cc[cc][:, 0, 0].mean(dim='time').values == era5_ccf_ann[cc][0, 0].values
 # endregion
 
 
-# region plot data
+# region plot HML ccf
+
+year=2016
+
+opng = f'figures/3_satellites/3.0_hamawari_cl/3.0.0_era5_ccf_{year}_HML.png'
+era5_ccf_ann = {}
+
+nrow = 1
+ncol = 3
+fm_bottom = 1.6 / (6.6*nrow + 2)
+
+cloudgroups = ['High cloud', 'Medium cloud', 'Low cloud', ]
+cbar_label = r'Cloud occurrence frequency in 2016 from ERA5 [$\%$]'
+pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+    cm_min=0, cm_max=80, cm_interval1=5, cm_interval2=10, cmap='Blues_r',)
+
+fig, axs = plt.subplots(
+    nrow, ncol, figsize=np.array([6.6*ncol, 6.6*nrow + 2]) / 2.54,
+    subplot_kw={'projection': ccrs.PlateCarree(central_longitude=180)},
+    gridspec_kw={'hspace': 0.1, 'wspace': 0.02},)
+
+for jcol, cc in zip(range(ncol), ['hcc', 'mcc', 'lcc']):
+    print(f'{panel_labels[jcol]} {cloudgroups[jcol]} {cc}')
+    axs[jcol] = regional_plot(
+        extent=[80, 200, -60, 60], central_longitude=180, ax_org=axs[jcol],)
+    plt.text(
+        0, 1.02, f'{panel_labels[jcol]} {cloudgroups[jcol]}',
+        transform=axs[jcol].transAxes, fontsize=10,
+        ha='left', va='bottom', rotation='horizontal')
+    
+    era5_ccf_ann[cc] = xr.open_dataset(f'data/obs/era5/hourly/era5_{cc}f_{year}_ann.nc')[cc]
+    plt_mesh = axs[jcol].pcolormesh(
+        era5_ccf_ann[cc].longitude, era5_ccf_ann[cc].latitude,
+        era5_ccf_ann[cc] * 100,
+        norm=pltnorm, cmap=pltcmp, transform=ccrs.PlateCarree(),)
+
+cbar = fig.colorbar(
+    plt_mesh, # cm.ScalarMappable(norm=pltnorm, cmap=pltcmp),
+    ax=axs, aspect=30, format=remove_trailing_zero_pos,
+    orientation="horizontal", shrink=0.5, ticks=pltticks, extend='max',
+    anchor=(0.5, 0.2),)
+cbar.ax.set_xlabel(cbar_label)
+fig.subplots_adjust(left=0.01, right = 0.99, bottom = fm_bottom, top = 0.99)
+fig.savefig(opng)
 
 
 # endregion
+
+
+# region plot T ccf
+
+opng = f'figures/3_satellites/3.0_hamawari_cl/3.0.0_era5_ccf_{year}_T.png'
+
+cbar_label = 'Total cloud occurrence frequency\nin 2016 from ERA5 [%]'
+pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+    cm_min=0, cm_max=100, cm_interval1=10, cm_interval2=10, cmap='Blues_r',)
+
+fig, ax = regional_plot(extent=[80, 200, -60, 60], central_longitude=180, figsize = np.array([6.6, 8.6]) / 2.54)
+
+era5_ccf_ann = {}
+cc = 'tcc'
+year=2016
+era5_ccf_ann[cc] = xr.open_dataset(f'data/obs/era5/hourly/era5_{cc}f_{year}_ann.nc')[cc]
+plt_mesh = ax.pcolormesh(
+    era5_ccf_ann[cc].longitude, era5_ccf_ann[cc].latitude, era5_ccf_ann[cc]*100,
+    norm=pltnorm, cmap=pltcmp, transform=ccrs.PlateCarree(),)
+
+cbar = fig.colorbar(
+    cm.ScalarMappable(norm=pltnorm, cmap=pltcmp),
+    ax=ax, aspect=30, format=remove_trailing_zero_pos,
+    orientation="horizontal", shrink=0.9, ticks=pltticks, extend='neither',
+    pad=0.03, fraction=0.12,)
+cbar.ax.set_xlabel(cbar_label, linespacing=1.5)
+
+fig.subplots_adjust(left=0.01, right = 0.99, bottom = 0.12, top = 0.99)
+fig.savefig(opng)
+
+
+# endregion
+
 

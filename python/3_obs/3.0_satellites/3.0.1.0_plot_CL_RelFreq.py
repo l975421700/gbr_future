@@ -160,7 +160,7 @@ cloudgroups = ['High cloud', 'Medium cloud', 'Low cloud', 'Total cloud', ]
 
 cbar_label = r'Cloud occurrence frequency in 2016 from Himawari 8 [$\%$]'
 pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-    cm_min=0, cm_max=50, cm_interval1=5, cm_interval2=5, cmap='Blues_r',)
+    cm_min=0, cm_max=80, cm_interval1=5, cm_interval2=10, cmap='Blues_r',)
 
 fig, axs = plt.subplots(
     nrow, ncol, figsize=np.array([6.6*ncol, 6.6*nrow + 2]) / 2.54,
@@ -199,4 +199,30 @@ fig.savefig(opng)
 # endregion
 
 
+# region plot total cloud cover
 
+opng = 'figures/3_satellites/3.0_hamawari_cl/3.0.0_CL_RelFreq_2016_T.png'
+
+cbar_label = 'Total cloud occurrence frequency\nin 2016 from Himawari 8 [%]'
+pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+    cm_min=0, cm_max=100, cm_interval1=10, cm_interval2=10, cmap='Blues_r',)
+
+fig, ax = regional_plot(extent=[80, 200, -60, 60], central_longitude=180, figsize = np.array([6.6, 8.6]) / 2.54)
+
+plt_data = CL_RelFreq[1:].sum(dim='types')
+plt_mesh = ax.pcolormesh(
+    plt_data.longitude, plt_data.latitude, plt_data,
+    norm=pltnorm, cmap=pltcmp, transform=ccrs.PlateCarree(),)
+
+cbar = fig.colorbar(
+    cm.ScalarMappable(norm=pltnorm, cmap=pltcmp),
+    ax=ax, aspect=30, format=remove_trailing_zero_pos,
+    orientation="horizontal", shrink=0.9, ticks=pltticks, extend='neither',
+    pad=0.03, fraction=0.12,)
+cbar.ax.set_xlabel(cbar_label, linespacing=1.5)
+
+fig.subplots_adjust(left=0.01, right = 0.99, bottom = 0.12, top = 0.99)
+fig.savefig(opng)
+
+
+# endregion

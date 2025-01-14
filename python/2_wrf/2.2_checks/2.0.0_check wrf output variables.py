@@ -1,5 +1,8 @@
 
 
+expid = '20160427_4nests'
+
+
 # region import packages
 
 # data analysis
@@ -47,6 +50,7 @@ import cartopy.feature as cfeature
 import os
 import sys  # print(sys.path)
 sys.path.append(os.getcwd() + '/code/gbr_future/module')
+import glob
 
 # self defined
 from mapplot import (
@@ -84,6 +88,16 @@ from component_plot import (
 
 # region import data
 
+wrf_output_fl = sorted(glob.glob(f'data/sim/wrf/{expid}/*/wrfout_d04_*'))[:56]
+wrf_output_fl = [value for idx, value in enumerate(wrf_output_fl) if (idx % 7) != 0]
+start_time  = wrf_output_fl[0][-19:].replace("_", " ")
+end_time    = wrf_output_fl[-1][-19:].replace("_", " ")
+
+wrf_output = xr.open_mfdataset(wrf_output_fl,combine='nested',concat_dim='Time')
+wrf_output['Time'] = pd.date_range(start=start_time, end=end_time, freq="10min")
+
+
+'''
 wrf_output = xr.open_dataset('data/sim/wrf/20160428_test/2016042800/wrfout_d01_2016-04-28_00:00:00')
 
 var = 'LANDMASK'
@@ -91,11 +105,64 @@ wrf_output[var].values
 np.max(wrf_output[var].values)
 np.sum(wrf_output[var].values)
 
-
 '''
-wrf_output = xr.open_dataset('data/sim/wrf/20160428_test/2016042801/wrfout_d01_2016-04-28_01:00:00')
+# endregion
 
-'''
+
+# region animate LWP
+
+pressure = (wrf_output.P + wrf_output.PB) * 0.01
+geop_height = (wrf_output.PH + wrf_output.PHB) / 9.81
+pot_temp = wrf_output.T + 300
+qcloud = wrf_output.QCLOUD
+qrain = wrf_output.QRAIN
+qvapor = wrf_output.QVAPOR
+
+temp = mpcalc.temperature_from_potential_temperature(pressure * units('hPa'), pot_temp * units('K'))
+dz = geop_height[:,1:,:,:] - geop_height[:,:-1,:,:]
+rho = mpcalc.density(pressure * units('hPa'), temp, qvapor,)
+
+lwp = ((qcloud+qrain) * rho.values * dz.values).sum(dim='bottom_top').squeeze() * 1000 * units('g/m**2')
+
+
+omp4 = f'figures/2_wrf/2.0_clouds/2.0.0_{expid} LWP {start_time} to {end_time}.mp4'
+cbar_label = r'LWP [$g \; m^{-2}$]'
+pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+    cm_min=0, cm_max=50, cm_interval1=5, cm_interval2=10, cmap='Blues',)
+
+fig, ax = plt.subplots(1, 1, figsize=np.array([5, 6.8]) / 2.54,)
+
+ims = []
+for idx, itime in enumerate(wrf_output['Time'].values):
+    print(f'{idx} {itime}')
+    
+    plt_mesh = ax.pcolormesh(
+        np.arange(0,4800,50), np.arange(0,4800,50), lwp[idx],
+        norm=pltnorm, cmap=pltcmp)
+    plt_text = ax.text(
+        0.5, -0.43,
+        str(lwp[idx]['Time'].values)[:16].replace("T", " ") + 'UTC',
+        transform=ax.transAxes, ha='center', va='center')
+    
+    ims.append([plt_mesh,plt_text])
+
+cbar = fig.colorbar(
+    plt_mesh, ax=ax, aspect=20, format=remove_trailing_zero_pos,
+    orientation="horizontal", shrink=0.9, ticks=pltticks, extend='max',
+    fraction=0.14, pad=0.05,)
+cbar.ax.set_xlabel(cbar_label)
+
+ax.get_xaxis().set_visible(False)
+ax.get_yaxis().set_visible(False)
+plt.gca().set_aspect('equal')
+
+fig.subplots_adjust(left=0.02, right = 0.98, bottom = 0.16, top = 0.98)
+ani = animation.ArtistAnimation(fig, ims, interval=500, blit=True)
+ani.save(
+    omp4,
+    progress_callback=lambda iframe, n: print(f'Frame {iframe} of {n}'),)
+
+
 # endregion
 
 
@@ -118,20 +185,23 @@ lwp = ((qcloud+qrain) * rho.values * dz.values).sum(dim='bottom_top').squeeze() 
 # plot it
 
 output_png = 'figures/test.png'
-cbar_label = r'LWP [$\mu m$]'
+cbar_label = r'LWP [$g \; m^{-2}$]'
 
 pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
     cm_min=0, cm_max=100, cm_interval1=10, cm_interval2=20, cmap='Blues',)
 
-fig, ax = plt.subplots(1, 1, figsize=np.array([5, 6]) / 2.54,)
+fig, ax = plt.subplots(1, 1, figsize=np.array([5, 6.8]) / 2.54,)
 
 plt_mesh = ax.pcolormesh(np.arange(0,4800,50), np.arange(0,4800,50),
-                         lwp, norm=pltnorm, cmap=pltcmp)
+                         lwp[-1], norm=pltnorm, cmap=pltcmp)
+
+ax.text(0.5, -0.43, str(lwp[-1]['Time'].values)[:16].replace("T", " ") + 'UTC',
+        transform=ax.transAxes, ha='center', va='center')
 
 cbar = fig.colorbar(
     plt_mesh, ax=ax, aspect=20, format=remove_trailing_zero_pos,
     orientation="horizontal", shrink=0.9, ticks=pltticks, extend='max',
-    fraction=0.08, pad=0.05,)
+    fraction=0.14, pad=0.05,)
 cbar.ax.set_xlabel(cbar_label)
 
 ax.get_xaxis().set_visible(False)
