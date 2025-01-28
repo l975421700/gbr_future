@@ -34,7 +34,8 @@ month_days = np.array([31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31])
 seconds_per_d = 86400
 
 nci_ds = {
-    'era5': '/g/data/rt52/era5/'
+    'era5': '/g/data/rt52/era5/',
+    'BARRA-C2': '/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/',
 }
 
 # endregion
