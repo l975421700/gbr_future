@@ -1,5 +1,5 @@
 
-# qsub -I -q normal -l walltime=02:00:00,ncpus=1,mem=192GB,storage=gdata/v46+gdata/rr1
+# qsub -I -q normal -l walltime=4:00:00,ncpus=1,mem=192GB,storage=gdata/v46+gdata/rr1
 
 # region import packages
 
@@ -84,12 +84,35 @@ from component_plot import (
 
 # region plot the globe
 
+
+# fig, ax = globe_plot(figsize=np.array([17.6, 8.8]) / 2.54)
+# # plot igra2 locations
 # igra2_station = pd.read_fwf(
 #     'https://www1.ncdc.noaa.gov/pub/data/igra/igra2-station-list.txt',
 #     names=['id', 'lat', 'lon', 'altitude', 'name', 'starty', 'endy', 'count'])
-# fig, ax = globe_plot(figsize=np.array([17.6, 8.8]) / 2.54)
 # plot_loc(igra2_station['lon'], igra2_station['lat'], ax, s=6,lw=0.6)
-# fig.savefig('figures/0_gbr/0.1_study region/0.0.0_IGRA2 global distribution.png')
+# opng='figures/0_gbr/0.1_study region/0.0.0_IGRA2 global distribution.png'
+
+fig, ax = globe_plot(figsize=np.array([12, 8]) / 2.54, fm_bottom=0.13)
+
+era5_z = xr.open_dataset('/g/data/rt52/era5/single-levels/reanalysis/z/2023/z_era5_oper_sfc_20230101-20230131.nc')['z'][0] / 9.80665
+pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+    cm_min=0, cm_max=5600, cm_interval1=200, cm_interval2=800, cmap='Greens_r',)
+opng='figures/0_gbr/0.1_study region/0.0.0_global era5 z.png'
+plt_mesh1 = ax.pcolormesh(
+    era5_z.longitude,
+    era5_z.latitude,
+    era5_z.values,
+    norm=pltnorm, cmap=pltcmp,transform=ccrs.PlateCarree())
+ax.add_feature(cfeature.OCEAN,color='white',zorder=1,edgecolor=None,lw=0)
+cbar = fig.colorbar(
+    plt_mesh1, ax=ax, aspect=40, format=remove_trailing_zero_pos,
+    orientation="horizontal", shrink=0.8, ticks=pltticks, extend='max',
+    pad=0.02, fraction=0.13,)
+cbar.ax.set_xlabel('Topography in ERA5 [$m$]', ha='center', labelpad=4)
+
+
+fig.savefig(opng)
 
 
 '''
@@ -104,7 +127,7 @@ ax.add_feature(
 # endregion
 
 
-# region plot Australia
+# region plot GBR [140, 155, -25, -10]
 
 # dem_data = rioxarray.open_rasterio('/g/data/rr1/Elevation/1secSRTM_DEMs_v1.0/DEM/Mosaic/dem1sv1_0')
 dem_data = rioxarray.open_rasterio('/g/data/rr1/Elevation/3sec_SRTM_DEMsv1.0/DEMS_ESRI_GRID_32bit_Float/dems3sv1_0')
@@ -143,11 +166,11 @@ plt_mesh2 = ax.pcolormesh(
     norm=pltnorm, cmap=pltcmp,transform=ccrs.PlateCarree(), rasterized=True)
 
 gbr_shp.plot(ax=ax, edgecolor='tab:blue', facecolor='none', lw=0.8, zorder=2)
-for iregion in range(4):
-    # iregion = 0
-    geo_em_ds = xr.open_dataset(f'data/sim/wrf/20160427_4nests/geo_em.d0{iregion+1}.nc')
-    draw_polygon(ax, np.min(geo_em_ds.CLAT), np.max(geo_em_ds.CLAT),
-                 np.min(geo_em_ds.CLONG), np.max(geo_em_ds.CLONG),)
+# for iregion in range(4):
+#     # iregion = 0
+#     geo_em_ds = xr.open_dataset(f'data/sim/wrf/20160427_4nests/geo_em.d0{iregion+1}.nc')
+#     draw_polygon(ax, np.min(geo_em_ds.CLAT), np.max(geo_em_ds.CLAT),
+#                  np.min(geo_em_ds.CLONG), np.max(geo_em_ds.CLONG),)
 
 cbar = fig.colorbar(
     plt_mesh1, # cm.ScalarMappable(norm=pltnorm, cmap=pltcmp),
@@ -196,4 +219,83 @@ ax.scatter(
 
 '''
 # endregion
+
+
+# region plot Australia [108, 160, -45.7, -5]
+
+fig, ax = regional_plot(
+    extent=[108, 160, -45.7, -5],
+    figsize = np.array([13.2, 12])/2.54, lgrid=False)
+
+ax.set_xticks(np.arange(110, 160+1e-4, 10))
+ax.set_yticks(np.arange(-40, -10+1e-4, 10))
+ax.xaxis.set_major_formatter(LongitudeFormatter(degree_symbol='° '))
+ax.yaxis.set_major_formatter(LatitudeFormatter(degree_symbol='° '))
+ax.gridlines(
+    crs=ccrs.PlateCarree(), linewidth=0.25, zorder=2,
+    color='gray', alpha=0.5, linestyle='--',)
+
+# # plot dem and bathy from Aus
+# pltlevel = np.concatenate((np.arange(-6000, 0, 250), np.arange(0, 1201, 50)))
+# pltticks = np.concatenate((np.arange(-6000, 0, 1000), np.arange(0, 1201, 200)))
+# colors = np.vstack((
+#     plt.cm.Blues_r(np.linspace(0, 1, 256)),
+#     plt.cm.Greens(np.linspace(0, 1, 256))))
+# pltcmp = LinearSegmentedColormap.from_list("Combined",colors,N=len(pltlevel)-1)
+# pltnorm = TwoSlopeNorm(vmin=-6000, vcenter=0, vmax=1200)
+
+# dem_data = rioxarray.open_rasterio('/g/data/rr1/Elevation/3sec_SRTM_DEMsv1.0/DEMS_ESRI_GRID_32bit_Float/dems3sv1_0').squeeze()
+# dem_data = dem_data.where((dem_data!=-3.4028235e+38)&(dem_data!=0), np.nan)
+# dem_data = dem_data.coarsen(x=10, y=10, boundary="trim").mean()
+# plt_mesh1 = ax.pcolormesh(
+#     dem_data.x,
+#     dem_data.y,
+#     dem_data.values,
+#     norm=pltnorm, cmap=pltcmp,transform=ccrs.PlateCarree())
+# bathy_data = rioxarray.open_rasterio('data/others/AusBathyTopo (Australia) 2024 250m/AusBathyTopo__Australia__2024_250m_MSL_cog.tif')
+# bathy_data = bathy_data.sel(x=slice(108, 160), y=slice(-5, -45.7)).squeeze()
+# bathy_data = bathy_data.where(bathy_data<0, np.nan)
+# bathy_data = bathy_data.coarsen(x=4, y=4, boundary="trim").mean()
+# plt_mesh2 = ax.pcolormesh(
+#     bathy_data.x,
+#     bathy_data.y,
+#     bathy_data.values,
+#     norm=pltnorm, cmap=pltcmp,transform=ccrs.PlateCarree())
+# extend='both'
+# cbar_label='Topography and bathymetry [$m$]'
+# opng='figures/0_gbr/0.1_study region/0.0_Australia.png'
+
+# plot orography from BARRA-C2
+pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+    cm_min=0, cm_max=2800, cm_interval1=100, cm_interval2=400, cmap='Greens_r',)
+orog = xr.open_dataset('/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/fx/orog/latest/orog_AUST-04_ERA5_historical_hres_BOM_BARRA-C2_v1.nc').orog
+orog = orog.where(orog!=0, np.nan)
+plt_mesh1 = ax.pcolormesh(
+    orog.lon,
+    orog.lat,
+    orog.values,
+    norm=pltnorm, cmap=pltcmp,transform=ccrs.PlateCarree())
+extend='max'
+cbar_label='Topography [$m$]'
+opng='figures/0_gbr/0.1_study region/0.0_Australia1.png'
+
+gbr_shp = gpd.read_file('data/others/Great_Barrier_Reef_Marine_Park_Boundary/Great_Barrier_Reef_Marine_Park_Boundary.shp')
+gbr_shp.plot(ax=ax, edgecolor='tab:blue', facecolor='none', lw=0.8, zorder=2)
+
+cbar = fig.colorbar(
+    plt_mesh1,
+    ax=ax, aspect=30,
+    orientation="horizontal", shrink=1.05, ticks=pltticks, extend=extend,
+    pad=0.08, fraction=0.06,)
+cbar.ax.set_xlabel(cbar_label)
+fig.subplots_adjust(left=0.09, right=0.96, bottom=0.08, top=0.99)
+fig.savefig(opng)
+
+
+
+
+'''
+'''
+# endregion
+
 

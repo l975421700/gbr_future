@@ -1,7 +1,7 @@
 
 
 # qsub -I -q copyq -l walltime=02:00:00,ncpus=1,mem=100GB,jobfs=100GB,storage=gdata/v46
-
+# https://opus.nci.org.au/spaces/DAE/pages/213713098/Intake-ESM+on+CMIP5+6+datasets
 
 # region import packages
 

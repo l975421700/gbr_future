@@ -1,10 +1,10 @@
 #PBS -N single_job
 #PBS -q normal
-#PBS -l walltime=04:00:00
-#PBS -l mem=384GB
-#PBS -l ncpus=96
+#PBS -l walltime=10:00:00
+#PBS -l mem=192GB
+#PBS -l ncpus=1
 #PBS -j oe
-#PBS -l storage=gdata/v46+scratch/v46+gdata/rr1
+#PBS -l storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53
 #PBS -P v46
 #PBS -r y
 
@@ -12,7 +12,7 @@
 
 cd $HOME
 source ${HOME}/miniconda3/bin/activate rcm_gbr
-python ${HOME}/code/gbr_future/python/0_preparation/0.1_map_plot.py
+python ${HOME}/code/gbr_future/python/0_preparation/z_runscripts.py
 
 
 # #PBS -J 1-10

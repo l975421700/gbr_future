@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -l walltime=10:00:00,ncpus=1,mem=192GB,storage=gdata/v46+gdata/ob53
+# qsub -I -q normal -l walltime=4:00:00,ncpus=1,mem=192GB,storage=gdata/v46+gdata/ob53
 
 
 # region import packages
@@ -28,7 +28,7 @@ from calculations import (
 # endregion
 
 
-# region get BARRA-C2 mm data
+# region get BARRA-C2 mon data
 
 for var in ['pr']:
     # var = 'clh'
@@ -99,4 +99,70 @@ Condensed Water Path: clwvi
 '''
 # endregion
 
+
+# region get BARRA-C2 mon pl data
+
+for var in ['hus', 'ta', 'ua', 'va', 'wa', 'wap', 'zg']:
+    # var = 'ta'
+    print(var)
+    
+    fl = sorted([
+        file for iyear in np.arange(1979, 2024, 1)
+        for file in glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/mon/{var}[0-9]*[!m]/latest/*BARRA-C2_v1_mon_{iyear}*')])
+    
+    def std_func(ds, var=var):
+        ds = ds.expand_dims(dim='pressure', axis=1)
+        varname = [varname for varname in ds.data_vars if varname.startswith(var)][0]
+        ds = ds.rename({varname: var})
+        return(ds)
+    
+    barra_c2_pl_mon = xr.open_mfdataset(fl, parallel=True, preprocess=std_func)
+    barra_c2_pl_mon_alltime = mon_sea_ann(
+        var_monthly=barra_c2_pl_mon[var], lcopy=False,mm=True,sm=True,am=True)
+    
+    with open(f'data/sim/um/barra_c2/barra_c2_pl_mon_alltime_{var}.pkl','wb') as f:
+        pickle.dump(barra_c2_pl_mon_alltime, f)
+    
+    del barra_c2_pl_mon, barra_c2_pl_mon_alltime
+
+
+
+
+
+'''
+# check
+barra_c2_pl_mon_alltime = {}
+for var in ['hus', 'ta', 'ua', 'va', 'wa', 'wap', 'zg']:
+    # var = 'ta'
+    print(f'#-------------------------------- {var}')
+    
+    with open(f'data/sim/um/barra_c2/barra_c2_pl_mon_alltime_{var}.pkl','rb') as f:
+        barra_c2_pl_mon_alltime[var] = pickle.load(f)
+    
+    print(barra_c2_pl_mon_alltime[var]['mon'])
+    
+    del barra_c2_pl_mon_alltime[var]
+
+
+# 3 hours each
+
+
+aaa = xr.open_dataset(fl[0])
+aaa.expand_dims(dim='pressure', axis=1)
+aaa['ta10'].expand_dims(dim='pressure', axis=1)
+
+bbb = xr.open_dataset(fl[-1])
+bbb.expand_dims(dim='pressure', axis=1)
+
+
+import intake
+data_catalog = intake.open_esm_datastore("/g/data/dk92/catalog/v2/esm/barra2-ob53/catalog.json")
+
+for icol in data_catalog.df.columns:
+    print(f'#-------------------------------- {icol}')
+    print(data_catalog.df[icol].unique())
+
+
+'''
+# endregion
 

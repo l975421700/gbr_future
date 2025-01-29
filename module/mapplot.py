@@ -207,7 +207,7 @@ def regional_plot(
     xmajortick_int = 10, ymajortick_int = 10,
     xminortick_int = 5, yminortick_int = 5,
     lw=0.25, country_boundaries=True, border_color = 'black',
-    grid_color = 'gray',
+    grid_color = 'gray', lgrid=True,
     set_figure_margin = False, figure_margin=None,
     ticks_and_labels = False,
     ax_org=None, fontsize=10,
@@ -259,14 +259,14 @@ def regional_plot(
             facecolor='none', lw=lw)
         ax.add_feature(borders, zorder=2)
     
-    if (central_longitude == 0):
+    if (central_longitude == 0) & lgrid:
         ax.gridlines(
             crs=ctp.crs.PlateCarree(central_longitude=central_longitude),
             linewidth=lw, zorder=2,
             color=grid_color, alpha=0.5, linestyle='--',
             xlocs = xminorticks, ylocs=yminorticks,
             )
-    else:
+    elif lgrid:
         ax.gridlines(
             crs=ctp.crs.PlateCarree(central_longitude=central_longitude),
             linewidth=lw, zorder=2,

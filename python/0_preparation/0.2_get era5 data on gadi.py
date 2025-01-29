@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -l walltime=1:00:00,ncpus=1,mem=20GB,storage=gdata/v46+gdata/rt52+gdata/ob53
+# qsub -I -q normal -l walltime=4:00:00,ncpus=1,mem=192GB,storage=gdata/v46+gdata/rt52+gdata/ob53
 
 
 # region import packages
@@ -93,4 +93,47 @@ Geopotential: z
 
 '''
 # endregion
+
+
+# region get era5 pl mon data
+
+for var in ['pv', 'q', 'r', 't', 'u', 'v', 'w', 'z']:
+    # var = 'pv'
+    print(var)
+    
+    fl = sorted([
+        file for iyear in np.arange(1979, 2024, 1)
+        for file in glob.glob(f'/g/data/rt52/era5/pressure-levels/monthly-averaged/{var}/{iyear}/*.nc')])
+    
+    era5_pl_mon = xr.open_mfdataset(fl, parallel=True)
+    era5_pl_mon = era5_pl_mon.rename({'latitude': 'lat', 'longitude': 'lon'})
+    
+    era5_pl_mon_alltime = mon_sea_ann(
+        var_monthly=era5_pl_mon[var], lcopy=False, mm=True, sm=True, am=True,)
+    
+    with open(f'data/obs/era5/mon/era5_pl_mon_alltime_{var}.pkl', 'wb') as f:
+        pickle.dump(era5_pl_mon_alltime, f)
+    
+    del era5_pl_mon_alltime
+
+
+
+
+'''
+# check
+era5_pl_mon_alltime = {}
+for var in ['pv', 'q', 'r', 't', 'u', 'v', 'w', 'z']:
+    # var = 'pv'
+    print(var)
+    
+    with open(f'data/obs/era5/mon/era5_pl_mon_alltime_{var}.pkl', 'rb') as f:
+        era5_pl_mon_alltime[var] = pickle.load(f)
+    
+    print(era5_pl_mon_alltime[var]['mon'])
+    del era5_pl_mon_alltime[var]
+
+'''
+# endregion
+
+
 
