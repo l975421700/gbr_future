@@ -30,7 +30,7 @@ from calculations import (
 
 # region get BARRA-C2 mon data
 
-for var in ['pr']:
+for var in ['evspsblpot', 'hurs', 'huss', 'uas', 'vas']:
     # var = 'clh'
     # 'pr', 'clh', 'clm', 'cll', 'clt', 'evspsbl', 'hfls', 'hfss', 'psl', 'rlds', 'rldscs', 'rlus', 'rluscs', 'rlut', 'rlutcs', 'rsds', 'rsdscs', 'rsdt', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'sfcWind', 'tas', 'ts',
     print(var)
@@ -165,4 +165,6 @@ for icol in data_catalog.df.columns:
 
 '''
 # endregion
+
+
 

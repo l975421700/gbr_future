@@ -1,5 +1,8 @@
 
 
+# qsub -I -q normal -l walltime=4:00:00,ncpus=1,mem=192GB,storage=gdata/v46+gdata/ob53
+
+
 # region import packages
 
 # data analysis
@@ -25,51 +28,75 @@ from calculations import (
 # endregion
 
 
-# region get BARRA-C2 mon pl data
+# region get BARRA-C2 mon data
 
-for var in ['zg']:
-    # var = 'ta'
+for var in ['vas']:
+    # var = 'clh'
+    # 'pr', 'clh', 'clm', 'cll', 'clt', 'evspsbl', 'hfls', 'hfss', 'psl', 'rlds', 'rldscs', 'rlus', 'rluscs', 'rlut', 'rlutcs', 'rsds', 'rsdscs', 'rsdt', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'sfcWind', 'tas', 'ts',
     print(var)
     
-    fl = sorted([
-        file for iyear in np.arange(1979, 2024, 1)
-        for file in glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/mon/{var}[0-9]*[!m]/latest/*BARRA-C2_v1_mon_{iyear}*')])
+    fl = sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/mon/{var}/latest/*'))[:540]
     
-    def std_func(ds, var=var):
-        ds = ds.expand_dims(dim='pressure', axis=1)
-        varname = [varname for varname in ds.data_vars if varname.startswith(var)][0]
-        ds = ds.rename({varname: var})
-        return(ds)
+    barra_c2_mon = xr.open_mfdataset(fl)
+    barra_c2_mon_alltime = mon_sea_ann(
+        var_monthly=barra_c2_mon[var], lcopy=False, mm=True, sm=True, am=True,)
     
-    barra_c2_pl_mon = xr.open_mfdataset(fl, parallel=True, preprocess=std_func)
-    barra_c2_pl_mon_alltime = mon_sea_ann(
-        var_monthly=barra_c2_pl_mon[var], lcopy=False,mm=True,sm=True,am=True)
+    with open(f'data/sim/um/barra_c2/barra_c2_mon_alltime_{var}.pkl','wb') as f:
+        pickle.dump(barra_c2_mon_alltime, f)
     
-    with open(f'data/sim/um/barra_c2/barra_c2_pl_mon_alltime_{var}.pkl','wb') as f:
-        pickle.dump(barra_c2_pl_mon_alltime, f)
-    
-    del barra_c2_pl_mon, barra_c2_pl_mon_alltime
-
-
-
+    del barra_c2_mon, barra_c2_mon_alltime
 
 
 '''
-aaa = xr.open_dataset(fl[0])
-aaa.expand_dims(dim='pressure', axis=1)
-aaa['ta10'].expand_dims(dim='pressure', axis=1)
+# check
+barra_c2_mon_alltime = {}
+for var in ['pr', 'clh', 'clm', 'cll', 'clt', 'evspsbl', 'hfls', 'hfss', 'psl', 'rlds', 'rldscs', 'rlus', 'rluscs', 'rlut', 'rlutcs', 'rsds', 'rsdscs', 'rsdt', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'sfcWind', 'tas', 'ts',]:
+    print(var)
+    
+    with open(f'data/sim/um/barra_c2/barra_c2_mon_alltime_{var}.pkl','rb') as f:
+        barra_c2_mon_alltime[var] = pickle.load(f)
+    
+    print(barra_c2_mon_alltime[var]['mon'].shape)
+    del barra_c2_mon_alltime[var]
 
-bbb = xr.open_dataset(fl[-1])
-bbb.expand_dims(dim='pressure', axis=1)
 
 
-import intake
-data_catalog = intake.open_esm_datastore("/g/data/dk92/catalog/v2/esm/barra2-ob53/catalog.json")
 
-for icol in data_catalog.df.columns:
-    print(f'#-------------------------------- {icol}')
-    print(data_catalog.df[icol].unique())
+Precipitation: pr
+High Level Cloud Fraction: clh
+Mid Level Cloud Fraction: clm
+Low Level Cloud Fraction: cll
+Total Cloud Cover Percentage: clt
+Evaporation Including Sublimation and Transpiration: evspsbl
+Surface Upward Latent Heat Flux: hfls
+Surface Upward Sensible Heat Flux: hfss
+
+sea level pressure: psl
+Surface downwelling LW radiation: rlds
+Surface Downwelling Clear-Sky Longwave Radiation: rldscs
+Surface Upwelling Longwave Radiation: rlus
+Surface Upwelling Clear-Sky Longwave Radiation: rluscs
+TOA Outgoing Longwave Radiation: rlut
+TOA Outgoing Clear-Sky Longwave Radiation: rlutcs
+
+Surface downwelling SW radiation: rsds
+Surface Downwelling Clear-Sky Shortwave Radiation: rsdscs
+TOA Incident Shortwave Radiation: rsdt
+Surface Upwelling Shortwave Radiation: rsus
+Surface Upwelling Clear-Sky Shortwave Radiation: rsuscs
+TOA Outgoing Shortwave Radiation: rsut
+TOA Outgoing Clear-Sky Shortwave Radiation: rsutcs
+near surface wind speed: sfcWind
+Near surface air temperature: tas
+Surface temperature: ts
+
+
+
+???
+Ice Water Path: clivi
+Condensed Water Path: clwvi
 
 '''
 # endregion
+
 

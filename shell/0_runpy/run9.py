@@ -30,7 +30,7 @@ from calculations import (
 
 # region get BARRA-C2 mon data
 
-for var in ['hurs']:
+for var in ['huss']:
     # var = 'clh'
     # 'pr', 'clh', 'clm', 'cll', 'clt', 'evspsbl', 'hfls', 'hfss', 'psl', 'rlds', 'rldscs', 'rlus', 'rluscs', 'rlut', 'rlutcs', 'rsds', 'rsdscs', 'rsdt', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'sfcWind', 'tas', 'ts',
     print(var)
