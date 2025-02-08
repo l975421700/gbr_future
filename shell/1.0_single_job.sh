@@ -4,7 +4,7 @@
 #PBS -l mem=192GB
 #PBS -l ncpus=1
 #PBS -j oe
-#PBS -l storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53
+#PBS -l storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38
 #PBS -P v46
 #PBS -r y
 
@@ -12,7 +12,7 @@
 
 cd $HOME
 source ${HOME}/miniconda3/bin/activate rcm_gbr
-python ${HOME}/code/gbr_future/python/0_preparation/z_runscripts.py
+python ${HOME}/code/gbr_future/shell/0_runpy/run1.py
 
 
 # #PBS -J 1-10

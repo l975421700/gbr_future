@@ -1,5 +1,5 @@
 
-for idx in $(seq 1 9); do
+for idx in $(seq 1 4); do
     qsub -v idx=$idx <<EOF
 #PBS -N qjob$idx
 #PBS -q normal

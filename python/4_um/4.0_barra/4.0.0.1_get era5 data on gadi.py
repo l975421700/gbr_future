@@ -20,6 +20,7 @@ import sys  # print(sys.path)
 sys.path.append(os.getcwd() + '/code/gbr_future/module')
 import glob
 import pickle
+import datetime
 
 from calculations import (
     mon_sea_ann,
@@ -30,10 +31,8 @@ from calculations import (
 
 # region get era5 sl mon data
 
-for var in ['10u', '10v', '100u', '100v']:
-    # var = '2d'
-    # 'tp', 'msl', 'sst', 'hcc', 'mcc', 'lcc', 'tcc', '2t', 'wind', 'slhf', 'msnlwrf', 'msnswrf', 'sshf', 'mtdwswrf', 'mtnlwrf', 'mtnswrf', 'msdwlwrf', 'msdwswrf', 'msdwlwrfcs', 'msdwswrfcs', 'msnlwrfcs', 'msnswrfcs', 'mtnlwrfcs', 'mtnswrfcs', 'cbh', 'tciw', 'tclw', 'e', 'z', 'mslhf', 'msshf', 'tcw', 'tcwv', 'tcsw', 'tcrw', 'tcslw',
-    # '10si', '2d', 'cp', 'lsp', 'deg0l', 'mper', 'pev', 'skt'
+for var in ['tp']:
+    # var = 'tp'
     print(var)
     
     fl = sorted([
@@ -45,6 +44,10 @@ for var in ['10u', '10v', '100u', '100v']:
     if var == '2t': var='t2m'
     if var == '10si': var='si10'
     if var == '2d': var='d2m'
+    if var == '10u': var='u10'
+    if var == '10v': var='v10'
+    if var == '100u': var='u100'
+    if var == '100v': var='v100'
     era5_sl_mon_alltime = mon_sea_ann(
         var_monthly=era5_sl_mon[var], lcopy=False, mm=True, sm=True, am=True,)
     
@@ -59,7 +62,8 @@ for var in ['10u', '10v', '100u', '100v']:
 # check
 
 era5_sl_mon_alltime = {}
-for var in ['tp', 'msl', 'sst', 'hcc', 'mcc', 'lcc', 'tcc', 't2m', 'wind', 'slhf', 'msnlwrf', 'msnswrf', 'sshf', 'mtdwswrf', 'mtnlwrf', 'mtnswrf', 'msdwlwrf', 'msdwswrf', 'msdwlwrfcs', 'msdwswrfcs', 'msnlwrfcs', 'msnswrfcs', 'mtnlwrfcs', 'mtnswrfcs', 'cbh', 'tciw', 'tclw', 'e', 'z', 'mslhf', 'msshf', 'tcw', 'tcwv', 'tcsw', 'tcrw', 'tcslw', ]:
+for var in ['si10', 'd2m', 'cp', 'lsp', 'deg0l', 'mper', 'pev', 'skt', 'u10', 'v10', 'u100', 'v100']:
+    # 'tp', 'msl', 'sst', 'hcc', 'mcc', 'lcc', 'tcc', 't2m', 'wind', 'slhf', 'msnlwrf', 'msnswrf', 'sshf', 'mtdwswrf', 'mtnlwrf', 'mtnswrf', 'msdwlwrf', 'msdwswrf', 'msdwlwrfcs', 'msdwswrfcs', 'msnlwrfcs', 'msnswrfcs', 'mtnlwrfcs', 'mtnswrfcs', 'cbh', 'tciw', 'tclw', 'e', 'z', 'mslhf', 'msshf', 'tcw', 'tcwv', 'tcsw', 'tcrw', 'tcslw'
     print(var)
     with open(f'data/obs/era5/mon/era5_sl_mon_alltime_{var}.pkl', 'rb') as f:
         era5_sl_mon_alltime[var] = pickle.load(f)
@@ -135,6 +139,72 @@ for var in ['pv', 'q', 'r', 't', 'u', 'v', 'w', 'z']:
     
     print(era5_pl_mon_alltime[var]['mon'])
     del era5_pl_mon_alltime[var]
+
+'''
+# endregion
+
+
+
+
+# region derive era5 sl mon data
+
+
+era5_sl_mon_alltime = {}
+for var1, var2, var3 in zip(['msuwlwrf'], ['msnlwrf'], ['msdwlwrf']):
+    # ['mtnlwrfcl', 'mtnswrfcl', 'mtuwswrfcl'], ['mtnlwrf', 'mtnswrf', 'mtuwswrf'], ['mtnlwrfcs', 'mtnswrfcs', 'mtuwswrfcs']
+    # ['mtuwswrfcs'], ['mtnswrfcs'], ['mtdwswrf']
+    # ['mtuwswrf'], ['mtnswrf'], ['mtdwswrf']
+    # ['msnlwrfcl', 'msnswrfcl', 'msdwlwrfcl', 'msdwswrfcl', 'msuwlwrfcl', 'msuwswrfcl'], ['msnlwrf', 'msnswrf', 'msdwlwrf', 'msdwswrf', 'msuwlwrf', 'msuwswrf'], ['msnlwrfcs', 'msnswrfcs', 'msdwlwrfcs', 'msdwswrfcs', 'msuwlwrfcs', 'msuwswrfcs']
+    # ['msuwswrfcs'], ['msnswrfcs'], ['msdwswrfcs']
+    # ['msuwlwrfcs'], ['msnlwrfcs'], ['msdwlwrfcs']
+    # ['msuwswrf'], ['msnswrf'], ['msdwswrf']
+    # ['msuwlwrf'], ['msnlwrf'], ['msdwlwrf']
+    print(f'Derive {var1} from {var2} and {var3}')
+    print(str(datetime.datetime.now())[11:19])
+    
+    with open(f'data/obs/era5/mon/era5_sl_mon_alltime_{var2}.pkl', 'rb') as f:
+        era5_sl_mon_alltime[var2] = pickle.load(f)
+    with open(f'data/obs/era5/mon/era5_sl_mon_alltime_{var3}.pkl', 'rb') as f:
+        era5_sl_mon_alltime[var3] = pickle.load(f)
+    
+    if var1 in ['msuwlwrf', 'msuwswrf', 'msuwlwrfcs', 'msuwswrfcs', 'msnlwrfcl', 'msnswrfcl', 'msdwlwrfcl', 'msdwswrfcl', 'msuwlwrfcl', 'msuwswrfcl', 'mtuwswrf', 'mtuwswrfcs', 'mtnlwrfcl', 'mtnswrfcl', 'mtuwswrfcl']:
+        print('var2 - var3')
+        era5_sl_mon = (era5_sl_mon_alltime[var2]['mon'] - era5_sl_mon_alltime[var3]['mon']).rename(var1)
+    
+    era5_sl_mon_alltime[var1] = mon_sea_ann(
+        var_monthly=era5_sl_mon, lcopy=False, mm=True, sm=True, am=True)
+    
+    with open(f'data/obs/era5/mon/era5_sl_mon_alltime_{var1}.pkl', 'wb') as f:
+        pickle.dump(era5_sl_mon_alltime[var1], f)
+    
+    del era5_sl_mon_alltime[var2], era5_sl_mon_alltime[var3], era5_sl_mon_alltime[var1], era5_sl_mon
+    print(str(datetime.datetime.now())[11:19])
+
+
+'''
+# check
+era5_sl_mon_alltime = {}
+for var in ['msuwlwrf', 'msuwswrf', 'msuwlwrfcs', 'msuwswrfcs',
+            'msnlwrfcl', 'msnswrfcl', 'msdwlwrfcl', 'msdwswrfcl', 'msuwlwrfcl', 'msuwswrfcl',
+            'mtuwswrf',
+            'mtuwswrfcs',
+            'mtnlwrfcl', 'mtnswrfcl', 'mtuwswrfcl']:
+    print(var)
+    with open(f'data/obs/era5/mon/era5_sl_mon_alltime_{var}.pkl', 'rb') as f:
+        era5_sl_mon_alltime[var] = pickle.load(f)
+    
+    print(era5_sl_mon_alltime[var]['mon'].shape)
+    del era5_sl_mon_alltime[var]
+
+
+# check
+era5_sl_mon_alltime = {}
+with open(f'data/obs/era5/mon/era5_sl_mon_alltime_mtuwswrfcl.pkl', 'rb') as f:
+    era5_sl_mon_alltime['mtuwswrfcl'] = pickle.load(f)
+with open(f'data/obs/era5/mon/era5_sl_mon_alltime_mtnswrfcl.pkl', 'rb') as f:
+    era5_sl_mon_alltime['mtnswrfcl'] = pickle.load(f)
+
+np.max(np.abs(era5_sl_mon_alltime['mtuwswrfcl']['am'].values - era5_sl_mon_alltime['mtnswrfcl']['am'].values))
 
 '''
 # endregion

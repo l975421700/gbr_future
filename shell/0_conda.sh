@@ -55,6 +55,7 @@ mamba install ipykernel -y
 mamba install ipywidgets -y
 mamba install wget -y
 mamba install ncview -y
+mamba install xmip -y
 
 pip install SkillMetrics
 pip install igra

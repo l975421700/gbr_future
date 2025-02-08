@@ -20,7 +20,7 @@ import sys  # print(sys.path)
 sys.path.append(os.getcwd() + '/code/gbr_future/module')
 import glob
 import pickle
-
+import datetime
 from calculations import (
     mon_sea_ann,
     )
@@ -30,9 +30,8 @@ from calculations import (
 
 # region get BARRA-C2 mon data
 
-for var in ['evspsblpot', 'hurs', 'huss', 'uas', 'vas']:
+for var in ['pr']:
     # var = 'clh'
-    # 'pr', 'clh', 'clm', 'cll', 'clt', 'evspsbl', 'hfls', 'hfss', 'psl', 'rlds', 'rldscs', 'rlus', 'rluscs', 'rlut', 'rlutcs', 'rsds', 'rsdscs', 'rsdt', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'sfcWind', 'tas', 'ts',
     print(var)
     
     fl = sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/mon/{var}/latest/*'))[:540]
@@ -50,7 +49,8 @@ for var in ['evspsblpot', 'hurs', 'huss', 'uas', 'vas']:
 '''
 # check
 barra_c2_mon_alltime = {}
-for var in ['pr', 'clh', 'clm', 'cll', 'clt', 'evspsbl', 'hfls', 'hfss', 'psl', 'rlds', 'rldscs', 'rlus', 'rluscs', 'rlut', 'rlutcs', 'rsds', 'rsdscs', 'rsdt', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'sfcWind', 'tas', 'ts',]:
+for var in ['evspsblpot', 'hurs', 'huss', 'uas', 'vas']:
+    # 'pr', 'clh', 'clm', 'cll', 'clt', 'evspsbl', 'hfls', 'hfss', 'psl', 'rlds', 'rldscs', 'rlus', 'rluscs', 'rlut', 'rlutcs', 'rsds', 'rsdscs', 'rsdt', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'sfcWind', 'tas', 'ts'
     print(var)
     
     with open(f'data/sim/um/barra_c2/barra_c2_mon_alltime_{var}.pkl','rb') as f:
@@ -166,5 +166,71 @@ for icol in data_catalog.df.columns:
 '''
 # endregion
 
+
+# region derive BARRA-C2 mon data
+
+
+barra_c2_mon_alltime = {}
+for var1, var2, var3 in zip(['rlutcl', 'rsntcl', 'rsutcl'], ['rlut', 'rsnt', 'rsut'], ['rlutcs', 'rsntcs', 'rsutcs']):
+    # ['rsntcs'], ['rsdt'], ['rsutcs']
+    # ['rsnt'], ['rsdt'], ['rsut']
+    # ['rluscl', 'rsuscl'], ['rlus', 'rsus'], ['rluscs', 'rsuscs']
+    # ['rlnscl', 'rsnscl', 'rldscl', 'rsdscl'], ['rlns', 'rsns', 'rlds', 'rsds'], ['rlnscs', 'rsnscs', 'rldscs', 'rsdscs']
+    # ['rlnscs', 'rsnscs'], ['rldscs', 'rsdscs'], ['rluscs', 'rsuscs']
+    # ['rsns'], ['rsds'], ['rsus']
+    # ['rlns'], ['rlds'], ['rlus']
+    print(f'Derive {var1} from {var2} and {var3}')
+    print(str(datetime.datetime.now())[11:19])
+    
+    with open(f'data/sim/um/barra_c2/barra_c2_mon_alltime_{var2}.pkl','rb') as f:
+        barra_c2_mon_alltime[var2] = pickle.load(f)
+    with open(f'data/sim/um/barra_c2/barra_c2_mon_alltime_{var3}.pkl','rb') as f:
+        barra_c2_mon_alltime[var3] = pickle.load(f)
+    
+    if var1 in ['rlns', 'rsns', 'rlnscs', 'rsnscs', 'rlnscl', 'rsnscl', 'rldscl', 'rsdscl', 'rluscl', 'rsuscl', 'rsnt', 'rsntcs', 'rlutcl', 'rsntcl', 'rsutcl']:
+        print('var2 - var3')
+        barra_c2_mon = (barra_c2_mon_alltime[var2]['mon'] - barra_c2_mon_alltime[var3]['mon']).rename(var1)
+    
+    barra_c2_mon_alltime[var1] = mon_sea_ann(
+        var_monthly=barra_c2_mon, lcopy=False, mm=True, sm=True, am=True,)
+    
+    with open(f'data/sim/um/barra_c2/barra_c2_mon_alltime_{var1}.pkl','wb') as f:
+        pickle.dump(barra_c2_mon_alltime[var1], f)
+    
+    del barra_c2_mon_alltime[var2], barra_c2_mon_alltime[var3], barra_c2_mon_alltime[var1], barra_c2_mon
+    print(str(datetime.datetime.now())[11:19])
+
+
+
+
+'''
+# check
+barra_c2_mon_alltime = {}
+for var in ['rlns', 'rsns', 'rlnscs', 'rsnscs',
+            'rlnscl', 'rsnscl', 'rldscl', 'rsdscl', 'rluscl', 'rsuscl',
+            'rsnt',
+            'rsntcs',
+            'rlutcl', 'rsntcl', 'rsutcl']:
+    print(var)
+    
+    with open(f'data/sim/um/barra_c2/barra_c2_mon_alltime_{var}.pkl','rb') as f:
+        barra_c2_mon_alltime[var] = pickle.load(f)
+    
+    print(barra_c2_mon_alltime[var]['mon'].shape)
+    del barra_c2_mon_alltime[var]
+
+# check
+barra_c2_mon_alltime = {}
+with open(f'data/sim/um/barra_c2/barra_c2_mon_alltime_rsntcl.pkl','rb') as f:
+    barra_c2_mon_alltime['rsntcl'] = pickle.load(f)
+with open(f'data/sim/um/barra_c2/barra_c2_mon_alltime_rsutcl.pkl','rb') as f:
+    barra_c2_mon_alltime['rsutcl'] = pickle.load(f)
+
+print(np.max(np.abs(barra_c2_mon_alltime['rsntcl']['am'].values + barra_c2_mon_alltime['rsutcl']['am'].values)))
+
+del barra_c2_mon_alltime['rsntcl'], barra_c2_mon_alltime['rsutcl']
+
+'''
+# endregion
 
 

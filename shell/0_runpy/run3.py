@@ -45,6 +45,10 @@ for var in ['100u']:
     if var == '2t': var='t2m'
     if var == '10si': var='si10'
     if var == '2d': var='d2m'
+    if var == '10u': var='u10'
+    if var == '10v': var='v10'
+    if var == '100u': var='u100'
+    if var == '100v': var='v100'
     era5_sl_mon_alltime = mon_sea_ann(
         var_monthly=era5_sl_mon[var], lcopy=False, mm=True, sm=True, am=True,)
     
