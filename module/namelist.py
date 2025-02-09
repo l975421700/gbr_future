@@ -60,4 +60,15 @@ panel_labels = ['(a)', '(b)', '(c)', '(d)', '(e)', '(f)', '(g)',
 # endregion
 
 
+# region cmip6_units
 
+cmip6_units = {
+    'tas': 'K',
+    'rsut': 'W m-2',
+    'rsdt': 'W m-2',
+    'rlut': 'W m-2',
+    'pr': 'kg m-2 s-1',
+    'tos': 'degC',
+}
+
+# endregion

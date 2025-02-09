@@ -19,7 +19,7 @@ def mon_sea_ann(
     var_daily = None, var_monthly = None, var_6hourly = None,
     lcopy = True, seasons = 'QE-FEB',
     mm=False, sm=False, am=False, mon_no_mm=False, ann_no_am=False,
-    lsea_cpt=True, lann_cpt=True
+    lsea_cpt=True, lann_cpt=True, lfloat32=True,
     ):
     '''
     #---- Input
@@ -84,6 +84,10 @@ def mon_sea_ann(
     
     if ann_no_am:
         var_alltime['ann no am'] = (var_alltime['ann'] - var_alltime['am']).compute()
+    
+    if lfloat32:
+        for key in var_alltime.keys():
+            var_alltime[key] = var_alltime[key].astype('float32')
     
     return(var_alltime)
 

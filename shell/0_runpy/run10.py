@@ -48,7 +48,7 @@ cmip6_data = {}
 cmip6_data_alltime = {}
 cmip6_data_regridded_alltime = {}
 
-for experiment_id in ['piControl']:
+for experiment_id in ['ssp585']:
     # experiment_id = 'piControl'
     # ['piControl', 'abrupt-4xCO2', 'historical', 'amip', 'ssp585']
     print(f'#-------------------------------- {experiment_id}')
@@ -56,7 +56,7 @@ for experiment_id in ['piControl']:
     cmip6_data_alltime[experiment_id] = {}
     cmip6_data_regridded_alltime[experiment_id] = {}
     
-    for table_id, variable_id in zip(['Amon', 'Amon', 'Amon'], ['tas', 'rsut', 'rsdt']):
+    for table_id, variable_id in zip(['Amon', 'Amon', 'Omon'], ['rlut', 'pr', 'tos']):
         # table_id = 'Amon'; variable_id = 'tas'
         # ['Amon'], ['tas']
         # ['Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Omon'], ['tas', 'rsut', 'rsdt', 'rlut', 'pr', 'tos']
