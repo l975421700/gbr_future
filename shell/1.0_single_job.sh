@@ -1,7 +1,8 @@
 #PBS -N single_job
-#PBS -q normal
-#PBS -l walltime=10:00:00
-#PBS -l mem=192GB
+#PBS -q hugemem
+#PBS -l walltime=3:00:00
+#PBS -l mem=500GB
+#PBS -l jobfs=60GB
 #PBS -l ncpus=1
 #PBS -j oe
 #PBS -l storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38
@@ -12,7 +13,7 @@
 
 cd $HOME
 source ${HOME}/miniconda3/bin/activate rcm_gbr
-python ${HOME}/code/gbr_future/shell/0_runpy/run1.py
+python ${HOME}/code/gbr_future/shell/0_runpy/run10.py
 
 
 # #PBS -J 1-10
@@ -25,3 +26,4 @@ python ${HOME}/code/gbr_future/shell/0_runpy/run1.py
 # delete all jobs: qstat | awk 'NR > 2 {print $1}' | xargs qdel
 # check project quota: lquota
 # #PBS -l jobfs=4GB
+# https://opus.nci.org.au/spaces/Help/pages/236881198/Queue+Limits...
