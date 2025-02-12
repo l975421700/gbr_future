@@ -89,41 +89,38 @@ from calculations import (
 
 # region import data
 
-cmip6_data_regridded_alltime_ens = {}
 
+cmip6_data_regridded_alltime_ens_gzm = {}
 for experiment_id in ['piControl', 'abrupt-4xCO2']:
-    # experiment_id = 'piControl'
-    # ['piControl', 'abrupt-4xCO2', 'historical', 'amip', 'ssp585']
     print(f'#-------------------------------- {experiment_id}')
-    cmip6_data_regridded_alltime_ens[experiment_id] = {}
-    
+    cmip6_data_regridded_alltime_ens_gzm[experiment_id] = {}
     for table_id, variable_id in zip(['Amon', 'Amon', 'Amon', 'Amon'], ['tas', 'rsut', 'rsdt', 'rlut']):
-        # table_id = 'Amon'; variable_id = 'tas'
-        # ['Amon'], ['tas']
-        # ['Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Omon'], ['tas', 'rsut', 'rsdt', 'rlut', 'pr', 'tos']
         print(f'#---------------- {table_id} {variable_id}')
-        if not table_id in cmip6_data_regridded_alltime_ens[experiment_id].keys():
-            cmip6_data_regridded_alltime_ens[experiment_id][table_id] = {}
+        if not table_id in cmip6_data_regridded_alltime_ens_gzm[experiment_id].keys():
+            cmip6_data_regridded_alltime_ens_gzm[experiment_id][table_id] = {}
         
-        ifile = f'/home/563/qg8515/scratch/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}_regridded_alltime_ens.pkl'
-        # print(ifile)
-        # print(f'{np.round(os.path.getsize(ifile) / 2**30, 2)} GB')
-        with open(ifile, 'rb') as f:
-            cmip6_data_regridded_alltime_ens[experiment_id][table_id][variable_id] = pickle.load(f)
-        print(process.memory_info().rss / 2**30)
-        
-        del cmip6_data_regridded_alltime_ens[experiment_id][table_id][variable_id]['mon']
-        del cmip6_data_regridded_alltime_ens[experiment_id][table_id][variable_id]['mm']
-        print(process.memory_info().rss / 2**30)
+        with open(f'/home/563/qg8515/scratch/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}_regridded_alltime_ens_gzm.pkl', 'rb') as f:
+            cmip6_data_regridded_alltime_ens_gzm[experiment_id][table_id][variable_id] = pickle.load(f)
 
-
-
+with open('/home/563/qg8515/scratch/data/sim/cmip6/cmip6_ids.pkl', 'rb') as f:
+    cmip6_ids = pickle.load(f)
+source_ids = list(cmip6_ids.keys())
+for experiment_id in ['piControl', 'abrupt-4xCO2']:
+    for table_id, variable_id in zip(['Amon', 'Amon', 'Amon', 'Amon'], ['tas', 'rsut', 'rsdt', 'rlut']):
+        source_ids = sorted(set(source_ids) & set(list(cmip6_data_regridded_alltime_ens_gzm[experiment_id][table_id][variable_id]['ann']['gm']['source_id'].values.astype('object'))))
+        # print(len(source_ids))
 
 
 '''
-        for source_id in cmip6_data_regridded_alltime[experiment_id][table_id][variable_id].keys():
-            del cmip6_data_regridded_alltime[experiment_id][table_id][variable_id][source_id]['mon']
-        print(process.memory_info().rss / 2**30)
+
+for experiment_id in ['piControl', 'abrupt-4xCO2']:
+    print(f'#-------------------------------- {experiment_id}')
+    for table_id, variable_id in zip(['Amon', 'Amon', 'Amon', 'Amon'], ['tas', 'rsut', 'rsdt', 'rlut']):
+        print(f'#---------------- {table_id} {variable_id}')
+        for ialltime in cmip6_data_regridded_alltime_ens_gzm[experiment_id][table_id][variable_id].keys():
+            print(f'#-------- {ialltime}')
+            print(cmip6_data_regridded_alltime_ens_gzm[experiment_id][table_id][variable_id][ialltime]['zm'].shape)
+            print(cmip6_data_regridded_alltime_ens_gzm[experiment_id][table_id][variable_id][ialltime]['gm'].shape)
 
 
 for experiment_id in ['piControl', 'abrupt-4xCO2']:
@@ -133,30 +130,38 @@ for experiment_id in ['piControl', 'abrupt-4xCO2']:
         for source_id in cmip6_data_regridded_alltime[experiment_id][table_id][variable_id].keys():
             print(f'#-------- {source_id}')
             print(cmip6_data_regridded_alltime[experiment_id][table_id][variable_id][source_id]['am'].shape)
-for experiment_id in ['piControl', 'abrupt-4xCO2']:
-    print(f'#-------------------------------- {experiment_id}')
-    for table_id, variable_id in zip(['Amon', 'Amon', 'Amon', 'Amon'], ['tas', 'rsut', 'rsdt', 'rlut']):
-        print(f'#---------------- {table_id} {variable_id}')
-        for source_id in cmip6_data_regridded_alltime[experiment_id][table_id][variable_id].keys():
-            print(f'#-------- {source_id}')
-            if (cmip6_data_regridded_alltime[experiment_id][table_id][variable_id][source_id]['ann'].shape!= (150, 180, 360)):
-                print(cmip6_data_regridded_alltime[experiment_id][table_id][variable_id][source_id]['ann'].shape)
+
 '''
 # endregion
 
 
 # region calculate ECS
 
-for experiment_id in ['piControl', 'abrupt-4xCO2']:
-    print(f'#-------------------------------- {experiment_id}')
-    for table_id, variable_id in zip(['Amon', 'Amon', 'Amon', 'Amon'], ['tas', 'rsut', 'rsdt', 'rlut']):
-        print(f'#---------------- {table_id} {variable_id}')
-        for ialltime in cmip6_data_regridded_alltime_ens[experiment_id][table_id][variable_id].keys():
-            print(f'#-------- {ialltime}')
-            print(cmip6_data_regridded_alltime_ens[experiment_id][table_id][variable_id][ialltime].shape)
+expts = ['piControl', 'abrupt-4xCO2']
+expt_da = xr.DataArray(expts, dims='experiment_id', coords={'experiment_id': expts})
+
+dataset = xr.Dataset(data_vars={
+    variable_id: xr.concat([
+        cmip6_data_regridded_alltime_ens_gzm[experiment_id]['Amon'][variable_id]['ann']['gm'].sel(source_id = source_ids)
+        for experiment_id in ['piControl', 'abrupt-4xCO2']], dim=expt_da, coords='minimal', compat='override')
+    for variable_id in ['tas', 'rsut', 'rsdt', 'rlut']
+})
 
 
+dataset['imbalance'] = dataset['rsdt'] + dataset['rsut'] + dataset['rlut']
+ds_mean = dataset[['tas', 'imbalance']].sel(experiment_id='piControl').mean(dim='time')
+ds_anom = dataset[['tas', 'imbalance']] - ds_mean
 
+ds_abrupt = ds_anom.sel(experiment_id='abrupt-4xCO2').reset_coords(drop=True)
+
+def calc_ecs(tas, imb):
+    a, b = np.polyfit(tas, imb, 1)
+    ecs = -0.5 * (b/a)
+    return xr.DataArray(ecs)
+
+ds_abrupt['ecs'] = xr.apply_ufunc(calc_ecs, ds_abrupt.tas, ds_abrupt.imbalance, vectorize=True, input_core_dims=[['time'], ['time']])
+
+stats.describe(ds_abrupt['ecs'])
 
 
 '''
