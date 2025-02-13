@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -l walltime=4:00:00,ncpus=1,mem=192GB,storage=gdata/v46+gdata/ob53
+# qsub -I -q normal -l walltime=4:00:00,ncpus=1,mem=96GB,storage=gdata/v46+gdata/ob53
 
 
 # region import packages
@@ -10,9 +10,9 @@ import numpy as np
 import xarray as xr
 import dask
 dask.config.set({"array.slicing.split_large_chunks": True})
-from dask.diagnostics import ProgressBar
-pbar = ProgressBar()
-pbar.register()
+# from dask.diagnostics import ProgressBar
+# pbar = ProgressBar()
+# pbar.register()
 
 # management
 import os
@@ -25,38 +25,70 @@ from calculations import (
     mon_sea_ann,
     )
 
+from namelist import cmip6_units, zerok, seconds_per_d
+
 # endregion
 
 
 # region get BARRA-C2 mon data
 
-for var in ['pr']:
-    # var = 'clh'
+for var in ['pr', 'evspsbl', 'evspsblpot', 'tas', 'ts', 'rlus', 'rluscs', 'rlut', 'rlutcs', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'hfls', 'hfss', 'psl', 'huss']:
+    # var = 'huss'
     print(var)
     
-    fl = sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/mon/{var}/latest/*'))[:540]
+    fl = sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/mon/{var}/latest/*')) #[:540]
     
-    barra_c2_mon = xr.open_mfdataset(fl)
+    barra_c2_mon = xr.open_mfdataset(fl)[var].sel(time=slice('1979', '2023'))
+    if var in ['pr', 'evspsbl', 'evspsblpot']:
+        barra_c2_mon = barra_c2_mon * seconds_per_d
+    elif var in ['tas', 'ts']:
+        barra_c2_mon = barra_c2_mon - zerok
+    elif var in ['rlus', 'rluscs', 'rlut', 'rlutcs', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'hfls', 'hfss']:
+        barra_c2_mon = barra_c2_mon * (-1)
+    elif var in ['psl']:
+        barra_c2_mon = barra_c2_mon / 100
+    elif var in ['huss']:
+        barra_c2_mon = barra_c2_mon * 1000
+    
     barra_c2_mon_alltime = mon_sea_ann(
-        var_monthly=barra_c2_mon[var], lcopy=False, mm=True, sm=True, am=True,)
+        var_monthly=barra_c2_mon, lcopy=False, mm=True, sm=True, am=True,)
     
-    with open(f'data/sim/um/barra_c2/barra_c2_mon_alltime_{var}.pkl','wb') as f:
+    ofile = f'data/sim/um/barra_c2/barra_c2_mon_alltime_{var}.pkl'
+    if os.path.exists(ofile): os.remove(ofile)
+    with open(ofile,'wb') as f:
         pickle.dump(barra_c2_mon_alltime, f)
     
     del barra_c2_mon, barra_c2_mon_alltime
 
 
 '''
-# check
+#-------------------------------- check
+ifile = -1
+
 barra_c2_mon_alltime = {}
-for var in ['evspsblpot', 'hurs', 'huss', 'uas', 'vas']:
-    # 'pr', 'clh', 'clm', 'cll', 'clt', 'evspsbl', 'hfls', 'hfss', 'psl', 'rlds', 'rldscs', 'rlus', 'rluscs', 'rlut', 'rlutcs', 'rsds', 'rsdscs', 'rsdt', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'sfcWind', 'tas', 'ts'
-    print(var)
+for var in ['pr', 'clh', 'clm', 'cll', 'clt', 'evspsbl', 'hfls', 'hfss', 'psl', 'rlds', 'rldscs', 'rlus', 'rluscs', 'rlut', 'rlutcs', 'rsds', 'rsdscs', 'rsdt', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'sfcWind', 'tas', 'ts', 'evspsblpot', 'hurs', 'huss', 'uas', 'vas']:
+    # var = 'evspsblpot'
+    print(f'#-------- {var}')
     
     with open(f'data/sim/um/barra_c2/barra_c2_mon_alltime_{var}.pkl','rb') as f:
         barra_c2_mon_alltime[var] = pickle.load(f)
     
-    print(barra_c2_mon_alltime[var]['mon'].shape)
+    fl = sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/mon/{var}/latest/*'))[:540]
+    
+    data1 = xr.open_dataset(fl[ifile])[var]
+    data2 = barra_c2_mon_alltime[var]['mon'][ifile]
+    if var in ['pr', 'evspsbl', 'evspsblpot']:
+        data1 = data1 * seconds_per_d
+    elif var in ['tas', 'ts']:
+        data1 = data1 - zerok
+    elif var in ['rlus', 'rluscs', 'rlut', 'rlutcs', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'hfls', 'hfss']:
+        data1 = data1 * (-1)
+    elif var in ['psl']:
+        data1 = data1 / 100
+    elif var in ['huss']:
+        data1 = data1 * 1000
+    
+    print((data1.squeeze().values.astype(np.float32)[np.isfinite(data1.squeeze().values.astype(np.float32))] == data2.values[np.isfinite(data2.values)]).all())
     del barra_c2_mon_alltime[var]
 
 
@@ -102,8 +134,9 @@ Condensed Water Path: clwvi
 
 # region get BARRA-C2 mon pl data
 
-for var in ['hus', 'ta', 'ua', 'va', 'wa', 'wap', 'zg']:
-    # var = 'ta'
+for var in ['hus', 'ta']:
+    # var = 'zg'
+    # ['hus', 'ta', 'ua', 'va', 'wa', 'wap', 'zg']
     print(var)
     
     fl = sorted([
@@ -116,11 +149,18 @@ for var in ['hus', 'ta', 'ua', 'va', 'wa', 'wap', 'zg']:
         ds = ds.rename({varname: var})
         return(ds)
     
-    barra_c2_pl_mon = xr.open_mfdataset(fl, parallel=True, preprocess=std_func)
-    barra_c2_pl_mon_alltime = mon_sea_ann(
-        var_monthly=barra_c2_pl_mon[var], lcopy=False,mm=True,sm=True,am=True)
+    barra_c2_pl_mon = xr.open_mfdataset(fl, parallel=True, preprocess=std_func)[var]
+    if var == 'hus':
+        barra_c2_pl_mon = barra_c2_pl_mon * 1000
+    elif var == 'ta':
+        barra_c2_pl_mon = barra_c2_pl_mon - zerok
     
-    with open(f'data/sim/um/barra_c2/barra_c2_pl_mon_alltime_{var}.pkl','wb') as f:
+    barra_c2_pl_mon_alltime = mon_sea_ann(
+        var_monthly=barra_c2_pl_mon, lcopy=False,mm=True,sm=True,am=True)
+    
+    ofile = f'data/sim/um/barra_c2/barra_c2_pl_mon_alltime_{var}.pkl'
+    if os.path.exists(ofile): os.remove(ofile)
+    with open(ofile,'wb') as f:
         pickle.dump(barra_c2_pl_mon_alltime, f)
     
     del barra_c2_pl_mon, barra_c2_pl_mon_alltime
@@ -130,21 +170,34 @@ for var in ['hus', 'ta', 'ua', 'va', 'wa', 'wap', 'zg']:
 
 
 '''
-# check
+#-------------------------------- check
+ipressure = 500
+itime = -1
+
 barra_c2_pl_mon_alltime = {}
 for var in ['hus', 'ta', 'ua', 'va', 'wa', 'wap', 'zg']:
-    # var = 'ta'
+    # var = 'hus'
     print(f'#-------------------------------- {var}')
     
     with open(f'data/sim/um/barra_c2/barra_c2_pl_mon_alltime_{var}.pkl','rb') as f:
         barra_c2_pl_mon_alltime[var] = pickle.load(f)
     
-    print(barra_c2_pl_mon_alltime[var]['mon'])
+    fl = sorted([
+        file for iyear in np.arange(1979, 2024, 1)
+        for file in glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/mon/{var}{str(ipressure)}/latest/*BARRA-C2_v1_mon_{iyear}*')])
     
+    ds = xr.open_dataset(fl[itime])[f'{var}{str(ipressure)}'].squeeze()
+    if var == 'hus':
+        ds = ds * 1000
+    elif var == 'ta':
+        ds = ds - zerok
+    
+    ds2 = barra_c2_pl_mon_alltime[var]['mon'][itime].sel(pressure=ipressure)
+    
+    print((ds.values[np.isfinite(ds.values)].astype(np.float32) == ds2.values[np.isfinite(ds2.values)]).all())
     del barra_c2_pl_mon_alltime[var]
 
 
-# 3 hours each
 
 
 aaa = xr.open_dataset(fl[0])
@@ -171,7 +224,8 @@ for icol in data_catalog.df.columns:
 
 
 barra_c2_mon_alltime = {}
-for var1, var2, var3 in zip(['rlutcl', 'rsntcl', 'rsutcl'], ['rlut', 'rsnt', 'rsut'], ['rlutcs', 'rsntcs', 'rsutcs']):
+for var1, var2, var3 in zip(['rluscl', 'rsuscl', 'rlutcl', 'rsutcl'], ['rlus', 'rsus', 'rlut', 'rsut'], ['rluscs', 'rsuscs', 'rlutcs', 'rsutcs']):
+    # ['rlutcl', 'rsntcl', 'rsutcl'], ['rlut', 'rsnt', 'rsut'], ['rlutcs', 'rsntcs', 'rsutcs']
     # ['rsntcs'], ['rsdt'], ['rsutcs']
     # ['rsnt'], ['rsdt'], ['rsut']
     # ['rluscl', 'rsuscl'], ['rlus', 'rsus'], ['rluscs', 'rsuscs']
@@ -187,14 +241,19 @@ for var1, var2, var3 in zip(['rlutcl', 'rsntcl', 'rsutcl'], ['rlut', 'rsnt', 'rs
     with open(f'data/sim/um/barra_c2/barra_c2_mon_alltime_{var3}.pkl','rb') as f:
         barra_c2_mon_alltime[var3] = pickle.load(f)
     
-    if var1 in ['rlns', 'rsns', 'rlnscs', 'rsnscs', 'rlnscl', 'rsnscl', 'rldscl', 'rsdscl', 'rluscl', 'rsuscl', 'rsnt', 'rsntcs', 'rlutcl', 'rsntcl', 'rsutcl']:
-        print('var2 - var3')
+    if var1 in ['rlnscl', 'rsnscl', 'rldscl', 'rsdscl', 'rluscl', 'rsuscl', 'rlutcl', 'rsntcl', 'rsutcl']:
+        # print('var2 - var3')
         barra_c2_mon = (barra_c2_mon_alltime[var2]['mon'] - barra_c2_mon_alltime[var3]['mon']).rename(var1)
+    elif var1 in ['rlns', 'rsns', 'rlnscs', 'rsnscs', 'rsnt', 'rsntcs']:
+        # print('var2 + var3')
+        barra_c2_mon = (barra_c2_mon_alltime[var2]['mon'] + barra_c2_mon_alltime[var3]['mon']).rename(var1)
     
     barra_c2_mon_alltime[var1] = mon_sea_ann(
         var_monthly=barra_c2_mon, lcopy=False, mm=True, sm=True, am=True,)
     
-    with open(f'data/sim/um/barra_c2/barra_c2_mon_alltime_{var1}.pkl','wb') as f:
+    ofile = f'data/sim/um/barra_c2/barra_c2_mon_alltime_{var1}.pkl'
+    if os.path.exists(ofile): os.remove(ofile)
+    with open(ofile,'wb') as f:
         pickle.dump(barra_c2_mon_alltime[var1], f)
     
     del barra_c2_mon_alltime[var2], barra_c2_mon_alltime[var3], barra_c2_mon_alltime[var1], barra_c2_mon
@@ -204,20 +263,41 @@ for var1, var2, var3 in zip(['rlutcl', 'rsntcl', 'rsutcl'], ['rlut', 'rsnt', 'rs
 
 
 '''
-# check
+
+#-------------------------------- check
+itime = -1
 barra_c2_mon_alltime = {}
-for var in ['rlns', 'rsns', 'rlnscs', 'rsnscs',
-            'rlnscl', 'rsnscl', 'rldscl', 'rsdscl', 'rluscl', 'rsuscl',
-            'rsnt',
-            'rsntcs',
-            'rlutcl', 'rsntcl', 'rsutcl']:
-    print(var)
+for var1, var2, var3 in zip(
+    ['rluscl', 'rsuscl', 'rlutcl', 'rsutcl'], ['rlus', 'rsus', 'rlut', 'rsut'], ['rluscs', 'rsuscs', 'rlutcs', 'rsutcs']):
+    # var1 = 'rluscl'; var2 = 'rlus'; var3 = 'rluscs'
+    # ['rlns',  'rsns',  'rlnscs', 'rsnscs',  'rlnscl', 'rsnscl', 'rldscl', 'rsdscl',  'rluscl', 'rsuscl',  'rsnt',  'rsntcs',  'rlutcl', 'rsntcl', 'rsutcl'],
+    # ['rlds',  'rsds',  'rldscs', 'rsdscs',  'rlns', 'rsns', 'rlds', 'rsds',  'rlus', 'rsus',  'rsdt',  'rsdt',  'rlut', 'rsnt', 'rsut'],
+    # ['rlus',  'rsus',  'rluscs', 'rsuscs',  'rlnscs', 'rsnscs', 'rldscs', 'rsdscs',  'rluscs', 'rsuscs',  'rsut',  'rsutcs',  'rlutcs', 'rsntcs', 'rsutcs']
+    print(f'Derive {var1} from {var2} and {var3}')
     
-    with open(f'data/sim/um/barra_c2/barra_c2_mon_alltime_{var}.pkl','rb') as f:
-        barra_c2_mon_alltime[var] = pickle.load(f)
+    with open(f'data/sim/um/barra_c2/barra_c2_mon_alltime_{var1}.pkl','rb') as f:
+        barra_c2_mon_alltime[var1] = pickle.load(f)
+    with open(f'data/sim/um/barra_c2/barra_c2_mon_alltime_{var2}.pkl','rb') as f:
+        barra_c2_mon_alltime[var2] = pickle.load(f)
+    with open(f'data/sim/um/barra_c2/barra_c2_mon_alltime_{var3}.pkl','rb') as f:
+        barra_c2_mon_alltime[var3] = pickle.load(f)
     
-    print(barra_c2_mon_alltime[var]['mon'].shape)
-    del barra_c2_mon_alltime[var]
+    data1 = barra_c2_mon_alltime[var1]['mon'][itime]
+    if var1 in ['rlnscl', 'rsnscl', 'rldscl', 'rsdscl', 'rluscl', 'rsuscl', 'rlutcl', 'rsntcl', 'rsutcl']:
+        # print('var2 - var3')
+        data2 = barra_c2_mon_alltime[var2]['mon'][itime] - barra_c2_mon_alltime[var3]['mon'][itime]
+    elif var1 in ['rlns', 'rsns', 'rlnscs', 'rsnscs', 'rsnt', 'rsntcs']:
+        # print('var2 + var3')
+        data2 = barra_c2_mon_alltime[var2]['mon'][itime] + barra_c2_mon_alltime[var3]['mon'][itime]
+    
+    print((data1.values[np.isfinite(data1.values)] == data2.values[np.isfinite(data2.values)]).all())
+    
+    del barra_c2_mon_alltime[var1], barra_c2_mon_alltime[var2], barra_c2_mon_alltime[var3]
+
+
+
+
+
 
 # check
 barra_c2_mon_alltime = {}

@@ -10,9 +10,9 @@ import numpy as np
 import xarray as xr
 import dask
 dask.config.set({"array.slicing.split_large_chunks": True})
-from dask.diagnostics import ProgressBar
-pbar = ProgressBar()
-pbar.register()
+# from dask.diagnostics import ProgressBar
+# pbar = ProgressBar()
+# pbar.register()
 
 # management
 import os
@@ -26,21 +26,21 @@ from calculations import (
     mon_sea_ann,
     )
 
+from namelist import cmip6_units, zerok, seconds_per_d
+
 # endregion
 
 
 # region get era5 sl mon data
 
-for var in ['tp']:
+for var in ['tciw', 'tclw', 'tcw', 'tcwv', 'tcsw', 'tcrw', 'tcslw']:
     # var = 'tp'
+    # 'tp', 'e', 'cp', 'lsp', 'pev', 'msl', 'sst', '2t', '2d', 'skt', 'hcc', 'mcc', 'lcc', 'tcc', 'z', 'mper',
     print(var)
     
     fl = sorted([
         file for iyear in np.arange(1979, 2024, 1)
         for file in glob.glob(f'/g/data/rt52/era5/single-levels/monthly-averaged/{var}/{iyear}/*.nc')])
-    
-    era5_sl_mon = xr.open_mfdataset(fl, parallel=True)
-    era5_sl_mon = era5_sl_mon.rename({'latitude': 'lat', 'longitude': 'lon'})
     if var == '2t': var='t2m'
     if var == '10si': var='si10'
     if var == '2d': var='d2m'
@@ -48,10 +48,27 @@ for var in ['tp']:
     if var == '10v': var='v10'
     if var == '100u': var='u100'
     if var == '100v': var='v100'
-    era5_sl_mon_alltime = mon_sea_ann(
-        var_monthly=era5_sl_mon[var], lcopy=False, mm=True, sm=True, am=True,)
+    era5_sl_mon = xr.open_mfdataset(fl, parallel=True).rename({'latitude': 'lat', 'longitude': 'lon'})[var]
     
-    with open(f'data/obs/era5/mon/era5_sl_mon_alltime_{var}.pkl', 'wb') as f:
+    if var in ['tp', 'e', 'cp', 'lsp', 'pev']:
+        era5_sl_mon = era5_sl_mon * 1000
+    elif var in ['msl']:
+        era5_sl_mon = era5_sl_mon / 100
+    elif var in ['sst', 't2m', 'd2m', 'skt']:
+        era5_sl_mon = era5_sl_mon - zerok
+    elif var in ['hcc', 'mcc', 'lcc', 'tcc']:
+        era5_sl_mon = era5_sl_mon * 100
+    elif var in ['z']:
+        era5_sl_mon = era5_sl_mon / 9.80665
+    elif var in ['mper']:
+        era5_sl_mon = era5_sl_mon * seconds_per_d
+    
+    era5_sl_mon_alltime = mon_sea_ann(
+        var_monthly=era5_sl_mon, lcopy=False, mm=True, sm=True, am=True,)
+    
+    ofile = f'data/obs/era5/mon/era5_sl_mon_alltime_{var}.pkl'
+    if os.path.exists(ofile): os.remove(ofile)
+    with open(ofile, 'wb') as f:
         pickle.dump(era5_sl_mon_alltime, f)
     
     del era5_sl_mon, era5_sl_mon_alltime
@@ -59,17 +76,50 @@ for var in ['tp']:
 
 
 '''
-# check
+#-------------------------------- check
 
+itime=-1
 era5_sl_mon_alltime = {}
-for var in ['si10', 'd2m', 'cp', 'lsp', 'deg0l', 'mper', 'pev', 'skt', 'u10', 'v10', 'u100', 'v100']:
-    # 'tp', 'msl', 'sst', 'hcc', 'mcc', 'lcc', 'tcc', 't2m', 'wind', 'slhf', 'msnlwrf', 'msnswrf', 'sshf', 'mtdwswrf', 'mtnlwrf', 'mtnswrf', 'msdwlwrf', 'msdwswrf', 'msdwlwrfcs', 'msdwswrfcs', 'msnlwrfcs', 'msnswrfcs', 'mtnlwrfcs', 'mtnswrfcs', 'cbh', 'tciw', 'tclw', 'e', 'z', 'mslhf', 'msshf', 'tcw', 'tcwv', 'tcsw', 'tcrw', 'tcslw'
-    print(var)
+for var in ['tp', 'msl', 'sst', 'hcc', 'mcc', 'lcc', 'tcc', '2t', 'msnlwrf', 'msnswrf', 'mtdwswrf', 'mtnlwrf', 'mtnswrf', 'msdwlwrf', 'msdwswrf', 'msdwlwrfcs', 'msdwswrfcs', 'msnlwrfcs', 'msnswrfcs', 'mtnlwrfcs', 'mtnswrfcs', 'cbh', 'tciw', 'tclw', 'e', 'z', 'mslhf', 'msshf', 'tcw', 'tcwv', 'tcsw', 'tcrw', 'tcslw', '10si', '2d', 'cp', 'lsp', 'deg0l', 'mper', 'pev', 'skt', '10u', '10v', '100u', '100v']:
+    # var = 'msnlwrf'
+    print(f'#---------------- {var}')
+    
+    fl = sorted([
+        file for iyear in np.arange(1979, 2024, 1)
+        for file in glob.glob(f'/g/data/rt52/era5/single-levels/monthly-averaged/{var}/{iyear}/*.nc')])
+    if var == '2t': var='t2m'
+    if var == '10si': var='si10'
+    if var == '2d': var='d2m'
+    if var == '10u': var='u10'
+    if var == '10v': var='v10'
+    if var == '100u': var='u100'
+    if var == '100v': var='v100'
+    
+    ds = xr.open_dataset(fl[itime]).rename({'latitude': 'lat', 'longitude': 'lon'})[var].squeeze()
+    if var in ['tp', 'e', 'cp', 'lsp', 'pev']:
+        ds = ds * 1000
+    elif var in ['msl']:
+        ds = ds / 100
+    elif var in ['sst', 't2m', 'd2m', 'skt']:
+        ds = ds - zerok
+    elif var in ['hcc', 'mcc', 'lcc', 'tcc']:
+        ds = ds * 100
+    elif var in ['z']:
+        ds = ds / 9.80665
+    elif var in ['mper']:
+        ds = ds * seconds_per_d
+    ds = ds.astype(np.float32)
+    
     with open(f'data/obs/era5/mon/era5_sl_mon_alltime_{var}.pkl', 'rb') as f:
         era5_sl_mon_alltime[var] = pickle.load(f)
     
-    print(era5_sl_mon_alltime[var]['mon'].shape)
+    ds2 = era5_sl_mon_alltime[var]['mon'].isel(time=itime)
+    ds2 = ds2.astype(np.float32)
+    print((ds.values[np.isfinite(ds.values)] == ds2.values[np.isfinite(ds2.values)]).all())
     del era5_sl_mon_alltime[var]
+
+
+
 
 # https://confluence.ecmwf.int/display/CKB/ERA5%3A+data+documentation
 
@@ -99,51 +149,78 @@ tcwv
 Evaporation: e
 Geopotential: z
 
+
 '''
 # endregion
 
 
 # region get era5 pl mon data
 
-for var in ['pv', 'q', 'r', 't', 'u', 'v', 'w', 'z']:
+for var in ['q', 't', 'z']:
     # var = 'pv'
     print(var)
     
     fl = sorted([
         file for iyear in np.arange(1979, 2024, 1)
         for file in glob.glob(f'/g/data/rt52/era5/pressure-levels/monthly-averaged/{var}/{iyear}/*.nc')])
+    # print(xr.open_dataset(fl[0])[var].units)
     
-    era5_pl_mon = xr.open_mfdataset(fl, parallel=True)
-    era5_pl_mon = era5_pl_mon.rename({'latitude': 'lat', 'longitude': 'lon'})
+    era5_pl_mon = xr.open_mfdataset(fl, parallel=True).rename({'latitude': 'lat', 'longitude': 'lon'})[var]
+    
+    if var in ['q']:
+        era5_pl_mon = era5_pl_mon * 1000
+    elif var in ['t']:
+        era5_pl_mon = era5_pl_mon - zerok
+    elif var in ['z']:
+        era5_pl_mon = era5_pl_mon / 9.80665
     
     era5_pl_mon_alltime = mon_sea_ann(
-        var_monthly=era5_pl_mon[var], lcopy=False, mm=True, sm=True, am=True,)
+        var_monthly=era5_pl_mon, lcopy=False, mm=True, sm=True, am=True,)
     
-    with open(f'data/obs/era5/mon/era5_pl_mon_alltime_{var}.pkl', 'wb') as f:
+    ofile = f'data/obs/era5/mon/era5_pl_mon_alltime_{var}.pkl'
+    if os.path.exists(ofile): os.remove(ofile)
+    with open(ofile, 'wb') as f:
         pickle.dump(era5_pl_mon_alltime, f)
     
-    del era5_pl_mon_alltime
+    del era5_pl_mon, era5_pl_mon_alltime
 
 
 
 
 '''
-# check
+#-------------------------------- check
+itime = -1
 era5_pl_mon_alltime = {}
 for var in ['pv', 'q', 'r', 't', 'u', 'v', 'w', 'z']:
     # var = 'pv'
-    print(var)
+    print(f'#-------------------------------- {var}')
+    
+    fl = sorted([
+        file for iyear in np.arange(1979, 2024, 1)
+        for file in glob.glob(f'/g/data/rt52/era5/pressure-levels/monthly-averaged/{var}/{iyear}/*.nc')])
+    
+    ds = xr.open_dataset(fl[itime]).rename({'latitude': 'lat', 'longitude': 'lon'})[var].squeeze()
+    if var in ['q']:
+        ds = ds * 1000
+    elif var in ['t']:
+        ds = ds - zerok
+    elif var in ['z']:
+        ds = ds / 9.80665
+    ds = ds.astype(np.float32)
     
     with open(f'data/obs/era5/mon/era5_pl_mon_alltime_{var}.pkl', 'rb') as f:
         era5_pl_mon_alltime[var] = pickle.load(f)
-    
-    print(era5_pl_mon_alltime[var]['mon'])
+    ds2 = era5_pl_mon_alltime[var]['mon'].isel(time=itime)
+    ds2 = ds2.astype(np.float32)
+    print((ds.values[np.isfinite(ds.values)] == ds2.values[np.isfinite(ds2.values)]).all())
     del era5_pl_mon_alltime[var]
+
+
+
+
 
 '''
 # endregion
-
-
 
 
 # region derive era5 sl mon data
@@ -181,20 +258,31 @@ for var1, var2, var3 in zip(['msuwlwrf'], ['msnlwrf'], ['msdwlwrf']):
     print(str(datetime.datetime.now())[11:19])
 
 
+
+
 '''
-# check
+#-------------------------------- check
+itime=-1
 era5_sl_mon_alltime = {}
-for var in ['msuwlwrf', 'msuwswrf', 'msuwlwrfcs', 'msuwswrfcs',
-            'msnlwrfcl', 'msnswrfcl', 'msdwlwrfcl', 'msdwswrfcl', 'msuwlwrfcl', 'msuwswrfcl',
-            'mtuwswrf',
-            'mtuwswrfcs',
-            'mtnlwrfcl', 'mtnswrfcl', 'mtuwswrfcl']:
-    print(var)
-    with open(f'data/obs/era5/mon/era5_sl_mon_alltime_{var}.pkl', 'rb') as f:
-        era5_sl_mon_alltime[var] = pickle.load(f)
+for var1, var2, var3 in zip(
+    ['msuwlwrf',  'msuwswrf',  'msuwlwrfcs',  'msuwswrfcs',  'msnlwrfcl', 'msnswrfcl', 'msdwlwrfcl', 'msdwswrfcl', 'msuwlwrfcl', 'msuwswrfcl',  'mtuwswrf',  'mtuwswrfcs',  'mtnlwrfcl', 'mtnswrfcl', 'mtuwswrfcl'],
+    ['msnlwrf',  'msnswrf',  'msnlwrfcs',  'msnswrfcs',  'msnlwrf', 'msnswrf', 'msdwlwrf', 'msdwswrf', 'msuwlwrf', 'msuwswrf',  'mtnswrf',  'mtnswrfcs',  'mtnlwrf', 'mtnswrf', 'mtuwswrf'],
+    ['msdwlwrf',  'msdwswrf',  'msdwlwrfcs',  'msdwswrfcs',  'msnlwrfcs', 'msnswrfcs', 'msdwlwrfcs', 'msdwswrfcs', 'msuwlwrfcs', 'msuwswrfcs',  'mtdwswrf',  'mtdwswrf',  'mtnlwrfcs', 'mtnswrfcs', 'mtuwswrfcs']):
+    # var1='msuwlwrf'; var2='msnlwrf'; var3='msdwlwrf'
+    print(f'Derive {var1} from {var2} and {var3}')
     
-    print(era5_sl_mon_alltime[var]['mon'].shape)
-    del era5_sl_mon_alltime[var]
+    with open(f'data/obs/era5/mon/era5_sl_mon_alltime_{var1}.pkl', 'rb') as f:
+        era5_sl_mon_alltime[var1] = pickle.load(f)
+    with open(f'data/obs/era5/mon/era5_sl_mon_alltime_{var2}.pkl', 'rb') as f:
+        era5_sl_mon_alltime[var2] = pickle.load(f)
+    with open(f'data/obs/era5/mon/era5_sl_mon_alltime_{var3}.pkl', 'rb') as f:
+        era5_sl_mon_alltime[var3] = pickle.load(f)
+    
+    data1 = era5_sl_mon_alltime[var1]['mon'][itime].astype(np.float32)
+    data2 = (era5_sl_mon_alltime[var2]['mon'][itime] - era5_sl_mon_alltime[var3]['mon'][itime]).astype(np.float32)
+    print((data1.values[np.isfinite(data1.values)] == data2.values[np.isfinite(data2.values)]).all())
+    del era5_sl_mon_alltime[var1], era5_sl_mon_alltime[var2], era5_sl_mon_alltime[var3]
+
 
 
 # check

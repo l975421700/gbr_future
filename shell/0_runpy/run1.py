@@ -3,290 +3,269 @@
 # region import packages
 
 # data analysis
+import numpy as np
+import xarray as xr
 import dask
 dask.config.set({"array.slicing.split_large_chunks": True})
+from dask.diagnostics import ProgressBar
+pbar = ProgressBar()
+pbar.register()
+from scipy import stats
 import pandas as pd
-import intake
-from cdo import Cdo
-cdo=Cdo()
-import xarray as xr
-# from dask.diagnostics import ProgressBar
-# pbar = ProgressBar()
-# pbar.register()
-import numpy as np
-import os
+from metpy.interpolate import cross_section
+from statsmodels.stats import multitest
+from metpy.calc import pressure_to_height_std, geopotential_to_height
+from metpy.units import units
+import metpy.calc as mpcalc
+import pickle
+
+# plot
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+from matplotlib.colors import BoundaryNorm
+import cartopy.crs as ccrs
+from matplotlib import cm
+plt.rcParams['pcolor.shading'] = 'auto'
+mpl.rcParams['figure.dpi'] = 600
+mpl.rc('font', family='Times New Roman', size=10)
+mpl.rcParams['axes.linewidth'] = 0.2
+plt.rcParams.update({"mathtext.fontset": "stix"})
+import matplotlib.animation as animation
+import seaborn as sns
+from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
+from matplotlib.ticker import AutoMinorLocator
+import geopandas as gpd
+import matplotlib.patches as mpatches
+from matplotlib.lines import Line2D
+import cartopy.feature as cfeature
 
 # management
+import os
 import sys  # print(sys.path)
-sys.path.append('/home/563/qg8515/code/gbr_future/module')
-import pickle
+sys.path.append(os.getcwd() + '/code/gbr_future/module')
 import psutil
 process = psutil.Process()
 # print(process.memory_info().rss / 2**30)
-import gc
-import warnings
-warnings.filterwarnings('ignore')
+import string
 
-# self defined function
+# self defined
+from mapplot import (
+    globe_plot,
+    regional_plot,
+    ticks_labels,
+    scale_bar,
+    plot_maxmin_points,
+    remove_trailing_zero,
+    remove_trailing_zero_pos,
+    )
+
+from namelist import (
+    month,
+    monthini,
+    seasons,
+    seconds_per_d,
+    zerok,
+    panel_labels,
+    era5_varlabels,
+    )
+
+from component_plot import (
+    rainbow_text,
+    change_snsbar_width,
+    cplot_wind_vectors,
+    cplot_lon180,
+    cplot_lon180_ctr,
+    plt_mesh_pars,
+)
+
 from calculations import (
     mon_sea_ann,
-    cdo_regrid,
-    )
-from xmip.preprocessing import rename_cmip6, broadcast_lonlat, correct_lon, promote_empty_dims, replace_x_y_nominal_lat_lon, correct_units, correct_coordinates, parse_lon_lat_bounds, maybe_convert_bounds_to_vertex, maybe_convert_vertex_to_bounds, combined_preprocessing
+    regrid,
+    cdo_regrid,)
 
-from namelist import cmip6_units, zerok, seconds_per_d
+from statistics0 import (
+    ttest_fdr_control,)
 
-
-'''
-cmip_info['experiment_id'].unique()
-cmip_info['institution_id'].unique()
-'''
 # endregion
 
 
-# region get alltime, regridded_alltime, or regridded_alltime_ens data
+# region plot global era5 am data
 
-cmip6_data = {}
-cmip6_data_alltime = {}
-cmip6_data_regridded_alltime = {}
-cmip6_data_regridded_alltime_ens = {}
+era5_gridarea = xr.open_dataset('data/obs/era5/era5_gridarea.nc').cell_area
 
-for experiment_id in ['historical', 'amip', 'ssp585']:
-    # experiment_id = 'piControl'
-    # ['piControl', 'abrupt-4xCO2', 'historical', 'amip', 'ssp585']
-    print(f'#-------------------------------- {experiment_id}')
-    cmip6_data[experiment_id] = {}
-    cmip6_data_alltime[experiment_id] = {}
-    cmip6_data_regridded_alltime[experiment_id] = {}
-    cmip6_data_regridded_alltime_ens[experiment_id] = {}
+era5_sl_mon_alltime = {}
+for var in ['tp', 'msl', 'sst', 'hcc', 'mcc', 'lcc', 'tcc', 't2m', 'msnlwrf', 'msnswrf', 'mtdwswrf', 'mtnlwrf', 'mtnswrf', 'msdwlwrf', 'msdwswrf', 'msdwlwrfcs', 'msdwswrfcs', 'msnlwrfcs', 'msnswrfcs', 'mtnlwrfcs', 'mtnswrfcs', 'cbh', 'tciw', 'tclw', 'e', 'z', 'mslhf', 'msshf', 'tcw', 'tcwv', 'tcsw', 'tcrw', 'tcslw', 'si10', 'd2m', 'cp', 'lsp', 'deg0l', 'mper', 'pev', 'skt', 'u10', 'v10', 'u100', 'v100',    'msuwlwrf',  'msuwswrf',  'msuwlwrfcs',  'msuwswrfcs',  'msnlwrfcl', 'msnswrfcl', 'msdwlwrfcl', 'msdwswrfcl', 'msuwlwrfcl', 'msuwswrfcl',  'mtuwswrf',  'mtuwswrfcs',  'mtnlwrfcl', 'mtnswrfcl', 'mtuwswrfcl']:
+    # var = 'sst'
+    print(f'#-------------------------------- {var}')
+    with open(f'data/obs/era5/mon/era5_sl_mon_alltime_{var}.pkl', 'rb') as f:
+        era5_sl_mon_alltime[var] = pickle.load(f)
     
-    for table_id, variable_id in zip(['Amon'], ['tas']):
-        # table_id = 'Amon'; variable_id = 'tas'
-        # ['Amon'], ['tas']
-        # ['Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Omon'], ['tas', 'rsut', 'rsdt', 'rlut', 'pr', 'tos']
-        print(f'#---------------- {table_id} {variable_id}')
-        cmip6_data[experiment_id][table_id]={}
-        cmip6_data_alltime[experiment_id][table_id] = {}
-        cmip6_data_regridded_alltime[experiment_id][table_id] = {}
-        cmip6_data_regridded_alltime_ens[experiment_id][table_id] = {}
-        
-        cmip6_data_alltime[experiment_id][table_id][variable_id] = {}
-        cmip6_data_regridded_alltime[experiment_id][table_id][variable_id] = {}
-        cmip6_data_regridded_alltime_ens[experiment_id][table_id][variable_id] = {}
-        
-        with open(f'/home/563/qg8515/scratch/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}.pkl', 'rb') as f:
-            cmip6_data[experiment_id][table_id][variable_id] = pickle.load(f)
-        
-        for source_id in cmip6_data[experiment_id][table_id][variable_id].keys():
-            # source_id ='AWI-CM-1-1-MR'
-            # source_id ='MPI-ESM-1-2-HAM'
-            print(f'#-------- {source_id}')
-            dset = cmip6_data[experiment_id][table_id][variable_id][source_id].copy()
-            # print((dset[variable_id].time[0].dt.year.values))
-            
-            # ensure enough simulation length
-            if (experiment_id in ['piControl', 'abrupt-4xCO2']) & (len(dset.time) < 150 * 12):
-                print('Warning simulation length less than 150 yrs: ignored')
-                continue
-            elif (experiment_id in ['historical']) & (len(dset.time) < 165 * 12):
-                print('Warning simulation length less than 165 yrs: ignored')
-                continue
-            elif (experiment_id in ['amip']) & (len(dset.time) < 36 * 12):
-                print('Warning simulation length less than 36 yrs: ignored')
-                continue
-            elif (experiment_id in ['ssp585']) & (len(dset.time) < 85 * 12):
-                print('Warning simulation length less than 85 yrs: ignored')
-                continue
-            
-            # ensure the last month is Dec
-            if dset[variable_id].time[-1].dt.month != 12:
-                print('Warning last month is not December')
-                continue
-            
-            # ensure correct periods are selected
-            if experiment_id in ['piControl']:
-                dset = dset.sel(time=slice(dset.time[-150 * 12], dset.time[-1]))
-                if (len(dset.time)/12 != 150) | ((np.max(dset.time.dt.year) - np.min(dset.time.dt.year)) != 149):
-                    print(f'Warning differred time length: {len(dset.time)/12} {(np.max(dset.time.dt.year) - np.min(dset.time.dt.year)).values}')
-                    continue
-                dset = dset.assign_coords(time=pd.date_range(start='1850-01-01', periods=150 * 12, freq='1ME'))
-            elif experiment_id in ['abrupt-4xCO2']:
-                dset = dset.sel(time=slice(dset.time[0], dset.time[150 * 12-1]))
-                if (len(dset.time)/12 != 150) | ((np.max(dset.time.dt.year) - np.min(dset.time.dt.year)) != 149):
-                    print(f'Warning differred time length: {len(dset.time)/12} {(np.max(dset.time.dt.year) - np.min(dset.time.dt.year)).values}')
-                    continue
-                dset = dset.assign_coords(time=pd.date_range(start='1850-01-01', periods=150 * 12, freq='1ME'))
-            elif experiment_id in ['historical']:
-                dset = dset.sel(time=slice('1850', '2014'))
-                if len(dset.time)/12 != 165:
-                    print(f'Warning differred time length: {len(dset.time)/12}')
-                    continue
-                dset = dset.assign_coords(time=pd.date_range(start='1850-01-01', periods=165 * 12, freq='1ME'))
-            elif experiment_id in ['amip']:
-                dset = dset.sel(time=slice('1979', '2014'))
-                if len(dset.time)/12 != 36:
-                    print(f'Warning differred time length: {len(dset.time)/12}')
-                    continue
-                dset = dset.assign_coords(time=pd.date_range(start='1979-01-01', periods=36 * 12, freq='1ME'))
-            elif experiment_id in ['ssp585']:
-                dset = dset.sel(time=slice('2015', '2099'))
-                if len(dset.time)/12 != 85:
-                    print(f'Warning differred time length: {len(dset.time)/12}')
-                    continue
-                dset = dset.assign_coords(time=pd.date_range(start='2015-01-01', periods=85 * 12, freq='1ME'))
-            
-            # ensure correct units
-            if dset[variable_id].units != cmip6_units[variable_id]:
-                print(f'Warning inconsistent units: {dset[variable_id].units} rather than {cmip6_units[variable_id]}')
-                continue
-            
-            # change the units and sign convention
-            if variable_id in ['tas']:
-                # change from K to degC
-                dset[variable_id] = dset[variable_id] - zerok
-            elif variable_id in ['rsut', 'rlut']:
-                # change to era5 convention, downward positive
-                dset[variable_id] = dset[variable_id] * (-1)
-            elif variable_id in ['pr']:
-                # change from mm/s to mm/day
-                dset[variable_id] = dset[variable_id] * seconds_per_d
-            
-            dset = dset.compute()
-            # print('calculate mon_sea_ann')
-            # cmip6_data_alltime[experiment_id][table_id][variable_id][source_id] = mon_sea_ann(var_monthly=dset.pipe(rename_cmip6).pipe(broadcast_lonlat)[variable_id], lcopy = False, mm=True, sm=True, am=True)
-            
-            print('calculate regridded mon_sea_ann')
-            dsetr = cdo_regrid(dset)
-            cmip6_data_regridded_alltime[experiment_id][table_id][variable_id][source_id] = mon_sea_ann(var_monthly=dsetr.pipe(rename_cmip6).pipe(broadcast_lonlat)[variable_id], lcopy = False, mm=True, sm=True, am=True)
-            
-            del dset, dsetr
-            gc.collect()
-            print(process.memory_info().rss / 2**30)
-        
-        # ofile1=f'/home/563/qg8515/scratch/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}_alltime.pkl'
-        # if os.path.exists(ofile1): os.remove(ofile1)
-        # with open(ofile1, 'wb') as f:
-        #     pickle.dump(cmip6_data_alltime[experiment_id][table_id][variable_id], f)
-        
-        # ofile2=f'/home/563/qg8515/scratch/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}_regridded_alltime.pkl'
-        # if os.path.exists(ofile2): os.remove(ofile2)
-        # with open(ofile2, 'wb') as f:
-        #     pickle.dump(cmip6_data_regridded_alltime[experiment_id][table_id][variable_id], f)
-        
-        source_ids = list(cmip6_data_regridded_alltime[experiment_id][table_id][variable_id].keys())
-        source_da = xr.DataArray(source_ids, dims='source_id', coords={'source_id': source_ids})
-        
-        for ialltime in cmip6_data_regridded_alltime[experiment_id][table_id][variable_id][source_ids[0]].keys():
-            # ialltime = 'mon'
-            print(f'#-------- {ialltime}')
-            cmip6_data_regridded_alltime_ens[experiment_id][table_id][variable_id][ialltime] = xr.concat([cmip6_data_regridded_alltime[experiment_id][table_id][variable_id][source_id][ialltime] for source_id in source_ids], dim=source_da, coords='minimal', compat='override')
-        
-        ofile=f'/home/563/qg8515/scratch/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}_regridded_alltime_ens.pkl'
-        if os.path.exists(ofile): os.remove(ofile)
-        with open(ofile, 'wb') as f:
-            pickle.dump(cmip6_data_regridded_alltime_ens[experiment_id][table_id][variable_id], f)
-        
-        del cmip6_data[experiment_id][table_id][variable_id]
-        del cmip6_data_alltime[experiment_id][table_id][variable_id]
-        del cmip6_data_regridded_alltime[experiment_id][table_id][variable_id]
-        del cmip6_data_regridded_alltime_ens[experiment_id][table_id][variable_id]
-
-
-
-
+    plt_data = era5_sl_mon_alltime[var]['am'].squeeze()
+    print(stats.describe(plt_data.values, axis=None, nan_policy='omit'))
+    # del era5_sl_mon_alltime[var]
+    plt_data_gm = np.average(
+        plt_data.values.ravel()[np.isfinite(plt_data.values.ravel())],
+        weights=era5_gridarea.values.ravel()[np.isfinite(plt_data.values.ravel())])
+    
+    cbar_label = 'ERA5 annual mean (1979-2023) ' + era5_varlabels[var] + '\nglobal mean: ' + str(np.round(plt_data_gm, 2))
+    
+    if var in ['tp', 'tciw', 'tclw', 'z', 'tcw', 'tcwv', 'tcsw', 'tcrw', 'tcslw', 'cp', 'lsp']:
+        extend = 'max'
+    elif var in ['hcc', 'mcc', 'lcc', 'tcc']:
+        extend = 'neither'
+    else:
+        extend = 'both'
+    
+    if var in ['tp', 'cp', 'lsp']:
+        pltlevel = np.array([0, 0.1, 0.2, 0.5, 1, 2, 4, 6, 8, 10, 12, 16, 20,])
+        pltticks = np.array([0, 0.1, 0.2, 0.5, 1, 2, 4, 6, 8, 10, 12, 16, 20,])
+        pltnorm = BoundaryNorm(pltlevel, ncolors=len(pltlevel)-1, clip=True)
+        pltcmp = plt.get_cmap('viridis_r', len(pltlevel)-1)
+    elif var=='msl':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=980, cm_max=1025, cm_interval1=2.5, cm_interval2=5, cmap='viridis_r',)
+    elif var=='sst':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-2, cm_max=30, cm_interval1=2, cm_interval2=4, cmap='viridis_r',)
+    elif var in ['hcc', 'mcc', 'lcc', 'tcc']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=0, cm_max=100, cm_interval1=10, cm_interval2=10, cmap='viridis_r',)
+    elif var in ['t2m', 'skt']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-48, cm_max=32, cm_interval1=2, cm_interval2=8, cmap='BrBG', asymmetric=True,)
+    elif var in ['wind', 'si10']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=2, cm_max=12, cm_interval1=1, cm_interval2=1, cmap='viridis_r',)
+    elif var in ['msnlwrf', 'msnlwrfcs']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-170, cm_max=0, cm_interval1=10, cm_interval2=20, cmap='viridis',)
+    elif var in ['msnswrf', 'msnswrfcs']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=0, cm_max=300, cm_interval1=10, cm_interval2=20, cmap='viridis_r',)
+    elif var=='mtdwswrf':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=180, cm_max=420, cm_interval1=10, cm_interval2=20, cmap='viridis_r',)
+    elif var in ['mtnlwrf', 'mtnlwrfcs']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-300, cm_max=-130, cm_interval1=10, cm_interval2=20, cmap='viridis',)
+    elif var in ['mtnswrf', 'mtnswrfcs']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=50, cm_max=380, cm_interval1=10, cm_interval2=20, cmap='viridis_r',)
+    elif var in ['msdwlwrf', 'msdwlwrfcs']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=80, cm_max=430, cm_interval1=10, cm_interval2=20, cmap='viridis_r',)
+    elif var in ['msdwswrf', 'msdwswrfcs']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=60, cm_max=330, cm_interval1=10, cm_interval2=20, cmap='viridis_r',)
+    elif var=='cbh':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=0, cm_max=7600, cm_interval1=200, cm_interval2=800, cmap='viridis_r',)
+    elif var=='tciw':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=0, cm_max=0.14, cm_interval1=0.01, cm_interval2=0.02, cmap='viridis_r',)
+    elif var=='tclw':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=0, cm_max=0.5, cm_interval1=0.05, cm_interval2=0.05, cmap='viridis_r',)
+    elif var in ['e', 'mper', 'pev']:
+        pltlevel = np.array([-10, -8, -6, -4, -2, -1, -0.5, -0.2, -0.1, 0, 0.1])
+        pltticks = np.array([-10, -8, -6, -4, -2, -1, -0.5, -0.2, -0.1, 0, 0.1])
+        pltnorm = BoundaryNorm(pltlevel, ncolors=len(pltlevel)-1, clip=True)
+        pltcmp = plt.get_cmap('viridis', len(pltlevel)-1)
+    elif var=='z':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=0, cm_max=6000, cm_interval1=250, cm_interval2=500, cmap='viridis_r',)
+    elif var=='mslhf':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-280, cm_max=0, cm_interval1=20, cm_interval2=40, cmap='viridis',)
+    elif var=='msshf':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-120, cm_max=60, cm_interval1=10, cm_interval2=20, cmap='BrBG', asymmetric=True,)
+    elif var in ['tcw', 'tcwv']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=0, cm_max=60, cm_interval1=3, cm_interval2=6, cmap='viridis_r',)
+    elif var in ['tcsw']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=0, cm_max=0.9, cm_interval1=0.1, cm_interval2=0.1, cmap='viridis_r',)
+    elif var=='tcrw':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=0, cm_max=0.5, cm_interval1=0.05, cm_interval2=0.05, cmap='viridis_r',)
+    elif var=='tcslw':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=0, cm_max=0.2, cm_interval1=0.02, cm_interval2=0.04, cmap='viridis_r',)
+    elif var=='d2m':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-56, cm_max=24, cm_interval1=2, cm_interval2=8, cmap='BrBG', asymmetric=True,)
+    elif var=='deg0l':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=0, cm_max=5200, cm_interval1=200, cm_interval2=400, cmap='BrBG', asymmetric=True,)
+    elif var=='u10':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-12, cm_max=10, cm_interval1=1, cm_interval2=2, cmap='BrBG', asymmetric=True,)
+    elif var=='v10':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-8, cm_max=14, cm_interval1=1, cm_interval2=2, cmap='BrBG', asymmetric=True,)
+    elif var=='u100':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-18, cm_max=12, cm_interval1=1, cm_interval2=2, cmap='BrBG', asymmetric=True,)
+    elif var=='v100':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-12, cm_max=20, cm_interval1=1, cm_interval2=2, cmap='BrBG', asymmetric=True,)
+    elif var in ['msuwlwrf', 'msuwlwrfcs']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-540, cm_max=-120, cm_interval1=10, cm_interval2=40, cmap='viridis')
+    elif var in ['msuwswrf', 'msuwswrfcs']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-220, cm_max=0, cm_interval1=10, cm_interval2=20, cmap='viridis')
+    elif var in ['msnlwrfcl']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-20, cm_max=80, cm_interval1=10, cm_interval2=20, cmap='BrBG', asymmetric=True,)
+    elif var in ['msnswrfcl']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-140, cm_max=60, cm_interval1=10, cm_interval2=40, cmap='BrBG', asymmetric=True,)
+    elif var in ['msdwlwrfcl']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=0, cm_max=65, cm_interval1=5, cm_interval2=10, cmap='viridis_r')
+    elif var in ['msdwswrfcl']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-160, cm_max=0, cm_interval1=10, cm_interval2=20, cmap='viridis')
+    elif var in ['msuwlwrfcl']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-45, cm_max=45, cm_interval1=5, cm_interval2=10, cmap='BrBG')
+    elif var in ['msuwswrfcl']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-80, cm_max=80, cm_interval1=5, cm_interval2=20, cmap='BrBG')
+    elif var in ['mtuwswrf', 'mtuwswrfcs']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-250, cm_max=-20, cm_interval1=10, cm_interval2=20, cmap='viridis')
+    elif var in ['mtnlwrfcl']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-5, cm_max=85, cm_interval1=5, cm_interval2=10, cmap='BrBG', asymmetric=True,)
+    elif var in ['mtnswrfcl', 'mtuwswrfcl']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-150, cm_max=60, cm_interval1=10, cm_interval2=20, cmap='BrBG', asymmetric=True,)
+    
+    fig, ax = globe_plot(figsize=np.array([12, 8]) / 2.54, fm_bottom=0.13)
+    
+    plt_mesh1 = ax.pcolormesh(
+        plt_data.lon, plt_data.lat, plt_data.values,
+        norm=pltnorm, cmap=pltcmp,transform=ccrs.PlateCarree(),zorder=1,)
+    
+    if var in ['sst', 'wind']:
+        ax.add_feature(cfeature.LAND,color='white',zorder=1,edgecolor=None,lw=0)
+    if var in ['z']:
+        ax.add_feature(cfeature.OCEAN,color='white',zorder=1,edgecolor=None,lw=0)
+    
+    cbar = fig.colorbar(
+        plt_mesh1, ax=ax, aspect=40, format=remove_trailing_zero_pos,
+        orientation="horizontal", shrink=0.8, ticks=pltticks, extend=extend,
+        pad=0.02, fraction=0.13,)
+    cbar.ax.set_xlabel(cbar_label, ha='center', linespacing=1.3, labelpad=4)
+    
+    fig.savefig(f'figures/5_era5/5.0_global/5.0.0 global era5 annual mean {var}.png')
+    
+    del era5_sl_mon_alltime[var]
 
 '''
-#-------------------------------- check
-cmip6_data = {}
-# cmip6_data_alltime = {}
-# cmip6_data_regridded_alltime = {}
-cmip6_data_regridded_alltime_ens = {}
-
-ith_source_id=-1
-
-for experiment_id in ['piControl', 'abrupt-4xCO2']:
-    # experiment_id = 'piControl'
-    # ['piControl', 'abrupt-4xCO2', 'historical', 'amip', 'ssp585']
-    print(f'#-------------------------------- {experiment_id}')
-    cmip6_data[experiment_id] = {}
-    # cmip6_data_alltime[experiment_id] = {}
-    # cmip6_data_regridded_alltime[experiment_id] = {}
-    cmip6_data_regridded_alltime_ens[experiment_id] = {}
-    
-    for table_id, variable_id in zip(['Amon', 'Amon', 'Amon', 'Amon'], ['tas', 'rsut', 'rsdt', 'rlut']):
-        # table_id = 'Amon'; variable_id = 'tas'
-        # ['Amon'], ['tas']
-        # ['Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Omon'], ['tas', 'rsut', 'rsdt', 'rlut', 'pr', 'tos']
-        print(f'#---------------- {table_id} {variable_id}')
-        cmip6_data[experiment_id][table_id]={}
-        # cmip6_data_alltime[experiment_id][table_id] = {}
-        # cmip6_data_regridded_alltime[experiment_id][table_id] = {}
-        cmip6_data_regridded_alltime_ens[experiment_id][table_id] = {}
-        
-        with open(f'/home/563/qg8515/scratch/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}.pkl', 'rb') as f:
-            cmip6_data[experiment_id][table_id][variable_id] = pickle.load(f)
-        # with open(f'/home/563/qg8515/scratch/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}_alltime.pkl', 'rb') as f:
-        #     cmip6_data_alltime[experiment_id][table_id][variable_id] = pickle.load(f)
-        # with open(f'/home/563/qg8515/scratch/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}_regridded_alltime.pkl', 'rb') as f:
-        #     cmip6_data_regridded_alltime[experiment_id][table_id][variable_id] = pickle.load(f)
-        with open(f'/home/563/qg8515/scratch/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}_regridded_alltime_ens.pkl', 'rb') as f:
-            cmip6_data_regridded_alltime_ens[experiment_id][table_id][variable_id] = pickle.load(f)
-        
-        for ialltime in cmip6_data_regridded_alltime_ens[experiment_id][table_id][variable_id].keys():
-            print(cmip6_data_regridded_alltime_ens[experiment_id][table_id][variable_id][ialltime].shape)
-        
-        source_id = cmip6_data_regridded_alltime_ens[experiment_id][table_id][variable_id][ialltime]['source_id'].values.astype('object')[ith_source_id]
-        print(f'#-------- {source_id}')
-        
-        dset = cmip6_data[experiment_id][table_id][variable_id][source_id]
-        if experiment_id in ['piControl']:
-            dset = dset.sel(time=slice(dset.time[-150 * 12], dset.time[-1]))
-            dset = dset.assign_coords(time=pd.date_range(start='1850-01-01', periods=150 * 12, freq='1ME'))
-        elif experiment_id in ['abrupt-4xCO2']:
-            dset = dset.sel(time=slice(dset.time[0], dset.time[150 * 12-1]))
-            dset = dset.assign_coords(time=pd.date_range(start='1850-01-01', periods=150 * 12, freq='1ME'))
-        elif experiment_id in ['historical']:
-            dset = dset.sel(time=slice('1850', '2014'))
-            dset = dset.assign_coords(time=pd.date_range(start='1850-01-01', periods=165 * 12, freq='1ME'))
-        elif experiment_id in ['amip']:
-            dset = dset.sel(time=slice('1979', '2014'))
-            dset = dset.assign_coords(time=pd.date_range(start='1979-01-01', periods=36 * 12, freq='1ME'))
-        elif experiment_id in ['ssp585']:
-            dset = dset.sel(time=slice('2015', '2099'))
-            dset = dset.assign_coords(time=pd.date_range(start='2015-01-01', periods=85 * 12, freq='1ME'))
-        
-        if variable_id in ['tas']:
-            dset[variable_id] = dset[variable_id] - zerok
-        elif variable_id in ['rsut', 'rlut']:
-            dset[variable_id] = dset[variable_id] * (-1)
-        elif variable_id in ['pr']:
-            dset[variable_id] = dset[variable_id] * seconds_per_d
-        
-        dset = dset.compute()
-        dsetr = cdo_regrid(dset).pipe(rename_cmip6).pipe(broadcast_lonlat)[variable_id]
-        
-        dset2 = cmip6_data_regridded_alltime_ens[experiment_id][table_id][variable_id]['mon'].sel(source_id=source_id)
-        
-        print((dsetr.values == dset2.values).all())
-        del cmip6_data_regridded_alltime_ens[experiment_id][table_id][variable_id]
-
-
-# https://github.com/jbusecke/xMIP/blob/main/docs/tutorial.ipynb
-
-
-
-#---------------- check
-cmip6 = intake.open_catalog('/g/data/hh5/public/apps/nci-intake-catalogue/catalogue_new.yaml').esgf.cmip6
-data_catalogue = cmip6.search(experiment_id='historical', table_id='Omon', variable_id='tos', source_id='AWI-CM-1-1-MR').df
-if len(data_catalogue.member_id.unique()) > 1:
-    print(f'Choose member_id: {data_catalogue.member_id.unique()}')
-    member_id = sorted(data_catalogue.member_id.unique())[0]
-    data_catalogue=data_catalogue[data_catalogue.member_id==member_id]
-    print(f'{member_id} chosen')
-dset = xr.open_mfdataset(sorted(data_catalogue.path.values[0:2]), use_cftime=True, parallel=True, data_vars='minimal')
-print(dset)
-cdo_regrid(dset.sel(time=slice(dset.time[0], dset.time[1])))
-
 '''
 # endregion
 

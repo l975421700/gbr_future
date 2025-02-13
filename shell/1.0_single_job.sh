@@ -1,6 +1,6 @@
 #PBS -N single_job
 #PBS -q normal
-#PBS -l walltime=3:00:00
+#PBS -l walltime=12:00:00
 #PBS -l mem=192GB
 #PBS -l jobfs=60GB
 #PBS -l ncpus=1

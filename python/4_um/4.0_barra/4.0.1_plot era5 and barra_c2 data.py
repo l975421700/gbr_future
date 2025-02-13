@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -l walltime=2:00:00,ncpus=1,mem=192GB,storage=gdata/v46+gdata/rt52+gdata/ob53
+# qsub -I -q normal -l walltime=4:00:00,ncpus=1,mem=192GB,storage=gdata/v46+gdata/rt52+gdata/ob53
 
 
 # region import packages
@@ -69,6 +69,8 @@ from namelist import (
     seconds_per_d,
     zerok,
     panel_labels,
+    era5_varlabels,
+    cmip6_era5_var,
     )
 
 from component_plot import (
@@ -96,224 +98,157 @@ from statistics0 import (
 era5_gridarea = xr.open_dataset('data/obs/era5/era5_gridarea.nc').cell_area
 
 era5_sl_mon_alltime = {}
-for var in ['e']:
-    # var = 'tcw'
-    # 'tp', 'msl', 'sst', 'hcc', 'mcc', 'lcc', 'tcc', 't2m', 'wind', 'mslhf', 'msnlwrf', 'msnswrf', 'msshf', 'mtdwswrf', 'mtnlwrf', 'mtnswrf', 'msdwlwrf', 'msdwswrf', 'msdwlwrfcs', 'msdwswrfcs', 'msnlwrfcs', 'msnswrfcs', 'mtnlwrfcs', 'mtnswrfcs', 'cbh', 'e', 'z', 'tcw', 'tcwv', 'tcsw', 'tcrw', 'tcslw', 'tciw', 'tclw'
-    print(var)
+for var in ['tp', 'msl', 'sst', 'hcc', 'mcc', 'lcc', 'tcc', 't2m', 'msnlwrf', 'msnswrf', 'mtdwswrf', 'mtnlwrf', 'mtnswrf', 'msdwlwrf', 'msdwswrf', 'msdwlwrfcs', 'msdwswrfcs', 'msnlwrfcs', 'msnswrfcs', 'mtnlwrfcs', 'mtnswrfcs', 'cbh', 'tciw', 'tclw', 'e', 'z', 'mslhf', 'msshf', 'tcw', 'tcwv', 'tcsw', 'tcrw', 'tcslw', 'si10', 'd2m', 'cp', 'lsp', 'deg0l', 'mper', 'pev', 'skt', 'u10', 'v10', 'u100', 'v100',    'msuwlwrf',  'msuwswrf',  'msuwlwrfcs',  'msuwswrfcs',  'msnlwrfcl', 'msnswrfcl', 'msdwlwrfcl', 'msdwswrfcl', 'msuwlwrfcl', 'msuwswrfcl',  'mtuwswrf',  'mtuwswrfcs',  'mtnlwrfcl', 'mtnswrfcl', 'mtuwswrfcl']:
+    # var = 'sst'
+    print(f'#-------------------------------- {var}')
     with open(f'data/obs/era5/mon/era5_sl_mon_alltime_{var}.pkl', 'rb') as f:
         era5_sl_mon_alltime[var] = pickle.load(f)
-    print(era5_sl_mon_alltime[var]['mon'].units)
     
-    if var=='tp':
-        plt_data = era5_sl_mon_alltime[var]['am'].squeeze() * 1000
-        plt_data_gm = np.average(plt_data, weights=era5_gridarea)
-        cbar_label = r'ERA5 annual mean precipitation (1979-2023) [$mm \; day^{-1}$]' + '\nglobal mean: ' + str(np.round(plt_data_gm, 3)) + r' $mm \; day^{-1}$'
-        
-        print(stats.describe(plt_data.values, axis=None))
+    plt_data = era5_sl_mon_alltime[var]['am'].squeeze()
+    # print(stats.describe(plt_data.values, axis=None, nan_policy='omit'))
+    # del era5_sl_mon_alltime[var]
+    plt_data_gm = np.average(
+        plt_data.values.ravel()[np.isfinite(plt_data.values.ravel())],
+        weights=era5_gridarea.values.ravel()[np.isfinite(plt_data.values.ravel())])
+    
+    cbar_label = 'ERA5 annual mean (1979-2023) ' + era5_varlabels[var] + '\nglobal mean: ' + str(np.round(plt_data_gm, 2))
+    
+    if var in ['tp', 'tciw', 'tclw', 'z', 'tcw', 'tcwv', 'tcsw', 'tcrw', 'tcslw', 'cp', 'lsp']:
+        extend = 'max'
+    elif var in ['hcc', 'mcc', 'lcc', 'tcc']:
+        extend = 'neither'
+    else:
+        extend = 'both'
+    
+    if var in ['tp', 'cp', 'lsp']:
         pltlevel = np.array([0, 0.1, 0.2, 0.5, 1, 2, 4, 6, 8, 10, 12, 16, 20,])
         pltticks = np.array([0, 0.1, 0.2, 0.5, 1, 2, 4, 6, 8, 10, 12, 16, 20,])
         pltnorm = BoundaryNorm(pltlevel, ncolors=len(pltlevel)-1, clip=True)
         pltcmp = plt.get_cmap('viridis_r', len(pltlevel)-1)
-        
-        extend = 'max'
     elif var=='msl':
-        plt_data = era5_sl_mon_alltime[var]['am'].squeeze() / 100
-        plt_data_gm = np.average(plt_data, weights=era5_gridarea)
-        cbar_label = r'ERA5 annual mean sea level pressure (1979-2023) [$hPa$]' + '\nglobal mean: ' + str(int(plt_data_gm)) + r' $hPa$'
-        
-        print(stats.describe(plt_data.values, axis=None))
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
             cm_min=980, cm_max=1025, cm_interval1=2.5, cm_interval2=5, cmap='viridis_r',)
-        
-        extend = 'both'
     elif var=='sst':
-        plt_data = era5_sl_mon_alltime[var]['am'].squeeze() - zerok
-        cbar_label = r'ERA5 annual mean sea surface temperature (1979-2023) [$°C$]'
-        
-        print(stats.describe(plt_data.values, axis=None, nan_policy='omit'))
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
             cm_min=-2, cm_max=30, cm_interval1=2, cm_interval2=4, cmap='viridis_r',)
-        
-        extend = 'both'
-    elif var=='hcc':
-        plt_data = era5_sl_mon_alltime[var]['am'].squeeze() * 100
-        plt_data_gm = np.average(plt_data, weights=era5_gridarea)
-        cbar_label = r'ERA5 annual mean high cloud cover (1979-2023) [$\%$]' + '\nglobal mean: ' + str(np.round(plt_data_gm, 1)) + r' $\%$'
-        
-        print(stats.describe(plt_data.values, axis=None))
+    elif var in ['hcc', 'mcc', 'lcc', 'tcc']:
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
             cm_min=0, cm_max=100, cm_interval1=10, cm_interval2=10, cmap='viridis_r',)
-        
-        extend = 'neither'
-    elif var=='mcc':
-        plt_data = era5_sl_mon_alltime[var]['am'].squeeze() * 100
-        plt_data_gm = np.average(plt_data, weights=era5_gridarea)
-        cbar_label = r'ERA5 annual mean medium cloud cover (1979-2023) [$\%$]' + '\nglobal mean: ' + str(np.round(plt_data_gm, 1)) + r' $\%$'
-        
-        print(stats.describe(plt_data.values, axis=None))
+    elif var in ['t2m', 'skt']:
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=0, cm_max=100, cm_interval1=10, cm_interval2=10, cmap='viridis_r',)
-        
-        extend = 'neither'
-    elif var=='lcc':
-        plt_data = era5_sl_mon_alltime[var]['am'].squeeze() * 100
-        plt_data_gm = np.average(plt_data, weights=era5_gridarea)
-        cbar_label = r'ERA5 annual mean low cloud cover (1979-2023) [$\%$]' + '\nglobal mean: ' + str(np.round(plt_data_gm, 1)) + r' $\%$'
-        
-        print(stats.describe(plt_data.values, axis=None))
-        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=0, cm_max=100, cm_interval1=10, cm_interval2=10, cmap='viridis_r',)
-        
-        extend = 'neither'
-    elif var=='tcc':
-        plt_data = era5_sl_mon_alltime[var]['am'].squeeze() * 100
-        plt_data_gm = np.average(plt_data, weights=era5_gridarea)
-        cbar_label = r'ERA5 annual mean total cloud cover (1979-2023) [$\%$]' + '\nglobal mean: ' + str(np.round(plt_data_gm, 1)) + r' $\%$'
-        
-        print(stats.describe(plt_data.values, axis=None))
-        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=0, cm_max=100, cm_interval1=10, cm_interval2=10, cmap='viridis_r',)
-        
-        extend = 'neither'
-    elif var=='t2m':
-        plt_data = era5_sl_mon_alltime[var]['am'].squeeze() - zerok
-        cbar_label = r'ERA5 annual mean 2 m temperature (1979-2023) [$°C$]'
-        
-        print(stats.describe(plt_data.values, axis=None, nan_policy='omit'))
-        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=-32, cm_max=32, cm_interval1=2, cm_interval2=8, cmap='viridis_r',)
-        
-        extend = 'both'
-    elif var=='wind':
-        plt_data = era5_sl_mon_alltime[var]['am'].squeeze()
-        cbar_label = r'ERA5 annual mean 10 m wind speed (1979-2023) [$m\;s^{-1}$]'
-        
-        print(stats.describe(plt_data.values, axis=None, nan_policy='omit'))
+            cm_min=-48, cm_max=32, cm_interval1=2, cm_interval2=8, cmap='BrBG', asymmetric=True,)
+    elif var in ['si10']:
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
             cm_min=2, cm_max=12, cm_interval1=1, cm_interval2=1, cmap='viridis_r',)
-        
-        extend = 'both'
-    elif var=='mslhf':
-        plt_data = era5_sl_mon_alltime[var]['am'].squeeze()
-        plt_data_gm = np.average(plt_data, weights=era5_gridarea)
-        cbar_label = r'ERA5 annual mean surface latent heat flux (1979-2023) [$W \; m^{-2}$]' + '\nglobal mean: ' + str(np.round(plt_data_gm, 1)) + r' $W \; m^{-2}$'
-        
-        print(stats.describe(plt_data.values, axis=None))
+    elif var in ['msnlwrf', 'msnlwrfcs']:
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=-280, cm_max=0, cm_interval1=20, cm_interval2=40, cmap='viridis',)
-        
-        extend = 'both'
-    elif var=='msshf':
-        plt_data = era5_sl_mon_alltime[var]['am'].squeeze()
-        plt_data_gm = np.average(plt_data, weights=era5_gridarea)
-        cbar_label = r'ERA5 annual mean surface sensible heat flux (1979-2023) [$W \; m^{-2}$]' + '\nglobal mean: ' + str(np.round(plt_data_gm, 1)) + r' $W \; m^{-2}$'
-        
-        print(stats.describe(plt_data.values, axis=None))
+            cm_min=-170, cm_max=0, cm_interval1=10, cm_interval2=20, cmap='viridis',)
+    elif var in ['msnswrf', 'msnswrfcs']:
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=-120, cm_max=60, cm_interval1=10, cm_interval2=20, cmap='BrBG', asymmetric=True,)
-        
-        extend = 'both'
-    elif var=='msnlwrf':
-        plt_data = era5_sl_mon_alltime[var]['am'].squeeze()
-        plt_data_gm = np.average(plt_data, weights=era5_gridarea)
-        cbar_label = r'ERA5 annual mean surface net LW radiation (1979-2023) [$W \; m^{-2}$]' + '\nglobal mean: ' + str(np.round(plt_data_gm, 1)) + r' $W \; m^{-2}$'
-        
-        print(stats.describe(plt_data.values, axis=None))
-        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=-160, cm_max=0, cm_interval1=10, cm_interval2=20, cmap='viridis',)
-        
-        extend = 'both'
-    elif var=='msnswrf':
-        plt_data = era5_sl_mon_alltime[var]['am'].squeeze()
-        plt_data_gm = np.average(plt_data, weights=era5_gridarea)
-        cbar_label = r'ERA5 annual mean surface net SW radiation (1979-2023) [$W \; m^{-2}$]' + '\nglobal mean: ' + str(np.round(plt_data_gm, 1)) + r' $W \; m^{-2}$'
-        
-        print(stats.describe(plt_data.values, axis=None))
-        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=0, cm_max=260, cm_interval1=10, cm_interval2=20, cmap='viridis_r',)
-        
-        extend = 'both'
+            cm_min=0, cm_max=300, cm_interval1=10, cm_interval2=20, cmap='viridis_r',)
     elif var=='mtdwswrf':
-        plt_data = era5_sl_mon_alltime[var]['am'].squeeze()
-        plt_data_gm = np.average(plt_data, weights=era5_gridarea)
-        cbar_label = r'ERA5 annual mean TOA downward SW radiation (1979-2023) [$W \; m^{-2}$]' + '\nglobal mean: ' + str(np.round(plt_data_gm, 1)) + r' $W \; m^{-2}$'
-        
-        print(stats.describe(plt_data.values, axis=None))
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
             cm_min=180, cm_max=420, cm_interval1=10, cm_interval2=20, cmap='viridis_r',)
-        
-        extend = 'both'
-    elif var=='mtnlwrf':
-        plt_data = era5_sl_mon_alltime[var]['am'].squeeze()
-        plt_data_gm = np.average(plt_data, weights=era5_gridarea)
-        cbar_label = r'ERA5 annual mean TOA net LW radiation (1979-2023) [$W \; m^{-2}$]' + '\nglobal mean: ' + str(np.round(plt_data_gm, 1)) + r' $W \; m^{-2}$'
-        
-        print(stats.describe(plt_data.values, axis=None))
+    elif var in ['mtnlwrf', 'mtnlwrfcs']:
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=-300, cm_max=-120, cm_interval1=10, cm_interval2=20, cmap='viridis',)
-        
-        extend = 'both'
-    elif var=='mtnswrf':
-        plt_data = era5_sl_mon_alltime[var]['am'].squeeze()
-        plt_data_gm = np.average(plt_data, weights=era5_gridarea)
-        cbar_label = r'ERA5 annual mean TOA net SW radiation (1979-2023) [$W \; m^{-2}$]' + '\nglobal mean: ' + str(np.round(plt_data_gm, 1)) + r' $W \; m^{-2}$'
-        
-        print(stats.describe(plt_data.values, axis=None))
+            cm_min=-300, cm_max=-130, cm_interval1=10, cm_interval2=20, cmap='viridis',)
+    elif var in ['mtnswrf', 'mtnswrfcs']:
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=50, cm_max=350, cm_interval1=10, cm_interval2=20, cmap='viridis_r',)
-        
-        extend = 'both'
-    elif var=='msdwlwrf':
-        plt_data = era5_sl_mon_alltime[var]['am'].squeeze()
-        plt_data_gm = np.average(plt_data, weights=era5_gridarea)
-        cbar_label = r'ERA5 annual mean surface downward LW radiation (1979-2023) [$W \; m^{-2}$]' + '\nglobal mean: ' + str(np.round(plt_data_gm, 1)) + r' $W \; m^{-2}$'
-        
-        print(stats.describe(plt_data.values, axis=None))
+            cm_min=50, cm_max=380, cm_interval1=10, cm_interval2=20, cmap='viridis_r',)
+    elif var in ['msdwlwrf', 'msdwlwrfcs']:
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=90, cm_max=430, cm_interval1=10, cm_interval2=20, cmap='viridis_r',)
-        
-        extend = 'both'
-    elif var=='msdwswrf':
-        plt_data = era5_sl_mon_alltime[var]['am'].squeeze()
-        plt_data_gm = np.average(plt_data, weights=era5_gridarea)
-        cbar_label = r'ERA5 annual mean surface downward SW radiation (1979-2023) [$W \; m^{-2}$]' + '\nglobal mean: ' + str(np.round(plt_data_gm, 1)) + r' $W \; m^{-2}$'
-        
-        print(stats.describe(plt_data.values, axis=None))
+            cm_min=80, cm_max=430, cm_interval1=10, cm_interval2=20, cmap='viridis_r',)
+    elif var in ['msdwswrf', 'msdwswrfcs']:
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=60, cm_max=300, cm_interval1=10, cm_interval2=20, cmap='viridis_r',)
-        
-        extend = 'both'
-    elif var=='e':
-        plt_data = era5_sl_mon_alltime[var]['am'].squeeze() * 1000
-        plt_data_gm = np.average(plt_data, weights=era5_gridarea)
-        cbar_label = r'ERA5 annual mean evaporation (1979-2023) [$mm \; day^{-1}$]' + '\nglobal mean: ' + str(np.round(plt_data_gm, 3)) + r' $mm \; day^{-1}$'
-        
-        print(stats.describe(plt_data.values, axis=None))
+            cm_min=60, cm_max=330, cm_interval1=10, cm_interval2=20, cmap='viridis_r',)
+    elif var=='cbh':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=0, cm_max=7600, cm_interval1=200, cm_interval2=800, cmap='viridis_r',)
+    elif var=='tciw':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=0, cm_max=0.14, cm_interval1=0.01, cm_interval2=0.02, cmap='viridis_r',)
+    elif var=='tclw':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=0, cm_max=0.5, cm_interval1=0.05, cm_interval2=0.05, cmap='viridis_r',)
+    elif var in ['e', 'mper', 'pev']:
         pltlevel = np.array([-10, -8, -6, -4, -2, -1, -0.5, -0.2, -0.1, 0, 0.1])
         pltticks = np.array([-10, -8, -6, -4, -2, -1, -0.5, -0.2, -0.1, 0, 0.1])
         pltnorm = BoundaryNorm(pltlevel, ncolors=len(pltlevel)-1, clip=True)
         pltcmp = plt.get_cmap('viridis', len(pltlevel)-1)
-        
-        extend = 'both'
     elif var=='z':
-        plt_data = era5_sl_mon_alltime[var]['am'].squeeze() / 9.80665
-        cbar_label = r'ERA5 orography [$m$]'
-        
-        print(stats.describe(plt_data.values, axis=None, nan_policy='omit'))
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
             cm_min=0, cm_max=6000, cm_interval1=250, cm_interval2=500, cmap='viridis_r',)
-        
-        extend = 'max'
-    elif var=='tcw':
-        plt_data = era5_sl_mon_alltime[var]['am'].squeeze()
-        plt_data_gm = np.average(plt_data, weights=era5_gridarea)
-        cbar_label = r'ERA5 annual mean total column water (1979-2023) [$kg \; m^{-2}$]' + '\nglobal mean: ' + str(np.round(plt_data_gm, 1)) + r' $kg \; m^{-2}$'
-        
-        print(stats.describe(plt_data.values, axis=None))
+    elif var=='mslhf':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-280, cm_max=0, cm_interval1=20, cm_interval2=40, cmap='viridis',)
+    elif var=='msshf':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-120, cm_max=60, cm_interval1=10, cm_interval2=20, cmap='BrBG', asymmetric=True,)
+    elif var in ['tcw', 'tcwv']:
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
             cm_min=0, cm_max=60, cm_interval1=3, cm_interval2=6, cmap='viridis_r',)
-        
-        extend = 'max'
+    elif var in ['tcsw']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=0, cm_max=0.9, cm_interval1=0.1, cm_interval2=0.1, cmap='viridis_r',)
+    elif var=='tcrw':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=0, cm_max=0.5, cm_interval1=0.05, cm_interval2=0.05, cmap='viridis_r',)
+    elif var=='tcslw':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=0, cm_max=0.2, cm_interval1=0.02, cm_interval2=0.04, cmap='viridis_r',)
+    elif var=='d2m':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-56, cm_max=24, cm_interval1=2, cm_interval2=8, cmap='BrBG', asymmetric=True,)
+    elif var=='deg0l':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=0, cm_max=5200, cm_interval1=200, cm_interval2=400, cmap='BrBG', asymmetric=True,)
+    elif var=='u10':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-12, cm_max=10, cm_interval1=1, cm_interval2=2, cmap='BrBG', asymmetric=True,)
+    elif var=='v10':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-8, cm_max=14, cm_interval1=1, cm_interval2=2, cmap='BrBG', asymmetric=True,)
+    elif var=='u100':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-18, cm_max=12, cm_interval1=1, cm_interval2=2, cmap='BrBG', asymmetric=True,)
+    elif var=='v100':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-12, cm_max=20, cm_interval1=1, cm_interval2=2, cmap='BrBG', asymmetric=True,)
+    elif var in ['msuwlwrf', 'msuwlwrfcs']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-540, cm_max=-120, cm_interval1=10, cm_interval2=40, cmap='viridis')
+    elif var in ['msuwswrf', 'msuwswrfcs']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-220, cm_max=0, cm_interval1=10, cm_interval2=20, cmap='viridis')
+    elif var in ['msnlwrfcl']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-20, cm_max=80, cm_interval1=10, cm_interval2=20, cmap='BrBG', asymmetric=True,)
+    elif var in ['msnswrfcl']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-140, cm_max=60, cm_interval1=10, cm_interval2=40, cmap='BrBG', asymmetric=True,)
+    elif var in ['msdwlwrfcl']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=0, cm_max=65, cm_interval1=5, cm_interval2=10, cmap='viridis_r')
+    elif var in ['msdwswrfcl']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-160, cm_max=0, cm_interval1=10, cm_interval2=20, cmap='viridis')
+    elif var in ['msuwlwrfcl']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-45, cm_max=45, cm_interval1=5, cm_interval2=10, cmap='BrBG')
+    elif var in ['msuwswrfcl']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-80, cm_max=80, cm_interval1=5, cm_interval2=20, cmap='BrBG')
+    elif var in ['mtuwswrf', 'mtuwswrfcs']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-250, cm_max=-20, cm_interval1=10, cm_interval2=20, cmap='viridis')
+    elif var in ['mtnlwrfcl']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-5, cm_max=85, cm_interval1=5, cm_interval2=10, cmap='BrBG', asymmetric=True,)
+    elif var in ['mtnswrfcl', 'mtuwswrfcl']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-150, cm_max=60, cm_interval1=10, cm_interval2=20, cmap='BrBG', asymmetric=True,)
+    else:
+        print(f'Warning unspecified colorbar for {var}')
     
     fig, ax = globe_plot(figsize=np.array([12, 8]) / 2.54, fm_bottom=0.13)
     
@@ -321,7 +256,7 @@ for var in ['e']:
         plt_data.lon, plt_data.lat, plt_data.values,
         norm=pltnorm, cmap=pltcmp,transform=ccrs.PlateCarree(),zorder=1,)
     
-    if var in ['sst', 'wind']:
+    if var in ['sst']:
         ax.add_feature(cfeature.LAND,color='white',zorder=1,edgecolor=None,lw=0)
     if var in ['z']:
         ax.add_feature(cfeature.OCEAN,color='white',zorder=1,edgecolor=None,lw=0)
@@ -337,25 +272,6 @@ for var in ['e']:
     del era5_sl_mon_alltime[var]
 
 '''
-Mean surface latent heat flux: slhf
-Mean surface sensible heat flux: sshf
-Mean surface net long-wave radiation flux: msnlwrf
-Mean surface net short-wave radiation flux: msnswrf
-Mean surface downward long-wave radiation flux: msdwlwrf
-Mean surface downward short-wave radiation flux: msdwswrf
-Mean surface net long-wave radiation flux, clear sky: msnlwrfcs
-Mean surface net short-wave radiation flux, clear sky: msnswrfcs
-Mean surface downward long-wave radiation flux, clear sky: msdwlwrfcs
-Mean surface downward short-wave radiation flux, clear sky: msdwswrfcs
-
-Mean top downward short-wave radiation flux: mtdwswrf
-Mean top net long-wave radiation flux: mtnlwrf
-Mean top net short-wave radiation flux: mtnswrf
-Mean top net long-wave radiation flux, clear sky: mtnlwrfcs
-Mean top net short-wave radiation flux, clear sky: mtnswrfcs
-
-
-
 '''
 # endregion
 
@@ -363,172 +279,116 @@ Mean top net short-wave radiation flux, clear sky: mtnswrfcs
 # region plot barra-c2 am data
 
 barra_c2_mon_alltime = {}
-for var in ['pr']:
-    # 'pr', 'clh', 'clm', 'cll', 'clt', 'evspsbl', 'hfls', 'hfss', 'tas', 'ts', 'rlds', 'rldscs', 'rlus', 'rluscs', 'rlut', 'rlutcs', 'rsds', 'rsdscs', 'rsdt', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'sfcWind', 'psl',
+for var in ['pr', 'clh', 'clm', 'cll', 'clt', 'evspsbl', 'hfls', 'hfss', 'psl', 'rlds', 'rldscs', 'rlus', 'rluscs', 'rlut', 'rlutcs', 'rsds', 'rsdscs', 'rsdt', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'sfcWind', 'tas', 'ts', 'evspsblpot', 'uas', 'vas', 'rlns',  'rsns',  'rlnscs', 'rsnscs',  'rlnscl', 'rsnscl', 'rldscl', 'rsdscl',  'rluscl', 'rsuscl',  'rsnt',  'rsntcs',  'rlutcl', 'rsntcl', 'rsutcl']:
+    # 'hurs', 'huss',
     # var = 'rsut'
-    print(var)
+    print(f'#-------------------------------- {var}')
     with open(f'data/sim/um/barra_c2/barra_c2_mon_alltime_{var}.pkl','rb') as f:
         barra_c2_mon_alltime[var] = pickle.load(f)
-    print(barra_c2_mon_alltime[var]['mon'])
-    print(barra_c2_mon_alltime[var]['mon'].units)
+    plt_data = barra_c2_mon_alltime[var]['am'].squeeze()
+    # print(era5_varlabels[cmip6_era5_var[var]])
+    # print(stats.describe(plt_data.values, axis=None, nan_policy='omit'))
+    # del barra_c2_mon_alltime[var]
+    
+    cbar_label = 'BARRA-C2 annual mean ' + era5_varlabels[cmip6_era5_var[var]]
+    
+    if var in ['pr', 'evspsbl']:
+        extend = 'max'
+    elif var in ['clh', 'clm', 'cll', 'clt']:
+        extend = 'neither'
+    else:
+        extend = 'both'
     
     if var=='pr':
-        plt_data = barra_c2_mon_alltime[var]['am'].squeeze() * seconds_per_d
-        cbar_label = 'BARRA-C2 annual mean precipitation\n' + r'(1979-2023) [$mm \; day^{-1}$]'
-        
-        print(stats.describe(plt_data.values, axis=None))
         pltlevel = np.array([0, 0.5, 1, 2, 3, 4, 6, 8, 10, 12, 16, 20,])
         pltticks = np.array([0, 0.5, 1, 2, 3, 4, 6, 8, 10, 12, 16, 20,])
         pltnorm = BoundaryNorm(pltlevel, ncolors=len(pltlevel)-1, clip=True)
         pltcmp = plt.get_cmap('viridis_r', len(pltlevel)-1)
-        
-        extend = 'max'
-    elif var=='clh':
-        plt_data = barra_c2_mon_alltime[var]['am'].squeeze()
-        cbar_label = 'BARRA-C2 annual mean high cloud cover\n' + r'(1979-2023) [$\%$]'
-        
-        print(stats.describe(plt_data.values, axis=None))
+    elif var in ['clh', 'clm', 'cll', 'clt']:
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
             cm_min=0, cm_max=100, cm_interval1=10, cm_interval2=10, cmap='viridis_r',)
-        
-        extend = 'neither'
-    elif var=='clm':
-        plt_data = barra_c2_mon_alltime[var]['am'].squeeze()
-        cbar_label = 'BARRA-C2 annual mean medium cloud cover\n' + r'(1979-2023) [$\%$]'
-        
-        print(stats.describe(plt_data.values, axis=None))
-        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=0, cm_max=100, cm_interval1=10, cm_interval2=10, cmap='viridis_r',)
-        
-        extend = 'neither'
-    elif var=='cll':
-        plt_data = barra_c2_mon_alltime[var]['am'].squeeze()
-        cbar_label = 'BARRA-C2 annual mean low cloud cover\n' + r'(1979-2023) [$\%$]'
-        
-        print(stats.describe(plt_data.values, axis=None))
-        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=0, cm_max=100, cm_interval1=10, cm_interval2=10, cmap='viridis_r',)
-        
-        extend = 'neither'
-    elif var=='clt':
-        plt_data = barra_c2_mon_alltime[var]['am'].squeeze()
-        cbar_label = 'BARRA-C2 annual mean total cloud cover\n' + r'(1979-2023) [$\%$]'
-        
-        print(stats.describe(plt_data.values, axis=None))
-        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=0, cm_max=100, cm_interval1=10, cm_interval2=10, cmap='viridis_r',)
-        
-        extend = 'neither'
-    elif var=='evspsbl':
-        plt_data = barra_c2_mon_alltime[var]['am'].squeeze() * seconds_per_d
-        cbar_label = 'BARRA-C2 annual mean evaporation\n' + r'(1979-2023) [$mm \; day^{-1}$]'
-        
-        print(stats.describe(plt_data.values, axis=None))
+    elif var in ['evspsbl', 'evspsblpot']:
         pltlevel = np.array([0, 0.1, 0.2, 0.5, 1, 2, 4, 6, 8])
         pltticks = np.array([0, 0.1, 0.2, 0.5, 1, 2, 4, 6, 8])
         pltnorm = BoundaryNorm(pltlevel, ncolors=len(pltlevel)-1, clip=True)
         pltcmp = plt.get_cmap('viridis_r', len(pltlevel)-1)
-        
-        extend = 'max'
     elif var=='hfls':
-        plt_data = barra_c2_mon_alltime[var]['am'].squeeze()
-        cbar_label = 'BARRA-C2 annual mean surface upward latent heat flux\n' + r'(1979-2023) [$W \; m^{-2}$]'
-        
-        print(stats.describe(plt_data.values, axis=None))
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=0, cm_max=280, cm_interval1=20, cm_interval2=40, cmap='viridis_r',)
-        
-        extend = 'both'
+            cm_min=-350, cm_max=0, cm_interval1=10, cm_interval2=50, cmap='viridis',)
     elif var=='hfss':
-        plt_data = barra_c2_mon_alltime[var]['am'].squeeze()
-        cbar_label = 'BARRA-C2 annual mean surface upward sensible heat flux\n' + r'(1979-2023) [$W \; m^{-2}$]'
-        
-        print(stats.describe(plt_data.values, axis=None))
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=-60, cm_max=120, cm_interval1=10, cm_interval2=20, cmap='BrBG_r', asymmetric=True,)
-        
-        extend = 'both'
-    elif var=='tas':
-        plt_data = barra_c2_mon_alltime[var]['am'].squeeze() - zerok
-        cbar_label = 'BARRA-C2 annual mean near-surface air temperature\n' + r'(1979-2023) [$°C$]'
-        
-        print(stats.describe(plt_data.values, axis=None))
+            cm_min=-130, cm_max=30, cm_interval1=10, cm_interval2=20, cmap='BrBG', asymmetric=True,)
+    elif var=='psl':
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=4, cm_max=28, cm_interval1=2, cm_interval2=4, cmap='viridis_r',)
-        
-        extend = 'both'
-    elif var=='ts':
-        plt_data = barra_c2_mon_alltime[var]['am'].squeeze() - zerok
-        cbar_label = 'BARRA-C2 annual mean surface temperature\n' + r'(1979-2023) [$W \; m^{-2}$]'
-        
-        print(stats.describe(plt_data.values, axis=None))
+            cm_min=1007, cm_max=1019, cm_interval1=1, cm_interval2=1, cmap='viridis_r',)
+    elif var in ['rlds', 'rldscs']:
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=4, cm_max=32, cm_interval1=2, cm_interval2=4, cmap='viridis_r',)
-        
-        extend = 'both'
-    elif var=='rlds':
-        plt_data = barra_c2_mon_alltime[var]['am'].squeeze()
-        cbar_label = 'BARRA-C2 annual mean surface downward LW radiation\n' + r'(1979-2023) [$°C$]'
-        
-        print(stats.describe(plt_data.values, axis=None))
+            cm_min=240, cm_max=440, cm_interval1=10, cm_interval2=20, cmap='viridis_r',)
+    elif var in ['rlus', 'rluscs']:
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=280, cm_max=440, cm_interval1=10, cm_interval2=20, cmap='viridis_r',)
-        
-        extend = 'both'
-    elif var=='rlus':
-        plt_data = barra_c2_mon_alltime[var]['am'].squeeze()
-        cbar_label = 'BARRA-C2 annual mean surface upward LW radiation\n' + r'(1979-2023) [$W \; m^{-2}$]'
-        
-        print(stats.describe(plt_data.values, axis=None))
+            cm_min=-490, cm_max=-340, cm_interval1=10, cm_interval2=20, cmap='viridis',)
+    elif var in ['rlut', 'rlutcs']:
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=340, cm_max=490, cm_interval1=10, cm_interval2=20, cmap='viridis_r',)
-        
-        extend = 'both'
-    elif var=='rlut':
-        plt_data = barra_c2_mon_alltime[var]['am'].squeeze()
-        cbar_label = 'BARRA-C2 annual mean TOA outgoing LW radiation\n' + r'(1979-2023) [$W \; m^{-2}$]'
-        
-        print(stats.describe(plt_data.values, axis=None))
+            cm_min=-300, cm_max=-180, cm_interval1=10, cm_interval2=20, cmap='viridis',)
+    elif var in ['rsds', 'rsdscs']:
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=180, cm_max=280, cm_interval1=10, cm_interval2=20, cmap='viridis_r',)
-        
-        extend = 'both'
-    elif var=='rsds':
-        plt_data = barra_c2_mon_alltime[var]['am'].squeeze()
-        cbar_label = 'BARRA-C2 annual mean surface downward SW radiation\n' + r'(1979-2023) [$W \; m^{-2}$]'
-        
-        print(stats.describe(plt_data.values, axis=None))
-        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=90, cm_max=270, cm_interval1=10, cm_interval2=20, cmap='viridis_r',)
-        
-        extend = 'both'
+            cm_min=90, cm_max=360, cm_interval1=10, cm_interval2=20, cmap='viridis_r',)
     elif var=='rsdt':
-        plt_data = barra_c2_mon_alltime[var]['am'].squeeze()
-        cbar_label = 'BARRA-C2 annual mean TOA incident SW radiation\n' + r'(1979-2023) [$W \; m^{-2}$]'
-        
-        print(stats.describe(plt_data.values, axis=None))
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
             cm_min=310, cm_max=410, cm_interval1=10, cm_interval2=20, cmap='viridis_r',)
-        
-        extend = 'both'
-    elif var=='rsus':
-        plt_data = barra_c2_mon_alltime[var]['am'].squeeze()
-        cbar_label = 'BARRA-C2 annual mean surface upwelling SW radiation\n' + r'(1979-2023) [$W \; m^{-2}$]'
-        
-        print(stats.describe(plt_data.values, axis=None))
+    elif var in ['rsus', 'rsuscs']:
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=0, cm_max=110, cm_interval1=10, cm_interval2=20, cmap='viridis_r',)
-        
-        extend = 'both'
-    elif var=='rsut':
-        plt_data = barra_c2_mon_alltime[var]['am'].squeeze()
-        cbar_label = 'BARRA-C2 annual mean TOA outgoing SW radiation\n' + r'(1979-2023) [$W \; m^{-2}$]'
-        
-        print(stats.describe(plt_data.values, axis=None))
+            cm_min=-120, cm_max=0, cm_interval1=10, cm_interval2=20, cmap='viridis',)
+    elif var in ['rsut', 'rsutcs']:
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=50, cm_max=230, cm_interval1=10, cm_interval2=20, cmap='viridis_r',)
-        
-        extend = 'both'
+            cm_min=-230, cm_max=-40, cm_interval1=10, cm_interval2=20, cmap='viridis',)
+    elif var=='sfcWind':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=1, cm_max=11, cm_interval1=1, cm_interval2=1, cmap='viridis_r',)
+    elif var=='tas':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=4, cm_max=29, cm_interval1=1, cm_interval2=4, cmap='viridis_r',)
+    elif var=='ts':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=5, cm_max=32, cm_interval1=1, cm_interval2=4, cmap='viridis_r',)
+    elif var=='uas':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-8, cm_max=8, cm_interval1=1, cm_interval2=2, cmap='BrBG',)
+    elif var=='vas':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-2, cm_max=6, cm_interval1=0.5, cm_interval2=1, cmap='BrBG', asymmetric=True)
+    elif var in ['rlns', 'rlnscs']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-125, cm_max=-15, cm_interval1=5, cm_interval2=10, cmap='viridis',)
+    elif var in ['rsns', 'rsnscs']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=80, cm_max=300, cm_interval1=10, cm_interval2=20, cmap='viridis_r',)
+    elif var in ['rlnscl', 'rldscl']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=0, cm_max=60, cm_interval1=5, cm_interval2=10, cmap='viridis_r',)
+    elif var in ['rsnscl']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-200, cm_max=0, cm_interval1=10, cm_interval2=40, cmap='viridis',)
+    elif var in ['rsdscl']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-240, cm_max=0, cm_interval1=10, cm_interval2=40, cmap='viridis',)
+    elif var in ['rluscl']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-4.5, cm_max=0, cm_interval1=0.5, cm_interval2=0.5, cmap='viridis',)
+    elif var in ['rsuscl']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=0, cm_max=40, cm_interval1=5, cm_interval2=5, cmap='viridis_r',)
+    elif var in ['rsnt', 'rsntcs']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=160, cm_max=380, cm_interval1=10, cm_interval2=40, cmap='viridis_r',)
+    elif var in ['rlutcl']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=0, cm_max=80, cm_interval1=5, cm_interval2=10, cmap='viridis_r',)
+    elif var in ['rsntcl', 'rsutcl']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-160, cm_max=0, cm_interval1=10, cm_interval2=20, cmap='viridis',)
+    else:
+        print(f'Warning unspecified colorbar for {var}')
     
     fig, ax = regional_plot(extent=[108, 160, -45.7, -5], central_longitude=180,)
     

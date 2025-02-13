@@ -320,16 +320,16 @@ cmip6_data_alltime = {}
 cmip6_data_regridded_alltime = {}
 cmip6_data_regridded_alltime_ens = {}
 
-for experiment_id in ['piControl', 'historical', 'amip', 'ssp585']:
+for experiment_id in ['historical', 'amip', 'ssp585']:
     # experiment_id = 'piControl'
-    # ['piControl', 'abrupt-4xCO2', 'historical', 'amip', 'ssp585']
+    # ['abrupt-4xCO2', 'piControl', 'historical', 'amip', 'ssp585']
     print(f'#-------------------------------- {experiment_id}')
     cmip6_data[experiment_id] = {}
     cmip6_data_alltime[experiment_id] = {}
     cmip6_data_regridded_alltime[experiment_id] = {}
     cmip6_data_regridded_alltime_ens[experiment_id] = {}
     
-    for table_id, variable_id in zip(['Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon'], ['clt', 'evspsbl', 'hfls', 'hfss', 'psl', 'rlds', 'rldscs', 'rlus', 'rlutcs', 'rsds', 'rsdscs', 'rsus', 'rsuscs', 'rsutcs']):
+    for table_id, variable_id in zip(['Amon', 'Amon', 'Amon'], ['rsut', 'rsdt', 'rlut']):
         # table_id = 'Amon'; variable_id = 'tas'
         # ['Amon'], ['tas']
         # ['Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Omon'], ['tas', 'rsut', 'rsdt', 'rlut', 'pr', 'tos']
@@ -352,7 +352,7 @@ for experiment_id in ['piControl', 'historical', 'amip', 'ssp585']:
             # source_id ='MPI-ESM-1-2-HAM'
             print(f'#-------- {source_id}')
             dset = cmip6_data[experiment_id][table_id][variable_id][source_id].copy()
-            # print((dset[variable_id].time[0].dt.year.values))
+            # print((dset[variable_id].units))
             
             # ensure enough simulation length
             if (experiment_id in ['piControl', 'abrupt-4xCO2']) & (len(dset.time) < 150 * 12):
@@ -414,12 +414,15 @@ for experiment_id in ['piControl', 'historical', 'amip', 'ssp585']:
             if variable_id in ['tas']:
                 # change from K to degC
                 dset[variable_id] = dset[variable_id] - zerok
-            elif variable_id in ['rsut', 'rlut']:
+            elif variable_id in ['rsut', 'rlut', 'hfls', 'hfss', 'rlus', 'rlutcs', 'rsus', 'rsuscs', 'rsutcs']:
                 # change to era5 convention, downward positive
                 dset[variable_id] = dset[variable_id] * (-1)
-            elif variable_id in ['pr']:
+            elif variable_id in ['pr', 'evspsbl']:
                 # change from mm/s to mm/day
                 dset[variable_id] = dset[variable_id] * seconds_per_d
+            elif variable_id in ['psl']:
+                # change from mm/s to mm/day
+                dset[variable_id] = dset[variable_id] / 100
             
             dset = dset.compute()
             # print('calculate mon_sea_ann')
@@ -566,17 +569,18 @@ cdo_regrid(dset.sel(time=slice(dset.time[0], dset.time[1])))
 cmip6_data_regridded_alltime_ens = {}
 cmip6_data_regridded_alltime_ens_gzm = {}
 
-for experiment_id in ['piControl']:
+for experiment_id in ['piControl', 'historical', 'amip', 'ssp585']:
     # experiment_id = 'piControl'
-    # ['piControl', 'abrupt-4xCO2', 'historical', 'amip', 'ssp585']
+    # ['abrupt-4xCO2', 'piControl', 'historical', 'amip', 'ssp585']
     print(f'#-------------------------------- {experiment_id}')
     cmip6_data_regridded_alltime_ens[experiment_id] = {}
     cmip6_data_regridded_alltime_ens_gzm[experiment_id] = {}
     
-    for table_id, variable_id in zip(['Omon'], ['tos']):
+    for table_id, variable_id in zip(['Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon'], ['clt', 'evspsbl', 'hfls', 'hfss', 'psl', 'rlds', 'rldscs', 'rlus', 'rlutcs', 'rsds', 'rsdscs', 'rsus', 'rsuscs', 'rsutcs']):
         # table_id = 'Amon'; variable_id = 'tas'
         # ['Amon'], ['tas']
         # ['Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Omon'], ['tas', 'rsut', 'rsdt', 'rlut', 'pr', 'tos']
+        # ['Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon'], ['clt', 'evspsbl', 'hfls', 'hfss', 'psl', 'rlds', 'rldscs', 'rlus', 'rlutcs', 'rsds', 'rsdscs', 'rsus', 'rsuscs', 'rsutcs']
         print(f'#---------------- {table_id} {variable_id}')
         cmip6_data_regridded_alltime_ens[experiment_id][table_id] = {}
         cmip6_data_regridded_alltime_ens_gzm[experiment_id][table_id] = {}
