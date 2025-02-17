@@ -318,23 +318,17 @@ def regrid(
     '''
     ds_in: original xarray.DataArray
     ds_out: xarray.DataArray with target grid, default None
-    grid_spacing: 1
-    periodic: True, When dealing with global grids, we need to set periodic=True, otherwise data along the meridian line will be missing.
-    ignore_degenerate: Ignore degenerate cells when checking the input Grids or Meshes for errors. If this is set to True, then the regridding proceeds, but degenerate cells will be skipped. If set to False, a degenerate cell produces an error. This currently only applies to CONSERVE, other regrid methods currently always skip degenerate cells. If None, defaults to False.
     '''
     
     import xesmf as xe
     
-    ds_in_copy = ds_in.copy()
-    
-    if (ds_out is None):
-        ds_out = xe.util.grid_global(grid_spacing, grid_spacing)
+    if ds_out is None: ds_out = xe.util.grid_global(grid_spacing, grid_spacing)
     
     regridder = xe.Regridder(
-        ds_in_copy, ds_out, method, periodic=periodic,
+        ds_in, ds_out, method, periodic=periodic,
         ignore_degenerate=ignore_degenerate, unmapped_to_nan=unmapped_to_nan,
         extrap_method=extrap_method,)
-    return regridder(ds_in_copy)
+    return regridder(ds_in)
 
 '''
 '''
@@ -364,6 +358,7 @@ def cdo_regrid(ds_in, target_grid='global_1'):
         try:
             ds_in.to_netcdf(temp_input.name)
         except:
+            print('Warning file output error')
             pop_fillvalue(regrid(ds_in)).to_netcdf(temp_input.name)
         with tempfile.NamedTemporaryFile(suffix='.nc') as temp_output:
             try:

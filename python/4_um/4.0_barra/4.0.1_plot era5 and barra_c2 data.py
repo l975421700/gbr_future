@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -l walltime=4:00:00,ncpus=1,mem=192GB,storage=gdata/v46+gdata/rt52+gdata/ob53
+# qsub -I -q normal -l walltime=10:00:00,ncpus=1,mem=192GB,storage=gdata/v46+gdata/rt52+gdata/ob53
 
 
 # region import packages
@@ -50,6 +50,8 @@ import psutil
 process = psutil.Process()
 # print(process.memory_info().rss / 2**30)
 import string
+import warnings
+warnings.filterwarnings('ignore')
 
 # self defined
 from mapplot import (
@@ -98,8 +100,9 @@ from statistics0 import (
 era5_gridarea = xr.open_dataset('data/obs/era5/era5_gridarea.nc').cell_area
 
 era5_sl_mon_alltime = {}
-for var in ['tp', 'msl', 'sst', 'hcc', 'mcc', 'lcc', 'tcc', 't2m', 'msnlwrf', 'msnswrf', 'mtdwswrf', 'mtnlwrf', 'mtnswrf', 'msdwlwrf', 'msdwswrf', 'msdwlwrfcs', 'msdwswrfcs', 'msnlwrfcs', 'msnswrfcs', 'mtnlwrfcs', 'mtnswrfcs', 'cbh', 'tciw', 'tclw', 'e', 'z', 'mslhf', 'msshf', 'tcw', 'tcwv', 'tcsw', 'tcrw', 'tcslw', 'si10', 'd2m', 'cp', 'lsp', 'deg0l', 'mper', 'pev', 'skt', 'u10', 'v10', 'u100', 'v100',    'msuwlwrf',  'msuwswrf',  'msuwlwrfcs',  'msuwswrfcs',  'msnlwrfcl', 'msnswrfcl', 'msdwlwrfcl', 'msdwswrfcl', 'msuwlwrfcl', 'msuwswrfcl',  'mtuwswrf',  'mtuwswrfcs',  'mtnlwrfcl', 'mtnswrfcl', 'mtuwswrfcl']:
+for var in ['mper', 'pev']:
     # var = 'sst'
+    # 'tp', 'msl', 'sst', 'hcc', 'mcc', 'lcc', 'tcc', 't2m', 'msnlwrf', 'msnswrf', 'mtdwswrf', 'mtnlwrf', 'mtnswrf', 'msdwlwrf', 'msdwswrf', 'msdwlwrfcs', 'msdwswrfcs', 'msnlwrfcs', 'msnswrfcs', 'mtnlwrfcs', 'mtnswrfcs', 'cbh', 'tciw', 'tclw', 'e', 'z', 'mslhf', 'msshf', 'tcw', 'tcwv', 'tcsw', 'tcrw', 'tcslw', 'si10', 'd2m', 'cp', 'lsp', 'deg0l', 'mper', 'pev', 'skt', 'u10', 'v10', 'u100', 'v100',    'msuwlwrf',  'msuwswrf',  'msuwlwrfcs',  'msuwswrfcs',  'msnlwrfcl', 'msnswrfcl', 'msdwlwrfcl', 'msdwswrfcl', 'msuwlwrfcl', 'msuwswrfcl',  'mtuwswrf',  'mtuwswrfcs',  'mtnlwrfcl', 'mtnswrfcl', 'mtuwswrfcl'
     print(f'#-------------------------------- {var}')
     with open(f'data/obs/era5/mon/era5_sl_mon_alltime_{var}.pkl', 'rb') as f:
         era5_sl_mon_alltime[var] = pickle.load(f)
@@ -171,8 +174,8 @@ for var in ['tp', 'msl', 'sst', 'hcc', 'mcc', 'lcc', 'tcc', 't2m', 'msnlwrf', 'm
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
             cm_min=0, cm_max=0.5, cm_interval1=0.05, cm_interval2=0.05, cmap='viridis_r',)
     elif var in ['e', 'mper', 'pev']:
-        pltlevel = np.array([-10, -8, -6, -4, -2, -1, -0.5, -0.2, -0.1, 0, 0.1])
-        pltticks = np.array([-10, -8, -6, -4, -2, -1, -0.5, -0.2, -0.1, 0, 0.1])
+        pltlevel = np.array([-0.1, 0, 0.1, 0.2, 0.5, 1, 2, 4, 6, 8, 10])
+        pltticks = np.array([-0.1, 0, 0.1, 0.2, 0.5, 1, 2, 4, 6, 8, 10])
         pltnorm = BoundaryNorm(pltlevel, ncolors=len(pltlevel)-1, clip=True)
         pltcmp = plt.get_cmap('viridis', len(pltlevel)-1)
     elif var=='z':
@@ -550,1588 +553,217 @@ for var in ['pv', 'q', 'r', 't', 'u', 'v', 'w', 'z']:
 # settings
 plt_colnames = ['Annual mean', 'DJF', 'MAM', 'JJA', 'SON']
 plt_rownames = ['ERA5', 'BARRA-C2', 'ERA5 - BARRA-C2']
+min_lon, max_lon, min_lat, max_lat = [110.58, 157.34, -43.69, -7.01]
+# min_lon, max_lon, min_lat, max_lat = [108, 160, -45.7, -5]
 
 era5_sl_mon_alltime = {}
 barra_c2_mon_alltime = {}
 
-for var1, var2 in zip(['mtuwswrfcl'], ['rsutcl']):
-    # ['mtuwswrfcl'], ['rsutcl']
-    # ['mtnswrfcl'], ['rsntcl']
-    # ['mtnlwrfcl'], ['rlutcl']
-    # ['mtuwswrfcs'], ['rsutcs']
-    # ['mtnswrfcs'], ['rsntcs']
-    # ['mtnlwrfcs'], ['rlutcs']
-    # ['mtuwswrf'], ['rsut']
-    # ['mtnswrf'], ['rsnt']
-    # ['mtnlwrf'], ['rlut']
-    # ['mtdwswrf'], ['rsdt']
-    # ['msuwswrfcl'], ['rsuscl']
-    # ['msuwlwrfcl'], ['rluscl']
-    # ['msdwswrfcl'], ['rsdscl']
-    # ['msdwlwrfcl'], ['rldscl']
-    # ['msnswrfcl'], ['rsnscl']
-    # ['msnlwrfcl'], ['rlnscl']
-    # ['msuwswrfcs'], ['rsuscs']
-    # ['msuwlwrfcs'], ['rluscs']
-    # ['msdwswrfcs'], ['rsdscs']
-    # ['msdwlwrfcs'], ['rldscs']
-    # ['msnswrfcs'], ['rsnscs']
-    # ['msnlwrfcs'], ['rlnscs']
-    # ['msuwswrf'], ['rsus']
-    # ['msuwlwrf'], ['rlus']
-    # ['msdwswrf'], ['rsds']
-    # ['msdwlwrf'], ['rlds']
-    # ['msnswrf'], ['rsns']
-    # ['msnlwrf'], ['rlns']
-    # ['e'], ['evspsbl']
-    # ['t2m'], ['tas']
-    # ['msl'], ['psl']
-    # ['msshf'], ['hfss']
-    # ['mslhf'], ['hfls']
-    # ['hcc', 'mcc', 'lcc', 'tcc'], ['clh', 'clm', 'cll', 'clt']
-    # ['tp'], ['pr']
-    print(f'{var1} in ERA5 vs. {var2} in BARRA-C2')
+for var2 in []:
+    # var2='pr'
+    # 'pr', 'clh', 'clm', 'cll', 'clt', 'evspsbl', 'hfls', 'hfss', 'psl', 'rlds', 'rldscs', 'rlus', 'rluscs', 'rlut', 'rlutcs', 'rsds', 'rsdscs', 'rsdt', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'sfcWind', 'tas', 'ts', 'evspsblpot', 'uas', 'vas', 'rlns',  'rsns',  'rlnscs', 'rsnscs',  'rlnscl', 'rsnscl', 'rldscl', 'rsdscl',  'rluscl', 'rsuscl',  'rsnt',  'rsntcs',  'rlutcl', 'rsntcl', 'rsutcl'
+    var1 = cmip6_era5_var[var2]
+    print(f'#-------------------------------- {var1} in ERA5 vs. {var2} in BARRA-C2')
     
     with open(f'data/obs/era5/mon/era5_sl_mon_alltime_{var1}.pkl', 'rb') as f:
         era5_sl_mon_alltime[var1] = pickle.load(f)
-    print(era5_sl_mon_alltime[var1]['mon'])
     with open(f'data/sim/um/barra_c2/barra_c2_mon_alltime_{var2}.pkl','rb') as f:
         barra_c2_mon_alltime[var2] = pickle.load(f)
-    print(barra_c2_mon_alltime[var2]['mon'])
     
     plt_data={}
     plt_data['ERA5']={}
     plt_data['BARRA-C2']={}
     plt_data['ERA5 - BARRA-C2']={}
     
-    if var1=='tp':
-        for jcolnames in plt_colnames:
-            print(jcolnames)
-            if jcolnames=='Annual mean':
-                # jcolnames='Annual mean'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['am'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)).squeeze() * 1000
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['am'].squeeze() * seconds_per_d
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['ann'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)) * 1000,
-                    regrid(barra_c2_mon_alltime[var2]['ann'] * seconds_per_d, ds_out=plt_data['ERA5'][jcolnames])
-                )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            else:
-                # jcolnames='MAM'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['sm'].sel(time=jcolnames, lat=slice(-5, -45.7), lon=slice(108, 160), drop=True) * 1000
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['sm'].sel(time=jcolnames) * seconds_per_d
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['sea'][era5_sl_mon_alltime[var1]['sea'].time.dt.season==jcolnames].sel(lat=slice(-5, -45.7), lon=slice(108, 160)) * 1000,
-                    regrid(barra_c2_mon_alltime[var2]['sea'][barra_c2_mon_alltime[var2]['sea'].time.dt.season==jcolnames] * seconds_per_d, ds_out=plt_data['ERA5'][jcolnames])
-                    )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
+    for jcolnames in plt_colnames:
+        print(f'#---------------- {jcolnames}')
+        if jcolnames=='Annual mean':
+            # jcolnames='Annual mean'
+            plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['am'].sel(lat=slice(max_lat, min_lat), lon=slice(min_lon, max_lon)).squeeze()
+            plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['am'].sel(lat=slice(min_lat, max_lat), lon=slice(min_lon, max_lon)).squeeze()
+            plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
             
-            print(stats.describe(plt_data['ERA5'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['BARRA-C2'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['ERA5 - BARRA-C2'][jcolnames].values, axis=None, nan_policy='omit'))
-        
-        cbar_label1=r'Precipitation (1979-2023) [$mm\;day^{-1}$]'
-        cbar_label2=r'Difference in precipitation (1979-2023) [$mm\;day^{-1}$]'
+            ttest_fdr_res = ttest_fdr_control(
+                era5_sl_mon_alltime[var1]['ann'].sel(lat=slice(max_lat, min_lat), lon=slice(min_lon, max_lon)),
+                regrid(barra_c2_mon_alltime[var2]['ann'].sel(lat=slice(min_lat, max_lat), lon=slice(min_lon, max_lon)), ds_out=plt_data['ERA5'][jcolnames])
+            )
+            plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
+        else:
+            # jcolnames='MAM'
+            plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['sm'].sel(time=jcolnames, lat=slice(max_lat, min_lat), lon=slice(min_lon, max_lon), drop=True)
+            plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['sm'].sel(time=jcolnames, lat=slice(min_lat, max_lat), lon=slice(min_lon, max_lon))
+            plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
+            
+            ttest_fdr_res = ttest_fdr_control(
+                era5_sl_mon_alltime[var1]['sea'][era5_sl_mon_alltime[var1]['sea'].time.dt.season==jcolnames].sel(lat=slice(max_lat, min_lat), lon=slice(min_lon, max_lon)),
+                regrid(barra_c2_mon_alltime[var2]['sea'][barra_c2_mon_alltime[var2]['sea'].time.dt.season==jcolnames].sel(lat=slice(min_lat, max_lat), lon=slice(min_lon, max_lon)), ds_out=plt_data['ERA5'][jcolnames])
+                    )
+            plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
+    
+    # print(stats.describe(np.concatenate([np.concatenate([plt_data['ERA5']['Annual mean'].values, plt_data['ERA5']['DJF'].values, plt_data['ERA5']['MAM'].values, plt_data['ERA5']['JJA'].values, plt_data['ERA5']['SON'].values]).ravel(), np.concatenate([plt_data['BARRA-C2']['Annual mean'].values, plt_data['BARRA-C2']['DJF'].values, plt_data['BARRA-C2']['MAM'].values, plt_data['BARRA-C2']['JJA'].values, plt_data['BARRA-C2']['SON'].values]).ravel()]), axis=None, nan_policy='omit'))
+    # print(stats.describe(np.concatenate([plt_data['ERA5 - BARRA-C2']['Annual mean'].values, plt_data['ERA5 - BARRA-C2']['DJF'].values, plt_data['ERA5 - BARRA-C2']['MAM'].values, plt_data['ERA5 - BARRA-C2']['JJA'].values, plt_data['ERA5 - BARRA-C2']['SON'].values]).ravel(), axis=None, nan_policy='omit'))
+    
+    cbar_label1 = '1979-2023 ' + era5_varlabels[var1]
+    cbar_label2 = 'Difference in 1979-2023 ' + era5_varlabels[var1]
+    
+    if var1 in ['tp']:
+        extend1 = 'max'
+    elif var1 in ['hcc', 'mcc', 'lcc', 'tcc']:
+        extend1 = 'neither'
+    else:
+        extend1 = 'both'
+    extend2 = 'both'
+    
+    if var1=='tp':
         pltlevel1 = np.array([0, 0.5, 1, 2, 3, 4, 6, 8, 10, 12, 16, 20,])
         pltticks1 = np.array([0, 0.5, 1, 2, 3, 4, 6, 8, 10, 12, 16, 20,])
         pltnorm1 = BoundaryNorm(pltlevel1, ncolors=len(pltlevel1)-1, clip=True)
         pltcmp1 = plt.get_cmap('viridis_r', len(pltlevel1)-1)
-        extend1 = 'max'
         pltlevel2 = np.array([-6, -4, -3, -2, -1, -0.5, 0, 0.5, 1, 2, 3, 4, 6])
         pltticks2 = np.array([-6, -4, -3, -2, -1, -0.5, 0, 0.5, 1, 2, 3, 4, 6])
         pltnorm2 = BoundaryNorm(pltlevel2, ncolors=len(pltlevel2)-1, clip=True)
         pltcmp2 = plt.get_cmap('BrBG', len(pltlevel2)-1)
-        extend2 = 'both'
-    elif var1=='hcc':
-        for jcolnames in plt_colnames:
-            print(jcolnames)
-            if jcolnames=='Annual mean':
-                # jcolnames='Annual mean'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['am'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)).squeeze() * 100
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['am'].squeeze()
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['ann'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)) * 100,
-                    regrid(barra_c2_mon_alltime[var2]['ann'], ds_out=plt_data['ERA5'][jcolnames])
-                )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            else:
-                # jcolnames='MAM'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['sm'].sel(time=jcolnames, lat=slice(-5, -45.7), lon=slice(108, 160), drop=True) * 100
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['sm'].sel(time=jcolnames)
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['sea'][era5_sl_mon_alltime[var1]['sea'].time.dt.season==jcolnames].sel(lat=slice(-5, -45.7), lon=slice(108, 160)) * 100,
-                    regrid(barra_c2_mon_alltime[var2]['sea'][barra_c2_mon_alltime[var2]['sea'].time.dt.season==jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                    )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            
-            print(stats.describe(plt_data['ERA5'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['BARRA-C2'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['ERA5 - BARRA-C2'][jcolnames].values, axis=None, nan_policy='omit'))
-        
-        cbar_label1=r'High cloud cover (1979-2023) [$\%$]'
-        cbar_label2=r'Difference in high cloud cover (1979-2023) [$\%$]'
+    elif var1 in ['hcc', 'mcc', 'lcc', 'tcc']:
         pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
             cm_min=0, cm_max=100, cm_interval1=10, cm_interval2=10, cmap='viridis_r',)
-        extend1 = 'neither'
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-30, cm_max=30, cm_interval1=5, cm_interval2=10, cmap='BrBG_r',)
-        extend2 = 'both'
-    elif var1=='mcc':
-        for jcolnames in plt_colnames:
-            print(jcolnames)
-            if jcolnames=='Annual mean':
-                # jcolnames='Annual mean'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['am'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)).squeeze() * 100
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['am'].squeeze()
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['ann'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)) * 100,
-                    regrid(barra_c2_mon_alltime[var2]['ann'], ds_out=plt_data['ERA5'][jcolnames])
-                )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            else:
-                # jcolnames='MAM'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['sm'].sel(time=jcolnames, lat=slice(-5, -45.7), lon=slice(108, 160), drop=True) * 100
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['sm'].sel(time=jcolnames)
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['sea'][era5_sl_mon_alltime[var1]['sea'].time.dt.season==jcolnames].sel(lat=slice(-5, -45.7), lon=slice(108, 160)) * 100,
-                    regrid(barra_c2_mon_alltime[var2]['sea'][barra_c2_mon_alltime[var2]['sea'].time.dt.season==jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                    )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            
-            print(stats.describe(plt_data['ERA5'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['BARRA-C2'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['ERA5 - BARRA-C2'][jcolnames].values, axis=None, nan_policy='omit'))
-        
-        cbar_label1=r'Middle cloud cover (1979-2023) [$\%$]'
-        cbar_label2=r'Difference in middle cloud cover (1979-2023) [$\%$]'
-        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-            cm_min=0, cm_max=100, cm_interval1=10, cm_interval2=10, cmap='viridis_r',)
-        extend1 = 'neither'
-        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-30, cm_max=30, cm_interval1=5, cm_interval2=10, cmap='BrBG_r',)
-        extend2 = 'both'
-    elif var1=='lcc':
-        for jcolnames in plt_colnames:
-            print(jcolnames)
-            if jcolnames=='Annual mean':
-                # jcolnames='Annual mean'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['am'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)).squeeze() * 100
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['am'].squeeze()
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['ann'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)) * 100,
-                    regrid(barra_c2_mon_alltime[var2]['ann'], ds_out=plt_data['ERA5'][jcolnames])
-                )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            else:
-                # jcolnames='MAM'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['sm'].sel(time=jcolnames, lat=slice(-5, -45.7), lon=slice(108, 160), drop=True) * 100
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['sm'].sel(time=jcolnames)
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['sea'][era5_sl_mon_alltime[var1]['sea'].time.dt.season==jcolnames].sel(lat=slice(-5, -45.7), lon=slice(108, 160)) * 100,
-                    regrid(barra_c2_mon_alltime[var2]['sea'][barra_c2_mon_alltime[var2]['sea'].time.dt.season==jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                    )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            
-            print(stats.describe(plt_data['ERA5'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['BARRA-C2'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['ERA5 - BARRA-C2'][jcolnames].values, axis=None, nan_policy='omit'))
-        
-        cbar_label1=r'Low cloud cover (1979-2023) [$\%$]'
-        cbar_label2=r'Difference in low cloud cover (1979-2023) [$\%$]'
-        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-            cm_min=0, cm_max=100, cm_interval1=10, cm_interval2=10, cmap='viridis_r',)
-        extend1 = 'neither'
-        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-30, cm_max=30, cm_interval1=5, cm_interval2=10, cmap='BrBG_r',)
-        extend2 = 'both'
-    elif var1=='tcc':
-        for jcolnames in plt_colnames:
-            print(jcolnames)
-            if jcolnames=='Annual mean':
-                # jcolnames='Annual mean'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['am'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)).squeeze() * 100
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['am'].squeeze()
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['ann'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)) * 100,
-                    regrid(barra_c2_mon_alltime[var2]['ann'], ds_out=plt_data['ERA5'][jcolnames])
-                )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            else:
-                # jcolnames='MAM'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['sm'].sel(time=jcolnames, lat=slice(-5, -45.7), lon=slice(108, 160), drop=True) * 100
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['sm'].sel(time=jcolnames)
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['sea'][era5_sl_mon_alltime[var1]['sea'].time.dt.season==jcolnames].sel(lat=slice(-5, -45.7), lon=slice(108, 160)) * 100,
-                    regrid(barra_c2_mon_alltime[var2]['sea'][barra_c2_mon_alltime[var2]['sea'].time.dt.season==jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                    )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            
-            print(stats.describe(plt_data['ERA5'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['BARRA-C2'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['ERA5 - BARRA-C2'][jcolnames].values, axis=None, nan_policy='omit'))
-        
-        cbar_label1=r'Total cloud cover (1979-2023) [$\%$]'
-        cbar_label2=r'Difference in total cloud cover (1979-2023) [$\%$]'
-        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-            cm_min=0, cm_max=100, cm_interval1=10, cm_interval2=10, cmap='viridis_r',)
-        extend1 = 'neither'
-        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-30, cm_max=30, cm_interval1=5, cm_interval2=10, cmap='BrBG_r',)
-        extend2 = 'both'
-    elif var1=='mslhf':
-        for jcolnames in plt_colnames:
-            print(jcolnames)
-            if jcolnames=='Annual mean':
-                # jcolnames='Annual mean'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['am'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)).squeeze()
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['am'].squeeze() * (-1)
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['ann'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['ann'] * (-1), ds_out=plt_data['ERA5'][jcolnames])
-                )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            else:
-                # jcolnames='MAM'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['sm'].sel(time=jcolnames, lat=slice(-5, -45.7), lon=slice(108, 160), drop=True)
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['sm'].sel(time=jcolnames) * (-1)
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['sea'][era5_sl_mon_alltime[var1]['sea'].time.dt.season==jcolnames].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['sea'][barra_c2_mon_alltime[var2]['sea'].time.dt.season==jcolnames] * (-1), ds_out=plt_data['ERA5'][jcolnames])
-                    )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            
-            print(stats.describe(plt_data['ERA5'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['BARRA-C2'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['ERA5 - BARRA-C2'][jcolnames].values, axis=None, nan_policy='omit'))
-        
-        cbar_label1=r'Surface latent heat (1979-2023) [$W \; m^{-2}$]'
-        cbar_label2=r'Difference in surface latent heat (1979-2023) [$W \; m^{-2}$]'
-        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-            cm_min=-280, cm_max=0, cm_interval1=20, cm_interval2=40, cmap='viridis',)
-        extend1 = 'both'
-        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-30, cm_max=30, cm_interval1=5, cm_interval2=10, cmap='BrBG_r',)
-        extend2 = 'both'
-    elif var1=='msshf':
-        for jcolnames in plt_colnames:
-            print(jcolnames)
-            if jcolnames=='Annual mean':
-                # jcolnames='Annual mean'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['am'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)).squeeze()
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['am'].squeeze() * (-1)
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['ann'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['ann'] * (-1), ds_out=plt_data['ERA5'][jcolnames])
-                )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            else:
-                # jcolnames='MAM'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['sm'].sel(time=jcolnames, lat=slice(-5, -45.7), lon=slice(108, 160), drop=True)
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['sm'].sel(time=jcolnames) * (-1)
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['sea'][era5_sl_mon_alltime[var1]['sea'].time.dt.season==jcolnames].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['sea'][barra_c2_mon_alltime[var2]['sea'].time.dt.season==jcolnames] * (-1), ds_out=plt_data['ERA5'][jcolnames])
-                    )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            
-            print(stats.describe(plt_data['ERA5'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['BARRA-C2'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['ERA5 - BARRA-C2'][jcolnames].values, axis=None, nan_policy='omit'))
-        
-        cbar_label1=r'Surface sensible heat (1979-2023) [$W \; m^{-2}$]'
-        cbar_label2=r'Difference in surface sensible heat (1979-2023) [$W \; m^{-2}$]'
-        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-            cm_min=-120, cm_max=60, cm_interval1=10, cm_interval2=20, cmap='PRGn', asymmetric=True,)
-        extend1 = 'both'
-        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-30, cm_max=30, cm_interval1=5, cm_interval2=10, cmap='BrBG_r',)
-        extend2 = 'both'
-    elif var1=='msl':
-        for jcolnames in plt_colnames:
-            print(jcolnames)
-            if jcolnames=='Annual mean':
-                # jcolnames='Annual mean'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['am'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)).squeeze() / 100
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['am'].squeeze() / 100
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['ann'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['ann'], ds_out=plt_data['ERA5'][jcolnames])
-                )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            else:
-                # jcolnames='MAM'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['sm'].sel(time=jcolnames, lat=slice(-5, -45.7), lon=slice(108, 160), drop=True) / 100
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['sm'].sel(time=jcolnames) / 100
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['sea'][era5_sl_mon_alltime[var1]['sea'].time.dt.season==jcolnames].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['sea'][barra_c2_mon_alltime[var2]['sea'].time.dt.season==jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                    )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            
-            print(stats.describe(plt_data['ERA5'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['BARRA-C2'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['ERA5 - BARRA-C2'][jcolnames].values, axis=None, nan_policy='omit'))
-        
-        cbar_label1=r'Sea level pressure (1979-2023) [$hPa$]'
-        cbar_label2=r'Difference in sea level pressure (1979-2023) [$hPa$]'
-        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-            cm_min=1004, cm_max=1024, cm_interval1=1, cm_interval2=2, cmap='viridis_r',)
-        extend1 = 'both'
-        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-6, cm_max=6, cm_interval1=0.5, cm_interval2=1, cmap='BrBG_r',)
-        extend2 = 'both'
-    elif var1=='t2m':
-        for jcolnames in plt_colnames:
-            print(jcolnames)
-            if jcolnames=='Annual mean':
-                # jcolnames='Annual mean'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['am'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)).squeeze() - zerok
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['am'].squeeze() - zerok
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['ann'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['ann'], ds_out=plt_data['ERA5'][jcolnames])
-                )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            else:
-                # jcolnames='MAM'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['sm'].sel(time=jcolnames, lat=slice(-5, -45.7), lon=slice(108, 160), drop=True) - zerok
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['sm'].sel(time=jcolnames) - zerok
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['sea'][era5_sl_mon_alltime[var1]['sea'].time.dt.season==jcolnames].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['sea'][barra_c2_mon_alltime[var2]['sea'].time.dt.season==jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                    )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            
-            print(stats.describe(plt_data['ERA5'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['BARRA-C2'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['ERA5 - BARRA-C2'][jcolnames].values, axis=None, nan_policy='omit'))
-        
-        cbar_label1=r'2 m temperature (1979-2023) [$°C$]'
-        cbar_label2=r'Difference in 2 m temperature (1979-2023) [$°C$]'
-        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-            cm_min=2, cm_max=34, cm_interval1=1, cm_interval2=4, cmap='viridis_r',)
-        extend1 = 'both'
-        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-5, cm_max=5, cm_interval1=1, cm_interval2=1, cmap='BrBG',)
-        extend2 = 'both'
-    elif var1=='e':
-        for jcolnames in plt_colnames:
-            print(jcolnames)
-            if jcolnames=='Annual mean':
-                # jcolnames='Annual mean'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['am'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)).squeeze() * (-1000)
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['am'].squeeze() * seconds_per_d
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['ann'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)) * (-1000),
-                    regrid(barra_c2_mon_alltime[var2]['ann'] * seconds_per_d, ds_out=plt_data['ERA5'][jcolnames])
-                )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            else:
-                # jcolnames='MAM'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['sm'].sel(time=jcolnames, lat=slice(-5, -45.7), lon=slice(108, 160), drop=True) * (-1000)
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['sm'].sel(time=jcolnames) * seconds_per_d
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['sea'][era5_sl_mon_alltime[var1]['sea'].time.dt.season==jcolnames].sel(lat=slice(-5, -45.7), lon=slice(108, 160)) * (-1000),
-                    regrid(barra_c2_mon_alltime[var2]['sea'][barra_c2_mon_alltime[var2]['sea'].time.dt.season==jcolnames] * seconds_per_d, ds_out=plt_data['ERA5'][jcolnames])
-                    )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            
-            print(stats.describe(plt_data['ERA5'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['BARRA-C2'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['ERA5 - BARRA-C2'][jcolnames].values, axis=None, nan_policy='omit'))
-        
-        cbar_label1=r'Evaporation (1979-2023) [$mm\;day^{-1}$]'
-        cbar_label2=r'Difference in evaporation (1979-2023) [$mm\;day^{-1}$]'
+            cm_min=-30, cm_max=30, cm_interval1=5, cm_interval2=10, cmap='BrBG',)
+    elif var1 in ['e', 'pev']:
         pltlevel1 = np.array([0, 0.5, 1, 2, 3, 4, 5, 6, 7, 8])
         pltticks1 = np.array([0, 0.5, 1, 2, 3, 4, 5, 6, 7, 8])
         pltnorm1 = BoundaryNorm(pltlevel1, ncolors=len(pltlevel1)-1, clip=True)
         pltcmp1 = plt.get_cmap('viridis_r', len(pltlevel1)-1)
-        extend1 = 'both'
         pltlevel2 = np.array([-5, -4, -3, -2, -1, -0.5, 0, 0.5, 1, 2, 3, 4, 5])
         pltticks2 = np.array([-5, -4, -3, -2, -1, -0.5, 0, 0.5, 1, 2, 3, 4, 5])
         pltnorm2 = BoundaryNorm(pltlevel2, ncolors=len(pltlevel2)-1, clip=True)
         pltcmp2 = plt.get_cmap('BrBG', len(pltlevel2)-1)
-        extend2 = 'both'
-    elif var1=='msnlwrf':
-        for jcolnames in plt_colnames:
-            print(jcolnames)
-            if jcolnames=='Annual mean':
-                # jcolnames='Annual mean'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['am'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)).squeeze()
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['am'].squeeze()
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['ann'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['ann'], ds_out=plt_data['ERA5'][jcolnames])
-                )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            else:
-                # jcolnames='MAM'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['sm'].sel(time=jcolnames, lat=slice(-5, -45.7), lon=slice(108, 160), drop=True)
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['sm'].sel(time=jcolnames)
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['sea'][era5_sl_mon_alltime[var1]['sea'].time.dt.season==jcolnames].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['sea'][barra_c2_mon_alltime[var2]['sea'].time.dt.season==jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                    )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            
-            print(stats.describe(plt_data['ERA5'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['BARRA-C2'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['ERA5 - BARRA-C2'][jcolnames].values, axis=None, nan_policy='omit'))
-        
-        cbar_label1=r'Surface net LW radiation (1979-2023) [$W \; m^{-2}$]'
-        cbar_label2=r'Difference in surface net LW radiation (1979-2023) [$W \; m^{-2}$]'
+    elif var1=='mslhf':
         pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-            cm_min=-140, cm_max=0, cm_interval1=10, cm_interval2=20, cmap='viridis',)
-        extend1 = 'both'
+            cm_min=-460, cm_max=30, cm_interval1=10, cm_interval2=40, cmap='PRGn', asymmetric=True)
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-20, cm_max=20, cm_interval1=2, cm_interval2=4, cmap='BrBG_r',)
-        extend2 = 'both'
-    elif var1=='msnswrf':
-        for jcolnames in plt_colnames:
-            print(jcolnames)
-            if jcolnames=='Annual mean':
-                # jcolnames='Annual mean'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['am'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)).squeeze()
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['am'].squeeze()
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['ann'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['ann'], ds_out=plt_data['ERA5'][jcolnames])
-                )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            else:
-                # jcolnames='MAM'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['sm'].sel(time=jcolnames, lat=slice(-5, -45.7), lon=slice(108, 160), drop=True)
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['sm'].sel(time=jcolnames)
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['sea'][era5_sl_mon_alltime[var1]['sea'].time.dt.season==jcolnames].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['sea'][barra_c2_mon_alltime[var2]['sea'].time.dt.season==jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                    )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            
-            print(stats.describe(plt_data['ERA5'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['BARRA-C2'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['ERA5 - BARRA-C2'][jcolnames].values, axis=None, nan_policy='omit'))
-        
-        cbar_label1=r'Surface net SW radiation (1979-2023) [$W \; m^{-2}$]'
-        cbar_label2=r'Difference in surface net SW radiation (1979-2023) [$W \; m^{-2}$]'
+            cm_min=-200, cm_max=200, cm_interval1=10, cm_interval2=40, cmap='BrBG',)
+    elif var1=='msshf':
         pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-            cm_min=40, cm_max=320, cm_interval1=20, cm_interval2=40, cmap='viridis',)
-        extend1 = 'both'
+            cm_min=-200, cm_max=80, cm_interval1=10, cm_interval2=40, cmap='PRGn', asymmetric=True,)
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-50, cm_max=50, cm_interval1=5, cm_interval2=10, cmap='BrBG_r',)
-        extend2 = 'both'
-    elif var1=='msdwlwrf':
-        for jcolnames in plt_colnames:
-            print(jcolnames)
-            if jcolnames=='Annual mean':
-                # jcolnames='Annual mean'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['am'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)).squeeze()
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['am'].squeeze()
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['ann'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['ann'], ds_out=plt_data['ERA5'][jcolnames])
-                )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            else:
-                # jcolnames='MAM'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['sm'].sel(time=jcolnames, lat=slice(-5, -45.7), lon=slice(108, 160), drop=True)
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['sm'].sel(time=jcolnames)
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['sea'][era5_sl_mon_alltime[var1]['sea'].time.dt.season==jcolnames].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['sea'][barra_c2_mon_alltime[var2]['sea'].time.dt.season==jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                    )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            
-            print(stats.describe(plt_data['ERA5'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['BARRA-C2'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['ERA5 - BARRA-C2'][jcolnames].values, axis=None, nan_policy='omit'))
-        
-        cbar_label1=r'Surface downward LW radiation (1979-2023) [$W \; m^{-2}$]'
-        cbar_label2=r'Difference in surface downward LW radiation (1979-2023) [$W \; m^{-2}$]'
+            cm_min=-160, cm_max=160, cm_interval1=10, cm_interval2=40, cmap='BrBG',)
+    elif var1=='msl':
         pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-            cm_min=270, cm_max=430, cm_interval1=10, cm_interval2=20, cmap='viridis_r',)
-        extend1 = 'both'
+            cm_min=1005, cm_max=1022, cm_interval1=1, cm_interval2=2, cmap='viridis_r',)
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-20, cm_max=20, cm_interval1=2, cm_interval2=4, cmap='BrBG_r',)
-        extend2 = 'both'
-    elif var1=='msdwswrf':
-        for jcolnames in plt_colnames:
-            print(jcolnames)
-            if jcolnames=='Annual mean':
-                # jcolnames='Annual mean'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['am'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)).squeeze()
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['am'].squeeze()
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['ann'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['ann'], ds_out=plt_data['ERA5'][jcolnames])
-                )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            else:
-                # jcolnames='MAM'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['sm'].sel(time=jcolnames, lat=slice(-5, -45.7), lon=slice(108, 160), drop=True)
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['sm'].sel(time=jcolnames)
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['sea'][era5_sl_mon_alltime[var1]['sea'].time.dt.season==jcolnames].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['sea'][barra_c2_mon_alltime[var2]['sea'].time.dt.season==jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                    )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            
-            print(stats.describe(plt_data['ERA5'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['BARRA-C2'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['ERA5 - BARRA-C2'][jcolnames].values, axis=None, nan_policy='omit'))
-        
-        cbar_label1=r'Surface downward SW radiation (1979-2023) [$W \; m^{-2}$]'
-        cbar_label2=r'Difference in surface downward SW radiation (1979-2023) [$W \; m^{-2}$]'
+            cm_min=-0.5, cm_max=4.5, cm_interval1=0.5, cm_interval2=1, cmap='BrBG', asymmetric=True,)
+    elif var1 in ['msdwlwrf', 'msdwlwrfcs']:
         pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-            cm_min=60, cm_max=320, cm_interval1=10, cm_interval2=20, cmap='viridis_r',)
-        extend1 = 'both'
+            cm_min=200, cm_max=440, cm_interval1=10, cm_interval2=40, cmap='viridis_r',)
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-50, cm_max=50, cm_interval1=5, cm_interval2=10, cmap='BrBG_r',)
-        extend2 = 'both'
-    elif var1=='msuwlwrf':
-        for jcolnames in plt_colnames:
-            print(jcolnames)
-            if jcolnames=='Annual mean':
-                # jcolnames='Annual mean'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['am'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)).squeeze()
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['am'].squeeze() * (-1)
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['ann'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['ann'] * (-1), ds_out=plt_data['ERA5'][jcolnames])
-                )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            else:
-                # jcolnames='MAM'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['sm'].sel(time=jcolnames, lat=slice(-5, -45.7), lon=slice(108, 160), drop=True)
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['sm'].sel(time=jcolnames) * (-1)
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['sea'][era5_sl_mon_alltime[var1]['sea'].time.dt.season==jcolnames].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['sea'][barra_c2_mon_alltime[var2]['sea'].time.dt.season==jcolnames] * (-1), ds_out=plt_data['ERA5'][jcolnames])
-                    )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            
-            print(stats.describe(plt_data['ERA5'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['BARRA-C2'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['ERA5 - BARRA-C2'][jcolnames].values, axis=None, nan_policy='omit'))
-        
-        cbar_label1=r'Surface upward LW radiation (1979-2023) [$W \; m^{-2}$]'
-        cbar_label2=r'Difference in surface upward LW radiation (1979-2023) [$W \; m^{-2}$]'
+            cm_min=-50, cm_max=90, cm_interval1=5, cm_interval2=20, cmap='BrBG', asymmetric=True,)
+    elif var1 in ['msuwlwrf', 'msuwlwrfcs']:
         pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-            cm_min=-540, cm_max=-320, cm_interval1=20, cm_interval2=40, cmap='viridis',)
-        extend1 = 'both'
+            cm_min=-540, cm_max=-300, cm_interval1=10, cm_interval2=40, cmap='viridis',)
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-20, cm_max=20, cm_interval1=2, cm_interval2=4, cmap='BrBG_r',)
-        extend2 = 'both'
-    elif var1=='msuwswrf':
-        for jcolnames in plt_colnames:
-            print(jcolnames)
-            if jcolnames=='Annual mean':
-                # jcolnames='Annual mean'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['am'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)).squeeze()
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['am'].squeeze() * (-1)
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['ann'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['ann'] * (-1), ds_out=plt_data['ERA5'][jcolnames])
-                )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            else:
-                # jcolnames='MAM'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['sm'].sel(time=jcolnames, lat=slice(-5, -45.7), lon=slice(108, 160), drop=True)
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['sm'].sel(time=jcolnames) * (-1)
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['sea'][era5_sl_mon_alltime[var1]['sea'].time.dt.season==jcolnames].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['sea'][barra_c2_mon_alltime[var2]['sea'].time.dt.season==jcolnames] * (-1), ds_out=plt_data['ERA5'][jcolnames])
-                    )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            
-            print(stats.describe(plt_data['ERA5'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['BARRA-C2'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['ERA5 - BARRA-C2'][jcolnames].values, axis=None, nan_policy='omit'))
-        
-        cbar_label1=r'Surface upward SW radiation (1979-2023) [$W \; m^{-2}$]'
-        cbar_label2=r'Difference in surface upward SW radiation (1979-2023) [$W \; m^{-2}$]'
+            cm_min=-60, cm_max=60, cm_interval1=5, cm_interval2=20, cmap='BrBG',)
+    elif var1 in ['mtnlwrf', 'mtnlwrfcs']:
         pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-            cm_min=-120, cm_max=0, cm_interval1=10, cm_interval2=20, cmap='viridis',)
-        extend1 = 'both'
+            cm_min=-310, cm_max=-180, cm_interval1=5, cm_interval2=20, cmap='viridis',)
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-20, cm_max=20, cm_interval1=2, cm_interval2=4, cmap='BrBG_r',)
-        extend2 = 'both'
-    elif var1=='msnlwrfcs':
-        for jcolnames in plt_colnames:
-            print(jcolnames)
-            if jcolnames=='Annual mean':
-                # jcolnames='Annual mean'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['am'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)).squeeze()
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['am'].squeeze()
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['ann'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['ann'], ds_out=plt_data['ERA5'][jcolnames])
-                )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            else:
-                # jcolnames='MAM'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['sm'].sel(time=jcolnames, lat=slice(-5, -45.7), lon=slice(108, 160), drop=True)
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['sm'].sel(time=jcolnames)
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['sea'][era5_sl_mon_alltime[var1]['sea'].time.dt.season==jcolnames].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['sea'][barra_c2_mon_alltime[var2]['sea'].time.dt.season==jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                    )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            
-            print(stats.describe(plt_data['ERA5'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['BARRA-C2'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['ERA5 - BARRA-C2'][jcolnames].values, axis=None, nan_policy='omit'))
-        
-        cbar_label1=r'Surface clear-sky net LW radiation (1979-2023) [$W \; m^{-2}$]'
-        cbar_label2=r'Difference in surface clear-sky net LW radiation (1979-2023) [$W \; m^{-2}$]'
+            cm_min=-20, cm_max=20, cm_interval1=2, cm_interval2=4, cmap='BrBG',)
+    elif var1 in ['msdwswrf', 'msdwswrfcs']:
         pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-            cm_min=-150, cm_max=-40, cm_interval1=10, cm_interval2=20, cmap='viridis',)
-        extend1 = 'both'
+            cm_min=40, cm_max=400, cm_interval1=10, cm_interval2=40, cmap='viridis_r',)
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-20, cm_max=20, cm_interval1=2, cm_interval2=4, cmap='BrBG_r',)
-        extend2 = 'both'
-    elif var1=='msnswrfcs':
-        for jcolnames in plt_colnames:
-            print(jcolnames)
-            if jcolnames=='Annual mean':
-                # jcolnames='Annual mean'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['am'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)).squeeze()
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['am'].squeeze()
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['ann'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['ann'], ds_out=plt_data['ERA5'][jcolnames])
-                )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            else:
-                # jcolnames='MAM'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['sm'].sel(time=jcolnames, lat=slice(-5, -45.7), lon=slice(108, 160), drop=True)
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['sm'].sel(time=jcolnames)
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['sea'][era5_sl_mon_alltime[var1]['sea'].time.dt.season==jcolnames].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['sea'][barra_c2_mon_alltime[var2]['sea'].time.dt.season==jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                    )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            
-            print(stats.describe(plt_data['ERA5'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['BARRA-C2'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['ERA5 - BARRA-C2'][jcolnames].values, axis=None, nan_policy='omit'))
-        
-        cbar_label1=r'Surface clear-sky net SW radiation (1979-2023) [$W \; m^{-2}$]'
-        cbar_label2=r'Difference in surface clear-sky net SW radiation (1979-2023) [$W \; m^{-2}$]'
+            cm_min=-50, cm_max=100, cm_interval1=5, cm_interval2=20, cmap='BrBG', asymmetric=True)
+    elif var1=='mtdwswrf':
         pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-            cm_min=80, cm_max=340, cm_interval1=20, cm_interval2=40, cmap='viridis',)
-        extend1 = 'both'
+            cm_min=150, cm_max=490, cm_interval1=10, cm_interval2=40, cmap='viridis_r',)
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-50, cm_max=50, cm_interval1=5, cm_interval2=10, cmap='BrBG_r',)
-        extend2 = 'both'
-    elif var1=='msdwlwrfcs':
-        for jcolnames in plt_colnames:
-            print(jcolnames)
-            if jcolnames=='Annual mean':
-                # jcolnames='Annual mean'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['am'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)).squeeze()
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['am'].squeeze()
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['ann'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['ann'], ds_out=plt_data['ERA5'][jcolnames])
-                )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            else:
-                # jcolnames='MAM'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['sm'].sel(time=jcolnames, lat=slice(-5, -45.7), lon=slice(108, 160), drop=True)
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['sm'].sel(time=jcolnames)
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['sea'][era5_sl_mon_alltime[var1]['sea'].time.dt.season==jcolnames].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['sea'][barra_c2_mon_alltime[var2]['sea'].time.dt.season==jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                    )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            
-            print(stats.describe(plt_data['ERA5'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['BARRA-C2'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['ERA5 - BARRA-C2'][jcolnames].values, axis=None, nan_policy='omit'))
-        
-        cbar_label1=r'Surface clear-sky downward LW radiation (1979-2023) [$W \; m^{-2}$]'
-        cbar_label2=r'Difference in surface clear-sky downward LW radiation (1979-2023) [$W \; m^{-2}$]'
+            cm_min=-0.3, cm_max=0.6, cm_interval1=0.1, cm_interval2=0.1, cmap='BrBG',)
+    elif var1 in ['msuwswrf', 'msuwswrfcs']:
         pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-            cm_min=230, cm_max=420, cm_interval1=10, cm_interval2=20, cmap='viridis_r',)
-        extend1 = 'both'
+            cm_min=-160, cm_max=0, cm_interval1=5, cm_interval2=20, cmap='viridis',)
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-20, cm_max=20, cm_interval1=2, cm_interval2=4, cmap='BrBG_r',)
-        extend2 = 'both'
-    elif var1=='msdwswrfcs':
-        for jcolnames in plt_colnames:
-            print(jcolnames)
-            if jcolnames=='Annual mean':
-                # jcolnames='Annual mean'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['am'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)).squeeze()
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['am'].squeeze()
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['ann'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['ann'], ds_out=plt_data['ERA5'][jcolnames])
-                )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            else:
-                # jcolnames='MAM'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['sm'].sel(time=jcolnames, lat=slice(-5, -45.7), lon=slice(108, 160), drop=True)
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['sm'].sel(time=jcolnames)
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['sea'][era5_sl_mon_alltime[var1]['sea'].time.dt.season==jcolnames].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['sea'][barra_c2_mon_alltime[var2]['sea'].time.dt.season==jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                    )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            
-            print(stats.describe(plt_data['ERA5'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['BARRA-C2'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['ERA5 - BARRA-C2'][jcolnames].values, axis=None, nan_policy='omit'))
-        
-        cbar_label1=r'Surface clear-sky downward SW radiation (1979-2023) [$W \; m^{-2}$]'
-        cbar_label2=r'Difference in surface clear-sky downward SW radiation (1979-2023) [$W \; m^{-2}$]'
+            cm_min=-40, cm_max=100, cm_interval1=5, cm_interval2=20, cmap='BrBG', asymmetric=True)
+    elif var1 in ['mtuwswrf', 'mtuwswrfcs']:
         pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-            cm_min=90, cm_max=370, cm_interval1=20, cm_interval2=40, cmap='viridis_r',)
-        extend1 = 'both'
+            cm_min=-250, cm_max=-20, cm_interval1=10, cm_interval2=40, cmap='viridis',)
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-50, cm_max=50, cm_interval1=5, cm_interval2=10, cmap='BrBG_r',)
-        extend2 = 'both'
-    elif var1=='msuwlwrfcs':
-        for jcolnames in plt_colnames:
-            print(jcolnames)
-            if jcolnames=='Annual mean':
-                # jcolnames='Annual mean'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['am'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)).squeeze()
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['am'].squeeze() * (-1)
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['ann'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['ann'] * (-1), ds_out=plt_data['ERA5'][jcolnames])
-                )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            else:
-                # jcolnames='MAM'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['sm'].sel(time=jcolnames, lat=slice(-5, -45.7), lon=slice(108, 160), drop=True)
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['sm'].sel(time=jcolnames) * (-1)
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['sea'][era5_sl_mon_alltime[var1]['sea'].time.dt.season==jcolnames].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['sea'][barra_c2_mon_alltime[var2]['sea'].time.dt.season==jcolnames] * (-1), ds_out=plt_data['ERA5'][jcolnames])
-                    )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            
-            print(stats.describe(plt_data['ERA5'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['BARRA-C2'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['ERA5 - BARRA-C2'][jcolnames].values, axis=None, nan_policy='omit'))
-        
-        cbar_label1=r'Surface clear-sky upward LW radiation (1979-2023) [$W \; m^{-2}$]'
-        cbar_label2=r'Difference in surface clear-sky upward LW radiation (1979-2023) [$W \; m^{-2}$]'
+            cm_min=-30, cm_max=100, cm_interval1=5, cm_interval2=20, cmap='BrBG', asymmetric=True)
+    elif var1 in ['si10']:
         pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-            cm_min=-540, cm_max=-320, cm_interval1=20, cm_interval2=40, cmap='viridis',)
-        extend1 = 'both'
+            cm_min=1, cm_max=11, cm_interval1=1, cm_interval2=1, cmap='viridis_r',)
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-20, cm_max=20, cm_interval1=2, cm_interval2=4, cmap='BrBG_r',)
-        extend2 = 'both'
-    elif var1=='msuwswrfcs':
-        for jcolnames in plt_colnames:
-            print(jcolnames)
-            if jcolnames=='Annual mean':
-                # jcolnames='Annual mean'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['am'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)).squeeze()
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['am'].squeeze() * (-1)
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['ann'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['ann'] * (-1), ds_out=plt_data['ERA5'][jcolnames])
-                )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            else:
-                # jcolnames='MAM'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['sm'].sel(time=jcolnames, lat=slice(-5, -45.7), lon=slice(108, 160), drop=True)
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['sm'].sel(time=jcolnames) * (-1)
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['sea'][era5_sl_mon_alltime[var1]['sea'].time.dt.season==jcolnames].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['sea'][barra_c2_mon_alltime[var2]['sea'].time.dt.season==jcolnames] * (-1), ds_out=plt_data['ERA5'][jcolnames])
-                    )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            
-            print(stats.describe(plt_data['ERA5'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['BARRA-C2'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['ERA5 - BARRA-C2'][jcolnames].values, axis=None, nan_policy='omit'))
-        
-        cbar_label1=r'Surface clear-sky upward SW radiation (1979-2023) [$W \; m^{-2}$]'
-        cbar_label2=r'Difference in surface clear-sky upward SW radiation (1979-2023) [$W \; m^{-2}$]'
+            cm_min=-5, cm_max=5, cm_interval1=0.5, cm_interval2=1, cmap='BrBG')
+    elif var1=='t2m':
         pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-            cm_min=-120, cm_max=0, cm_interval1=10, cm_interval2=20, cmap='viridis',)
-        extend1 = 'both'
+            cm_min=-2, cm_max=34, cm_interval1=1, cm_interval2=4, cmap='viridis_r',)
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-20, cm_max=20, cm_interval1=2, cm_interval2=4, cmap='BrBG_r',)
-        extend2 = 'both'
-    elif var1=='msnlwrfcl':
-        for jcolnames in plt_colnames:
-            print(jcolnames)
-            if jcolnames=='Annual mean':
-                # jcolnames='Annual mean'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['am'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)).squeeze()
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['am'].squeeze()
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['ann'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['ann'], ds_out=plt_data['ERA5'][jcolnames])
-                )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            else:
-                # jcolnames='MAM'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['sm'].sel(time=jcolnames, lat=slice(-5, -45.7), lon=slice(108, 160), drop=True)
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['sm'].sel(time=jcolnames)
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['sea'][era5_sl_mon_alltime[var1]['sea'].time.dt.season==jcolnames].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['sea'][barra_c2_mon_alltime[var2]['sea'].time.dt.season==jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                    )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            
-            print(stats.describe(plt_data['ERA5'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['BARRA-C2'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['ERA5 - BARRA-C2'][jcolnames].values, axis=None, nan_policy='omit'))
-        
-        cbar_label1=r'CRE on surface net LW radiation (1979-2023) [$W \; m^{-2}$]'
-        cbar_label2=r'Difference in CRE on surface net LW radiation (1979-2023) [$W \; m^{-2}$]'
+            cm_min=-4, cm_max=10, cm_interval1=1, cm_interval2=1, cmap='BrBG', asymmetric=True)
+    elif var1=='skt':
         pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-            cm_min=-25, cm_max=55, cm_interval1=5, cm_interval2=10, cmap='PRGn', asymmetric=True)
-        extend1 = 'both'
+            cm_min=-2, cm_max=40, cm_interval1=1, cm_interval2=4, cmap='viridis_r',)
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-20, cm_max=20, cm_interval1=2, cm_interval2=4, cmap='BrBG_r',)
-        extend2 = 'both'
-    elif var1=='msnswrfcl':
-        for jcolnames in plt_colnames:
-            print(jcolnames)
-            if jcolnames=='Annual mean':
-                # jcolnames='Annual mean'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['am'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)).squeeze()
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['am'].squeeze()
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['ann'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['ann'], ds_out=plt_data['ERA5'][jcolnames])
-                )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            else:
-                # jcolnames='MAM'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['sm'].sel(time=jcolnames, lat=slice(-5, -45.7), lon=slice(108, 160), drop=True)
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['sm'].sel(time=jcolnames)
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['sea'][era5_sl_mon_alltime[var1]['sea'].time.dt.season==jcolnames].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['sea'][barra_c2_mon_alltime[var2]['sea'].time.dt.season==jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                    )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            
-            print(stats.describe(plt_data['ERA5'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['BARRA-C2'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['ERA5 - BARRA-C2'][jcolnames].values, axis=None, nan_policy='omit'))
-        
-        cbar_label1=r'CRE on surface net SW radiation (1979-2023) [$W \; m^{-2}$]'
-        cbar_label2=r'Difference in CRE on surface net SW radiation (1979-2023) [$W \; m^{-2}$]'
+            cm_min=-7, cm_max=10, cm_interval1=1, cm_interval2=1, cmap='BrBG', asymmetric=True)
+    elif var1 in ['u10', 'v10']:
         pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-            cm_min=-130, cm_max=30, cm_interval1=10, cm_interval2=20, cmap='PRGn', asymmetric=True)
-        extend1 = 'both'
+            cm_min=-9, cm_max=9, cm_interval1=1, cm_interval2=2, cmap='PRGn',)
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-50, cm_max=50, cm_interval1=5, cm_interval2=10, cmap='BrBG_r',)
-        extend2 = 'both'
-    elif var1=='msdwlwrfcl':
-        for jcolnames in plt_colnames:
-            print(jcolnames)
-            if jcolnames=='Annual mean':
-                # jcolnames='Annual mean'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['am'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)).squeeze()
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['am'].squeeze()
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['ann'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['ann'], ds_out=plt_data['ERA5'][jcolnames])
-                )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            else:
-                # jcolnames='MAM'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['sm'].sel(time=jcolnames, lat=slice(-5, -45.7), lon=slice(108, 160), drop=True)
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['sm'].sel(time=jcolnames)
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['sea'][era5_sl_mon_alltime[var1]['sea'].time.dt.season==jcolnames].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['sea'][barra_c2_mon_alltime[var2]['sea'].time.dt.season==jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                    )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            
-            print(stats.describe(plt_data['ERA5'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['BARRA-C2'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['ERA5 - BARRA-C2'][jcolnames].values, axis=None, nan_policy='omit'))
-        
-        cbar_label1=r'CRE on surface downward LW radiation (1979-2023) [$W \; m^{-2}$]'
-        cbar_label2=r'Difference in CRE on surface downward LW radiation (1979-2023) [$W \; m^{-2}$]'
-        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-            cm_min=0, cm_max=50, cm_interval1=2.5, cm_interval2=5, cmap='viridis_r',)
-        extend1 = 'both'
-        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-20, cm_max=20, cm_interval1=2, cm_interval2=4, cmap='BrBG_r',)
-        extend2 = 'both'
-    elif var1=='msdwswrfcl':
-        for jcolnames in plt_colnames:
-            print(jcolnames)
-            if jcolnames=='Annual mean':
-                # jcolnames='Annual mean'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['am'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)).squeeze()
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['am'].squeeze()
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['ann'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['ann'], ds_out=plt_data['ERA5'][jcolnames])
-                )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            else:
-                # jcolnames='MAM'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['sm'].sel(time=jcolnames, lat=slice(-5, -45.7), lon=slice(108, 160), drop=True)
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['sm'].sel(time=jcolnames)
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['sea'][era5_sl_mon_alltime[var1]['sea'].time.dt.season==jcolnames].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['sea'][barra_c2_mon_alltime[var2]['sea'].time.dt.season==jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                    )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            
-            print(stats.describe(plt_data['ERA5'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['BARRA-C2'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['ERA5 - BARRA-C2'][jcolnames].values, axis=None, nan_policy='omit'))
-        
-        cbar_label1=r'CRE on surface downward SW radiation (1979-2023) [$W \; m^{-2}$]'
-        cbar_label2=r'Difference in CRE on surface downward SW radiation (1979-2023) [$W \; m^{-2}$]'
+            cm_min=-5, cm_max=5, cm_interval1=1, cm_interval2=2, cmap='BrBG',)
+    elif var1 in ['msnlwrf', 'msnlwrfcs']:
         pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
             cm_min=-150, cm_max=0, cm_interval1=10, cm_interval2=20, cmap='viridis',)
-        extend1 = 'both'
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-50, cm_max=50, cm_interval1=5, cm_interval2=10, cmap='BrBG_r',)
-        extend2 = 'both'
+            cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10, cmap='BrBG',)
+    elif var1 in ['msnswrf', 'msnswrfcs']:
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=30, cm_max=350, cm_interval1=10, cm_interval2=40, cmap='viridis',)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-40, cm_max=100, cm_interval1=5, cm_interval2=20, cmap='BrBG', asymmetric=True)
+    elif var1=='msnlwrfcl':
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=-25, cm_max=70, cm_interval1=5, cm_interval2=10, cmap='PRGn', asymmetric=True)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-30, cm_max=30, cm_interval1=2.5, cm_interval2=5, cmap='BrBG',)
+    elif var1=='msnswrfcl':
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=-230, cm_max=30, cm_interval1=10, cm_interval2=40, cmap='PRGn', asymmetric=True)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-30, cm_max=80, cm_interval1=5, cm_interval2=10, cmap='BrBG', asymmetric=True)
+    elif var1=='msdwlwrfcl':
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=0, cm_max=70, cm_interval1=2.5, cm_interval2=10, cmap='viridis_r',)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-40, cm_max=10, cm_interval1=2.5, cm_interval2=5, cmap='BrBG', asymmetric=True)
+    elif var1=='msdwswrfcl':
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=-270, cm_max=0, cm_interval1=10, cm_interval2=40, cmap='viridis',)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-30, cm_max=100, cm_interval1=5, cm_interval2=10, cmap='BrBG', asymmetric=True)
     elif var1=='msuwlwrfcl':
-        for jcolnames in plt_colnames:
-            print(jcolnames)
-            if jcolnames=='Annual mean':
-                # jcolnames='Annual mean'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['am'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)).squeeze()
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['am'].squeeze() * (-1)
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['ann'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['ann'] * (-1), ds_out=plt_data['ERA5'][jcolnames])
-                )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            else:
-                # jcolnames='MAM'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['sm'].sel(time=jcolnames, lat=slice(-5, -45.7), lon=slice(108, 160), drop=True)
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['sm'].sel(time=jcolnames) * (-1)
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['sea'][era5_sl_mon_alltime[var1]['sea'].time.dt.season==jcolnames].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['sea'][barra_c2_mon_alltime[var2]['sea'].time.dt.season==jcolnames] * (-1), ds_out=plt_data['ERA5'][jcolnames])
-                    )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            
-            print(stats.describe(plt_data['ERA5'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['BARRA-C2'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['ERA5 - BARRA-C2'][jcolnames].values, axis=None, nan_policy='omit'))
-        
-        cbar_label1=r'CRE on surface upward LW radiation (1979-2023) [$W \; m^{-2}$]'
-        cbar_label2=r'Difference in CRE on surface upward LW radiation (1979-2023) [$W \; m^{-2}$]'
         pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
             cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10, cmap='PRGn',)
-        extend1 = 'both'
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-20, cm_max=20, cm_interval1=2, cm_interval2=4, cmap='BrBG_r',)
-        extend2 = 'both'
+            cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10, cmap='BrBG',)
     elif var1=='msuwswrfcl':
-        for jcolnames in plt_colnames:
-            print(jcolnames)
-            if jcolnames=='Annual mean':
-                # jcolnames='Annual mean'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['am'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)).squeeze()
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['am'].squeeze() * (-1)
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['ann'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['ann'] * (-1), ds_out=plt_data['ERA5'][jcolnames])
-                )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            else:
-                # jcolnames='MAM'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['sm'].sel(time=jcolnames, lat=slice(-5, -45.7), lon=slice(108, 160), drop=True)
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['sm'].sel(time=jcolnames) * (-1)
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['sea'][era5_sl_mon_alltime[var1]['sea'].time.dt.season==jcolnames].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['sea'][barra_c2_mon_alltime[var2]['sea'].time.dt.season==jcolnames] * (-1), ds_out=plt_data['ERA5'][jcolnames])
-                    )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            
-            print(stats.describe(plt_data['ERA5'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['BARRA-C2'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['ERA5 - BARRA-C2'][jcolnames].values, axis=None, nan_policy='omit'))
-        
-        cbar_label1=r'CRE on surface upward SW radiation (1979-2023) [$W \; m^{-2}$]'
-        cbar_label2=r'Difference in CRE on surface upward SW radiation (1979-2023) [$W \; m^{-2}$]'
         pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-            cm_min=-20, cm_max=20, cm_interval1=2, cm_interval2=4, cmap='viridis',)
-        extend1 = 'both'
+            cm_min=-40, cm_max=60, cm_interval1=5, cm_interval2=10, cmap='PRGn', asymmetric=True)
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-20, cm_max=20, cm_interval1=2, cm_interval2=4, cmap='BrBG_r',)
-        extend2 = 'both'
-    elif var1=='mtdwswrf':
-        for jcolnames in plt_colnames:
-            print(jcolnames)
-            if jcolnames=='Annual mean':
-                # jcolnames='Annual mean'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['am'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)).squeeze()
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['am'].squeeze()
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['ann'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['ann'], ds_out=plt_data['ERA5'][jcolnames])
-                )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            else:
-                # jcolnames='MAM'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['sm'].sel(time=jcolnames, lat=slice(-5, -45.7), lon=slice(108, 160), drop=True)
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['sm'].sel(time=jcolnames)
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['sea'][era5_sl_mon_alltime[var1]['sea'].time.dt.season==jcolnames].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['sea'][barra_c2_mon_alltime[var2]['sea'].time.dt.season==jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                    )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            
-            print(stats.describe(plt_data['ERA5'][jcolnames].values, axis=None, nan_policy='omit'))
-            print(stats.describe(plt_data['BARRA-C2'][jcolnames].values, axis=None, nan_policy='omit'))
-            print(stats.describe(plt_data['ERA5 - BARRA-C2'][jcolnames].values, axis=None, nan_policy='omit'))
-        
-        cbar_label1=r'TOA downward SW radiation (1979-2023) [$W \; m^{-2}$]'
-        cbar_label2=r'Difference in TOA downward SW radiation (1979-2023) [$W \; m^{-2}$]'
+            cm_min=-50, cm_max=50, cm_interval1=5, cm_interval2=10, cmap='BrBG',)
+    elif var1 in ['mtnswrf', 'mtnswrfcs']:
         pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-            cm_min=140, cm_max=480, cm_interval1=20, cm_interval2=40, cmap='viridis_r',)
-        extend1 = 'both'
+            cm_min=70, cm_max=440, cm_interval1=10, cm_interval2=40, cmap='viridis_r',)
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-1, cm_max=1, cm_interval1=0.2, cm_interval2=0.2, cmap='BrBG_r',)
-        extend2 = 'both'
-    elif var1=='mtnlwrf':
-        for jcolnames in plt_colnames:
-            print(jcolnames)
-            if jcolnames=='Annual mean':
-                # jcolnames='Annual mean'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['am'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)).squeeze()
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['am'].squeeze() * (-1)
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['ann'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['ann'] * (-1), ds_out=plt_data['ERA5'][jcolnames])
-                )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            else:
-                # jcolnames='MAM'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['sm'].sel(time=jcolnames, lat=slice(-5, -45.7), lon=slice(108, 160), drop=True)
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['sm'].sel(time=jcolnames) * (-1)
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['sea'][era5_sl_mon_alltime[var1]['sea'].time.dt.season==jcolnames].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['sea'][barra_c2_mon_alltime[var2]['sea'].time.dt.season==jcolnames] * (-1), ds_out=plt_data['ERA5'][jcolnames])
-                    )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            
-            print(stats.describe(plt_data['ERA5'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['BARRA-C2'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['ERA5 - BARRA-C2'][jcolnames].values, axis=None, nan_policy='omit'))
-        
-        cbar_label1=r'TOA net LW radiation (1979-2023) [$W \; m^{-2}$]'
-        cbar_label2=r'Difference in TOA net LW radiation (1979-2023) [$W \; m^{-2}$]'
-        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-            cm_min=-290, cm_max=-170, cm_interval1=10, cm_interval2=20, cmap='viridis',)
-        extend1 = 'both'
-        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-20, cm_max=20, cm_interval1=2, cm_interval2=4, cmap='BrBG_r',)
-        extend2 = 'both'
-    elif var1=='mtnswrf':
-        for jcolnames in plt_colnames:
-            print(jcolnames)
-            if jcolnames=='Annual mean':
-                # jcolnames='Annual mean'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['am'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)).squeeze()
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['am'].squeeze()
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['ann'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['ann'], ds_out=plt_data['ERA5'][jcolnames])
-                )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            else:
-                # jcolnames='MAM'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['sm'].sel(time=jcolnames, lat=slice(-5, -45.7), lon=slice(108, 160), drop=True)
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['sm'].sel(time=jcolnames)
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['sea'][era5_sl_mon_alltime[var1]['sea'].time.dt.season==jcolnames].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['sea'][barra_c2_mon_alltime[var2]['sea'].time.dt.season==jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                    )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            
-            print(stats.describe(plt_data['ERA5'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['BARRA-C2'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['ERA5 - BARRA-C2'][jcolnames].values, axis=None, nan_policy='omit'))
-        
-        cbar_label1=r'TOA net SW radiation (1979-2023) [$W \; m^{-2}$]'
-        cbar_label2=r'Difference in TOA net SW radiation (1979-2023) [$W \; m^{-2}$]'
-        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-            cm_min=80, cm_max=420, cm_interval1=20, cm_interval2=40, cmap='viridis_r',)
-        extend1 = 'both'
-        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-50, cm_max=50, cm_interval1=5, cm_interval2=10, cmap='BrBG_r',)
-        extend2 = 'both'
-    elif var1=='mtuwswrf':
-        for jcolnames in plt_colnames:
-            print(jcolnames)
-            if jcolnames=='Annual mean':
-                # jcolnames='Annual mean'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['am'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)).squeeze()
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['am'].squeeze() * (-1)
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['ann'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['ann'] * (-1), ds_out=plt_data['ERA5'][jcolnames])
-                )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            else:
-                # jcolnames='MAM'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['sm'].sel(time=jcolnames, lat=slice(-5, -45.7), lon=slice(108, 160), drop=True)
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['sm'].sel(time=jcolnames) * (-1)
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['sea'][era5_sl_mon_alltime[var1]['sea'].time.dt.season==jcolnames].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['sea'][barra_c2_mon_alltime[var2]['sea'].time.dt.season==jcolnames] * (-1), ds_out=plt_data['ERA5'][jcolnames])
-                    )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            
-            print(stats.describe(plt_data['ERA5'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['BARRA-C2'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['ERA5 - BARRA-C2'][jcolnames].values, axis=None, nan_policy='omit'))
-        
-        cbar_label1=r'TOA upward SW radiation (1979-2023) [$W \; m^{-2}$]'
-        cbar_label2=r'Difference in TOA upward SW radiation (1979-2023) [$W \; m^{-2}$]'
-        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-            cm_min=-180, cm_max=-40, cm_interval1=10, cm_interval2=20, cmap='viridis',)
-        extend1 = 'both'
-        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-50, cm_max=50, cm_interval1=5, cm_interval2=10, cmap='BrBG_r',)
-        extend2 = 'both'
-    elif var1=='mtnlwrfcs':
-        for jcolnames in plt_colnames:
-            print(jcolnames)
-            if jcolnames=='Annual mean':
-                # jcolnames='Annual mean'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['am'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)).squeeze()
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['am'].squeeze() * (-1)
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['ann'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['ann'] * (-1), ds_out=plt_data['ERA5'][jcolnames])
-                )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            else:
-                # jcolnames='MAM'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['sm'].sel(time=jcolnames, lat=slice(-5, -45.7), lon=slice(108, 160), drop=True)
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['sm'].sel(time=jcolnames) * (-1)
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['sea'][era5_sl_mon_alltime[var1]['sea'].time.dt.season==jcolnames].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['sea'][barra_c2_mon_alltime[var2]['sea'].time.dt.season==jcolnames] * (-1), ds_out=plt_data['ERA5'][jcolnames])
-                    )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            
-            print(stats.describe(plt_data['ERA5'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['BARRA-C2'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['ERA5 - BARRA-C2'][jcolnames].values, axis=None, nan_policy='omit'))
-        
-        cbar_label1=r'TOA clear-sky net LW radiation (1979-2023) [$W \; m^{-2}$]'
-        cbar_label2=r'Difference in TOA clear-sky net LW radiation (1979-2023) [$W \; m^{-2}$]'
-        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-            cm_min=-290, cm_max=-170, cm_interval1=10, cm_interval2=20, cmap='viridis',)
-        extend1 = 'both'
-        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-20, cm_max=20, cm_interval1=2, cm_interval2=4, cmap='BrBG_r',)
-        extend2 = 'both'
-    elif var1=='mtnswrfcs':
-        for jcolnames in plt_colnames:
-            print(jcolnames)
-            if jcolnames=='Annual mean':
-                # jcolnames='Annual mean'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['am'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)).squeeze()
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['am'].squeeze()
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['ann'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['ann'], ds_out=plt_data['ERA5'][jcolnames])
-                )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            else:
-                # jcolnames='MAM'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['sm'].sel(time=jcolnames, lat=slice(-5, -45.7), lon=slice(108, 160), drop=True)
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['sm'].sel(time=jcolnames)
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['sea'][era5_sl_mon_alltime[var1]['sea'].time.dt.season==jcolnames].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['sea'][barra_c2_mon_alltime[var2]['sea'].time.dt.season==jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                    )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            
-            print(stats.describe(plt_data['ERA5'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['BARRA-C2'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['ERA5 - BARRA-C2'][jcolnames].values, axis=None, nan_policy='omit'))
-        
-        cbar_label1=r'TOA clear-sky net SW radiation (1979-2023) [$W \; m^{-2}$]'
-        cbar_label2=r'Difference in TOA clear-sky net SW radiation (1979-2023) [$W \; m^{-2}$]'
-        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-            cm_min=80, cm_max=420, cm_interval1=20, cm_interval2=40, cmap='viridis_r',)
-        extend1 = 'both'
-        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-50, cm_max=50, cm_interval1=5, cm_interval2=10, cmap='BrBG_r',)
-        extend2 = 'both'
-    elif var1=='mtuwswrfcs':
-        for jcolnames in plt_colnames:
-            print(jcolnames)
-            if jcolnames=='Annual mean':
-                # jcolnames='Annual mean'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['am'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)).squeeze()
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['am'].squeeze() * (-1)
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['ann'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['ann'] * (-1), ds_out=plt_data['ERA5'][jcolnames])
-                )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            else:
-                # jcolnames='MAM'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['sm'].sel(time=jcolnames, lat=slice(-5, -45.7), lon=slice(108, 160), drop=True)
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['sm'].sel(time=jcolnames) * (-1)
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['sea'][era5_sl_mon_alltime[var1]['sea'].time.dt.season==jcolnames].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['sea'][barra_c2_mon_alltime[var2]['sea'].time.dt.season==jcolnames] * (-1), ds_out=plt_data['ERA5'][jcolnames])
-                    )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            
-            print(stats.describe(plt_data['ERA5'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['BARRA-C2'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['ERA5 - BARRA-C2'][jcolnames].values, axis=None, nan_policy='omit'))
-        
-        cbar_label1=r'TOA clear-sky upward SW radiation (1979-2023) [$W \; m^{-2}$]'
-        cbar_label2=r'Difference in TOA clear-sky upward SW radiation (1979-2023) [$W \; m^{-2}$]'
-        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-            cm_min=-180, cm_max=-40, cm_interval1=10, cm_interval2=20, cmap='viridis',)
-        extend1 = 'both'
-        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-50, cm_max=50, cm_interval1=5, cm_interval2=10, cmap='BrBG_r',)
-        extend2 = 'both'
+            cm_min=-30, cm_max=100, cm_interval1=5, cm_interval2=10, cmap='BrBG', asymmetric=True)
     elif var1=='mtnlwrfcl':
-        for jcolnames in plt_colnames:
-            print(jcolnames)
-            if jcolnames=='Annual mean':
-                # jcolnames='Annual mean'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['am'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)).squeeze()
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['am'].squeeze() * (-1)
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['ann'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['ann'] * (-1), ds_out=plt_data['ERA5'][jcolnames])
-                )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            else:
-                # jcolnames='MAM'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['sm'].sel(time=jcolnames, lat=slice(-5, -45.7), lon=slice(108, 160), drop=True)
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['sm'].sel(time=jcolnames) * (-1)
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['sea'][era5_sl_mon_alltime[var1]['sea'].time.dt.season==jcolnames].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['sea'][barra_c2_mon_alltime[var2]['sea'].time.dt.season==jcolnames] * (-1), ds_out=plt_data['ERA5'][jcolnames])
-                    )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            
-            print(stats.describe(plt_data['ERA5'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['BARRA-C2'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['ERA5 - BARRA-C2'][jcolnames].values, axis=None, nan_policy='omit'))
-        
-        cbar_label1=r'CRE on TOA net LW radiation (1979-2023) [$W \; m^{-2}$]'
-        cbar_label2=r'Difference in CRE on TOA net LW radiation (1979-2023) [$W \; m^{-2}$]'
         pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-            cm_min=0, cm_max=90, cm_interval1=5, cm_interval2=10, cmap='viridis_r',)
-        extend1 = 'both'
+            cm_min=0, cm_max=80, cm_interval1=5, cm_interval2=10, cmap='viridis_r',)
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-20, cm_max=20, cm_interval1=2, cm_interval2=4, cmap='BrBG_r',)
-        extend2 = 'both'
-    elif var1=='mtnswrfcl':
-        for jcolnames in plt_colnames:
-            print(jcolnames)
-            if jcolnames=='Annual mean':
-                # jcolnames='Annual mean'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['am'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)).squeeze()
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['am'].squeeze()
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['ann'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['ann'], ds_out=plt_data['ERA5'][jcolnames])
-                )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            else:
-                # jcolnames='MAM'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['sm'].sel(time=jcolnames, lat=slice(-5, -45.7), lon=slice(108, 160), drop=True)
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['sm'].sel(time=jcolnames)
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['sea'][era5_sl_mon_alltime[var1]['sea'].time.dt.season==jcolnames].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['sea'][barra_c2_mon_alltime[var2]['sea'].time.dt.season==jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                    )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            
-            print(stats.describe(plt_data['ERA5'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['BARRA-C2'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['ERA5 - BARRA-C2'][jcolnames].values, axis=None, nan_policy='omit'))
-        
-        cbar_label1=r'CRE on TOA net SW radiation (1979-2023) [$W \; m^{-2}$]'
-        cbar_label2=r'Difference in CRE on TOA net SW radiation (1979-2023) [$W \; m^{-2}$]'
+            cm_min=-16, cm_max=12, cm_interval1=2, cm_interval2=4, cmap='BrBG', asymmetric=True)
+    elif var1 in ['mtnswrfcl', 'mtuwswrfcl']:
         pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-            cm_min=-180, cm_max=20, cm_interval1=10, cm_interval2=20, cmap='PRGn', asymmetric=True)
-        extend1 = 'both'
+            cm_min=-180, cm_max=30, cm_interval1=10, cm_interval2=20, cmap='PRGn', asymmetric=True)
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-50, cm_max=50, cm_interval1=5, cm_interval2=10, cmap='BrBG_r',)
-        extend2 = 'both'
-    elif var1=='mtuwswrfcl':
-        for jcolnames in plt_colnames:
-            print(jcolnames)
-            if jcolnames=='Annual mean':
-                # jcolnames='Annual mean'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['am'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)).squeeze()
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['am'].squeeze() * (-1)
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['ann'].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['ann'] * (-1), ds_out=plt_data['ERA5'][jcolnames])
-                )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            else:
-                # jcolnames='MAM'
-                plt_data['ERA5'][jcolnames] = era5_sl_mon_alltime[var1]['sm'].sel(time=jcolnames, lat=slice(-5, -45.7), lon=slice(108, 160), drop=True)
-                plt_data['BARRA-C2'][jcolnames] = barra_c2_mon_alltime[var2]['sm'].sel(time=jcolnames) * (-1)
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5'][jcolnames] - regrid(plt_data['BARRA-C2'][jcolnames], ds_out=plt_data['ERA5'][jcolnames])
-                
-                # statistical test
-                ttest_fdr_res = ttest_fdr_control(
-                    era5_sl_mon_alltime[var1]['sea'][era5_sl_mon_alltime[var1]['sea'].time.dt.season==jcolnames].sel(lat=slice(-5, -45.7), lon=slice(108, 160)),
-                    regrid(barra_c2_mon_alltime[var2]['sea'][barra_c2_mon_alltime[var2]['sea'].time.dt.season==jcolnames] * (-1), ds_out=plt_data['ERA5'][jcolnames])
-                    )
-                plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
-            
-            print(stats.describe(plt_data['ERA5'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['BARRA-C2'][jcolnames].values, axis=None))
-            print(stats.describe(plt_data['ERA5 - BARRA-C2'][jcolnames].values, axis=None, nan_policy='omit'))
-        
-        cbar_label1=r'CRE on TOA upward SW radiation (1979-2023) [$W \; m^{-2}$]'
-        cbar_label2=r'Difference in CRE on TOA upward SW radiation (1979-2023) [$W \; m^{-2}$]'
-        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-            cm_min=-180, cm_max=20, cm_interval1=10, cm_interval2=20, cmap='PRGn', asymmetric=True)
-        extend1 = 'both'
-        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-50, cm_max=50, cm_interval1=5, cm_interval2=10, cmap='BrBG_r',)
-        extend2 = 'both'
+            cm_min=-30, cm_max=60, cm_interval1=5, cm_interval2=10, cmap='BrBG', asymmetric=True)
+    else:
+        print(f'Warning unspecified colorbar for {var1}')
     
     nrow=3
     ncol=5
@@ -2145,7 +777,7 @@ for var1, var2 in zip(['mtuwswrfcl'], ['rsutcl']):
     for irow in range(nrow):
         axs[irow, 0].text(-0.05, 0.5, plt_rownames[irow], ha='right', va='center', rotation='vertical', transform=axs[irow, 0].transAxes,weight='bold')
         for jcol in range(ncol):
-            axs[irow, jcol] = regional_plot(extent=[108, 160, -45.7, -5], central_longitude=180, ax_org=axs[irow, jcol])
+            axs[irow, jcol] = regional_plot(extent=[min_lon, max_lon, min_lat, max_lat], central_longitude=180, ax_org=axs[irow, jcol])
             axs[irow, jcol].text(0, 1.02, f'({string.ascii_lowercase[irow]}{jcol+1})', ha='left', va='bottom', transform=axs[irow, jcol].transAxes,)
             if irow==0:
                 axs[0, jcol].text(0.5, 1.02, plt_colnames[jcol], ha='center', va='bottom', transform=axs[0, jcol].transAxes,weight='bold')

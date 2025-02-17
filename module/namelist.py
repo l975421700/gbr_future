@@ -88,7 +88,7 @@ cmip6_units = {
 era5_varlabels = {
     'tp': r'precipitation [$mm \; day^{-1}$]',
     'msl': r'sea level pressure [$hPa$]',
-    'sst': r'sea surface temperature [$°C$]',
+    'sst': r'SST [$°C$]',
     'hcc': r'high cloud cover [$\%$]',
     'mcc': r'middle cloud cover [$\%$]',
     'lcc': r'low cloud cover [$\%$]',
@@ -173,6 +173,7 @@ cmip6_era5_var = {
     'rsutcs': 'mtuwswrfcs',
     'sfcWind': 'si10',
     'tas': 't2m',
+    'tos': 'sst',
     'ts': 'skt',
     'evspsblpot': 'pev',
     # 'hurs',

@@ -33,7 +33,7 @@ from namelist import cmip6_units, zerok, seconds_per_d
 
 # region get era5 sl mon data
 
-for var in ['tciw', 'tclw', 'tcw', 'tcwv', 'tcsw', 'tcrw', 'tcslw']:
+for var in ['pev', 'mper']:
     # var = 'tp'
     # 'tp', 'e', 'cp', 'lsp', 'pev', 'msl', 'sst', '2t', '2d', 'skt', 'hcc', 'mcc', 'lcc', 'tcc', 'z', 'mper',
     print(var)
@@ -62,6 +62,9 @@ for var in ['tciw', 'tclw', 'tcw', 'tcwv', 'tcsw', 'tcrw', 'tcslw']:
         era5_sl_mon = era5_sl_mon / 9.80665
     elif var in ['mper']:
         era5_sl_mon = era5_sl_mon * seconds_per_d
+    
+    if var in ['e', 'pev', 'mper']:
+        era5_sl_mon = era5_sl_mon * (-1)
     
     era5_sl_mon_alltime = mon_sea_ann(
         var_monthly=era5_sl_mon, lcopy=False, mm=True, sm=True, am=True,)

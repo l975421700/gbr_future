@@ -41,6 +41,7 @@ import matplotlib.patches as mpatches
 from matplotlib.lines import Line2D
 import cartopy.feature as cfeature
 from matplotlib.colors import LinearSegmentedColormap, TwoSlopeNorm
+from matplotlib.patches import Rectangle
 
 # management
 import os
@@ -277,6 +278,18 @@ plt_mesh1 = ax.pcolormesh(
     norm=pltnorm, cmap=pltcmp,transform=ccrs.PlateCarree())
 extend='max'
 cbar_label='Topography [$m$]'
+
+min_lon, max_lon, min_lat, max_lat = [
+    orog.lon.values[int(len(orog.lon)*0.05)],
+    orog.lon.values[int(len(orog.lon)*0.95)],
+    orog.lat.values[int(len(orog.lat)*0.05)],
+    orog.lat.values[int(len(orog.lat)*0.95)]]
+# min_lon, max_lon, min_lat, max_lat = [110.58, 157.34, -43.69, -7.01]
+# orog.sel(lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat))
+rec_m = ax.add_patch(Rectangle(
+    (min_lon, min_lat), max_lon-min_lon, max_lat-min_lat,
+    ec = 'red', color = 'None', lw = 0.5))
+
 opng='figures/0_gbr/0.1_study region/0.0_Australia1.png'
 
 gbr_shp = gpd.read_file('data/others/Great_Barrier_Reef_Marine_Park_Boundary/Great_Barrier_Reef_Marine_Park_Boundary.shp')
