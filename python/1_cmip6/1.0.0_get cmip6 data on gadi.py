@@ -467,8 +467,21 @@ for experiment_id in ['historical', 'amip', 'ssp585']:
 
 
 
-
 '''
+#-------------------------------- check
+experiment_id = 'amip' # 'historical', 'amip'
+table_id = 'Amon'
+variable_id = 'clt' # 'pr', 'clt'
+source_id = 'FGOALS-f3-L' # 'CIESM', 'FIO-ESM-2-0'
+
+with open(f'/home/563/qg8515/scratch/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}_regridded_alltime_ens.pkl', 'rb') as f:
+    cmip6_data_regridded_alltime_ens = pickle.load(f)
+with open(f'/home/563/qg8515/scratch/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}.pkl', 'rb') as f:
+    cmip6_data = pickle.load(f)
+cmip6_data[source_id]
+
+
+
 #-------------------------------- check
 cmip6_data = {}
 # cmip6_data_alltime = {}

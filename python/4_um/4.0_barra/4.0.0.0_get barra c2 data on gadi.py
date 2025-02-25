@@ -10,9 +10,9 @@ import numpy as np
 import xarray as xr
 import dask
 dask.config.set({"array.slicing.split_large_chunks": True})
-# from dask.diagnostics import ProgressBar
-# pbar = ProgressBar()
-# pbar.register()
+from dask.diagnostics import ProgressBar
+pbar = ProgressBar()
+pbar.register()
 
 # management
 import os
@@ -33,7 +33,7 @@ from namelist import cmip6_units, zerok, seconds_per_d
 # region get BARRA-C2 mon data
 
 for var in ['pr', 'evspsbl', 'evspsblpot', 'tas', 'ts', 'rlus', 'rluscs', 'rlut', 'rlutcs', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'hfls', 'hfss', 'psl', 'huss']:
-    # var = 'huss'
+    # var = 'pr'
     print(var)
     
     fl = sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/mon/{var}/latest/*')) #[:540]

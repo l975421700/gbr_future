@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -l walltime=4:00:00,ncpus=1,mem=192GB,jobfs=10GB,storage=gdata/v46+gdata/ob53
+# qsub -I -q normal -l walltime=4:00:00,ncpus=1,mem=96GB,storage=gdata/v46+gdata/ob53
 
 
 # region import packages
@@ -35,8 +35,8 @@ from namelist import cmip6_units, zerok, seconds_per_d
 
 # region get BARRA-R2 mon data
 
-for var in ['hurs', 'huss', ]:
-    # var = 'pr'
+for var in ['rsut', 'pr']:
+    # var = 'rsut'
     print(var)
     
     fl = sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/mon/{var}/latest/*')) #[:540]
@@ -69,20 +69,21 @@ for var in ['hurs', 'huss', ]:
 
 '''
 #-------------------------------- check
-ifile = -1
+ifile = -100
 
-barra_c2_mon_alltime = {}
-for var in ['pr', 'clh', 'clm', 'cll', 'clt', 'evspsbl', 'hfls', 'hfss', 'psl', 'rlds', 'rldscs', 'rlus', 'rluscs', 'rlut', 'rlutcs', 'rsds', 'rsdscs', 'rsdt', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'sfcWind', 'tas', 'ts', 'evspsblpot', 'hurs', 'huss', 'uas', 'vas']:
-    # var = 'evspsblpot'
+barra_r2_mon_alltime = {}
+for var in ['clh', 'clm', 'cll', 'clt', 'evspsbl', 'hfls', 'hfss', 'psl', 'rlds', 'rldscs', 'rlus', 'rluscs', 'rlut', 'rlutcs', 'rsds', 'rsdscs', 'rsdt', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'sfcWind', 'tas', 'ts', 'evspsblpot', 'hurs', 'huss', 'uas', 'vas']:
+    # ['pr', 'clh', 'clm', 'cll', 'clt', 'evspsbl', 'hfls', 'hfss', 'psl', 'rlds', 'rldscs', 'rlus', 'rluscs', 'rlut', 'rlutcs', 'rsds', 'rsdscs', 'rsdt', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'sfcWind', 'tas', 'ts', 'evspsblpot', 'hurs', 'huss', 'uas', 'vas']
+    # var = 'huss'
     print(f'#-------- {var}')
     
-    with open(f'data/sim/um/barra_c2/barra_c2_mon_alltime_{var}.pkl','rb') as f:
-        barra_c2_mon_alltime[var] = pickle.load(f)
+    with open(f'data/sim/um/barra_r2/barra_r2_mon_alltime_{var}.pkl','rb') as f:
+        barra_r2_mon_alltime[var] = pickle.load(f)
     
-    fl = sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/mon/{var}/latest/*'))[:540]
+    fl = sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/mon/{var}/latest/*'))[:540]
     
     data1 = xr.open_dataset(fl[ifile])[var]
-    data2 = barra_c2_mon_alltime[var]['mon'][ifile]
+    data2 = barra_r2_mon_alltime[var]['mon'][ifile]
     if var in ['pr', 'evspsbl', 'evspsblpot']:
         data1 = data1 * seconds_per_d
     elif var in ['tas', 'ts']:
@@ -95,38 +96,7 @@ for var in ['pr', 'clh', 'clm', 'cll', 'clt', 'evspsbl', 'hfls', 'hfss', 'psl', 
         data1 = data1 * 1000
     
     print((data1.squeeze().values.astype(np.float32)[np.isfinite(data1.squeeze().values.astype(np.float32))] == data2.values[np.isfinite(data2.values)]).all())
-    del barra_c2_mon_alltime[var]
-
-
-
-
-Precipitation: pr
-High Level Cloud Fraction: clh
-Mid Level Cloud Fraction: clm
-Low Level Cloud Fraction: cll
-Total Cloud Cover Percentage: clt
-Evaporation Including Sublimation and Transpiration: evspsbl
-Surface Upward Latent Heat Flux: hfls
-Surface Upward Sensible Heat Flux: hfss
-
-sea level pressure: psl
-Surface downwelling LW radiation: rlds
-Surface Downwelling Clear-Sky Longwave Radiation: rldscs
-Surface Upwelling Longwave Radiation: rlus
-Surface Upwelling Clear-Sky Longwave Radiation: rluscs
-TOA Outgoing Longwave Radiation: rlut
-TOA Outgoing Clear-Sky Longwave Radiation: rlutcs
-
-Surface downwelling SW radiation: rsds
-Surface Downwelling Clear-Sky Shortwave Radiation: rsdscs
-TOA Incident Shortwave Radiation: rsdt
-Surface Upwelling Shortwave Radiation: rsus
-Surface Upwelling Clear-Sky Shortwave Radiation: rsuscs
-TOA Outgoing Shortwave Radiation: rsut
-TOA Outgoing Clear-Sky Shortwave Radiation: rsutcs
-near surface wind speed: sfcWind
-Near surface air temperature: tas
-Surface temperature: ts
+    del barra_r2_mon_alltime[var]
 
 '''
 # endregion
