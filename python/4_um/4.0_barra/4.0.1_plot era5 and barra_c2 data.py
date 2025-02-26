@@ -559,8 +559,8 @@ min_lon, max_lon, min_lat, max_lat = [110.58, 157.34, -43.69, -7.01]
 era5_sl_mon_alltime = {}
 barra_c2_mon_alltime = {}
 
-for var2 in []:
-    # var2='pr'
+for var2 in ['clh']:
+    # var2='clh'
     # 'pr', 'clh', 'clm', 'cll', 'clt', 'evspsbl', 'hfls', 'hfss', 'psl', 'rlds', 'rldscs', 'rlus', 'rluscs', 'rlut', 'rlutcs', 'rsds', 'rsdscs', 'rsdt', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'sfcWind', 'tas', 'ts', 'evspsblpot', 'uas', 'vas', 'rlns',  'rsns',  'rlnscs', 'rsnscs',  'rlnscl', 'rsnscl', 'rldscl', 'rsdscl',  'rluscl', 'rsuscl',  'rsnt',  'rsntcs',  'rlutcl', 'rsntcl', 'rsutcl'
     var1 = cmip6_era5_var[var2]
     print(f'#-------------------------------- {var1} in ERA5 vs. {var2} in BARRA-C2')

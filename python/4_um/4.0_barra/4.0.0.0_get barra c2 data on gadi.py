@@ -62,6 +62,8 @@ for var in ['pr', 'evspsbl', 'evspsblpot', 'tas', 'ts', 'rlus', 'rluscs', 'rlut'
 
 
 '''
+parameter description
+https://opus.nci.org.au/spaces/NDP/pages/338002591/BARRA2+Parameter+Descriptions
 #-------------------------------- check
 ifile = -1
 
