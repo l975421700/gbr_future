@@ -55,7 +55,7 @@ for idate in daterange:
     print(idate)
     day=str(idate)[8:10]
     
-    clp_fl = sorted(glob.glob(f'/scratch/v46/qg8515/data/obs/jaxa/clp/{year}{month:02d}/{day}/*/CLP_{year}{month:02d}{day}????.nc'))
+    clp_fl = sorted(glob.glob(f'/scratch/v46/qg8515/data/obs/jaxa/clp/{year}{month:02d}/{day}/??/CLTYPE_{year}{month:02d}{day}????.nc'))
     clp_ds = xr.open_mfdataset(clp_fl)
     CLTYPE_values = clp_ds.CLTYPE.values
     

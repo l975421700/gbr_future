@@ -186,7 +186,7 @@ for var2 in ['pr']:
         #     )
         # plt_data['BARRA-R2 - CERES'][jcolnames] = plt_data['BARRA-R2 - CERES'][jcolnames].where(ttest_fdr_res, np.nan)
         
-        plt_data['BARRA-C2 - AGCD'][jcolnames] = (regrid(barra_r2_mon_alltime['sea'][barra_c2_mon_alltime['sea'].time.dt.season==jcolnames].sel(time=slice('2001', '2014')).mean(dim='time'), ds_out=agcd_sm) - agcd_sm).compute()
+        plt_data['BARRA-C2 - AGCD'][jcolnames] = (regrid(barra_c2_mon_alltime['sea'][barra_c2_mon_alltime['sea'].time.dt.season==jcolnames].sel(time=slice('2001', '2014')).mean(dim='time'), ds_out=agcd_sm) - agcd_sm).compute()
         # ttest_fdr_res = ttest_fdr_control(
         #     ceres_sea,
         #     regrid(barra_c2_mon_alltime['mon'].sel(time=slice('2001', '2014')).resample({'time': 'QE-FEB'}).map(time_weighted_mean)[1:-1][barra_c2_mon_alltime['mon'].sel(time=slice('2001', '2014')).resample({'time': 'QE-FEB'}).map(time_weighted_mean)[1:-1].time.dt.season==jcolnames], ds_out=plt_data['CERES'][jcolnames])
@@ -241,7 +241,7 @@ for var2 in ['pr']:
             axs[irow, jcol].add_feature(cfeature.OCEAN,color='white',zorder=2,edgecolor=None,lw=0)
             axs[irow, jcol].text(0, 1.02, f'({string.ascii_lowercase[irow]}{jcol+1})', ha='left', va='bottom', transform=axs[irow, jcol].transAxes,)
             if irow==0:
-                axs[0, jcol].text(0.5, 1.14, plt_colnames[jcol], ha='center', va='bottom', transform=axs[0, jcol].transAxes)
+                axs[0, jcol].text(0.5, 1.02, plt_colnames[jcol], ha='center', va='bottom', transform=axs[0, jcol].transAxes)
     
     for jcol in range(ncol):
         plt_mesh1 = axs[0, jcol].pcolormesh(
@@ -274,6 +274,161 @@ for var2 in ['pr']:
     
     fig.subplots_adjust(left=0.03, right=0.995, bottom=fm_bottom, top=0.98)
     fig.savefig(f'figures/4_um/4.0_barra/4.0.0_whole region/4.0.0.1 agcd vs. barra_c2, era5, and cmip6 am sm {var1}.png')
+    
+    del era5_sl_mon_alltime, barra_c2_mon_alltime, historical_regridded_alltime_ens, amip_regridded_alltime_ens
+
+
+# endregion
+
+
+# region plot AGCD, ERA5, BARRA-R2, BARRA-C2, historical, amip, am sm, pct
+
+plt_colnames = ['Annual mean', 'DJF', 'MAM', 'JJA', 'SON']
+plt_rownames = ['AGCD', 'ERA5/AGCD - 1', 'BARRA-R2/AGCD - 1', 'BARRA-C2/AGCD - 1', r'$historical$/AGCD - 1', r'$amip$/AGCD - 1']
+min_lon, max_lon, min_lat, max_lat = [110.58, 157.34, -43.69, -7.01]
+
+for var2 in ['pr']:
+    # var2='pr'
+    var1 = cmip6_era5_var[var2]
+    print(f'#-------------------------------- {var1} and {var2}')
+    
+    with open(f'data/obs/agcd/agcd_alltime_{var2}.pkl','rb') as f:
+        agcd_alltime = pickle.load(f)
+    with open(f'data/obs/era5/mon/era5_sl_mon_alltime_{var1}.pkl', 'rb') as f:
+        era5_sl_mon_alltime = pickle.load(f)
+    with open(f'data/sim/um/barra_r2/barra_r2_mon_alltime_{var2}.pkl','rb') as f:
+        barra_r2_mon_alltime = pickle.load(f)
+    with open(f'data/sim/um/barra_c2/barra_c2_mon_alltime_{var2}.pkl','rb') as f:
+        barra_c2_mon_alltime = pickle.load(f)
+    with open(f'/home/563/qg8515/scratch/data/sim/cmip6/historical_Amon_{var2}_regridded_alltime_ens.pkl', 'rb') as f:
+        historical_regridded_alltime_ens = pickle.load(f)
+    with open(f'/home/563/qg8515/scratch/data/sim/cmip6/amip_Amon_{var2}_regridded_alltime_ens.pkl', 'rb') as f:
+        amip_regridded_alltime_ens = pickle.load(f)
+    
+    plt_data = {}
+    for irow in plt_rownames: plt_data[irow] = {}
+    
+    plt_data['AGCD']['Annual mean'] = agcd_alltime['ann'].sel(time=slice('2001', '2014')).mean(dim='time')
+    agcd_ann = regrid(agcd_alltime['ann'].sel(time=slice('2001', '2014')), ds_out=era5_sl_mon_alltime['am'].pipe(regrid).pipe(replace_x_y_nominal_lat_lon).sel(y=slice(min_lat, max_lat), x=slice(min_lon, max_lon)))
+    agcd_am = agcd_ann.mean(dim='time').compute()
+    
+    plt_data['ERA5/AGCD - 1']['Annual mean'] = ((regrid(era5_sl_mon_alltime['ann'].sel(time=slice('2001', '2014')).mean(dim='time'), ds_out=agcd_am) / agcd_am - 1) * 100).compute()
+    # ttest_fdr_res = ttest_fdr_control(
+    #     agcd_ann,
+    #     regrid(era5_sl_mon_alltime['ann'].sel(time=slice('2001', '2014')), ds_out=agcd_am))
+    # plt_data['ERA5/AGCD - 1']['Annual mean'] = plt_data['ERA5/AGCD - 1']['Annual mean'].where(ttest_fdr_res, np.nan)
+    
+    plt_data['BARRA-R2/AGCD - 1']['Annual mean'] = ((regrid(barra_r2_mon_alltime['ann'].sel(time=slice('2001', '2014')).mean(dim='time'), ds_out=agcd_am) / agcd_am - 1) * 100).compute()
+    # ttest_fdr_res = ttest_fdr_control(
+    #     agcd_ann,
+    #     regrid(barra_r2_mon_alltime['ann'].sel(time=slice('2001', '2014')), ds_out=agcd_am)
+    #     )
+    # plt_data['BARRA-R2/AGCD - 1']['Annual mean'] = plt_data['BARRA-R2/AGCD - 1']['Annual mean'].where(ttest_fdr_res, np.nan)
+    
+    plt_data['BARRA-C2/AGCD - 1']['Annual mean'] = ((regrid(barra_c2_mon_alltime['ann'].sel(time=slice('2001', '2014')).mean(dim='time'), ds_out=agcd_am) / agcd_am - 1) * 100).compute()
+    # ttest_fdr_res = ttest_fdr_control(
+    #     agcd_ann,
+    #     regrid(barra_c2_mon_alltime['ann'].sel(time=slice('2001', '2014')), ds_out=agcd_am)
+    #     )
+    # plt_data['BARRA-C2/AGCD - 1']['Annual mean'] = plt_data['BARRA-C2/AGCD - 1']['Annual mean'].where(ttest_fdr_res, np.nan)
+    
+    plt_data[r'$historical$/AGCD - 1']['Annual mean'] = ((historical_regridded_alltime_ens['ann'].sel(time=slice('2001', '2014')).mean(dim=['source_id', 'time']).sel(y=slice(min_lat, max_lat), x=slice(min_lon, max_lon)) / agcd_am - 1) * 100).compute()
+    # ttest_fdr_res = ttest_fdr_control(
+    #     agcd_ann,
+    #     historical_regridded_alltime_ens['ann'].sel(time=slice('2001', '2014')).mean(dim='source_id').sel(y=slice(min_lat, max_lat), x=slice(min_lon, max_lon))
+    #     )
+    # plt_data[r'$historical$/AGCD - 1']['Annual mean'] = plt_data[r'$historical$/AGCD - 1']['Annual mean'].where(ttest_fdr_res, np.nan)
+    
+    plt_data[r'$amip$/AGCD - 1']['Annual mean'] = ((amip_regridded_alltime_ens['ann'].sel(time=slice('2001', '2014')).mean(dim=['source_id', 'time']).sel(y=slice(min_lat, max_lat), x=slice(min_lon, max_lon)) / agcd_am - 1) * 100).compute()
+    # ttest_fdr_res = ttest_fdr_control(
+    #     agcd_ann,
+    #     amip_regridded_alltime_ens['ann'].sel(time=slice('2001', '2014')).mean(dim='source_id').sel(y=slice(min_lat, max_lat), x=slice(min_lon, max_lon))
+    #     )
+    # plt_data[r'$amip$/AGCD - 1']['Annual mean'] = plt_data[r'$amip$/AGCD - 1']['Annual mean'].where(ttest_fdr_res, np.nan)
+    
+    for jcolnames in plt_colnames[1:]:
+        # jcolnames='DJF'
+        print(f'#---------------- {jcolnames}')
+        
+        plt_data['AGCD'][jcolnames] = agcd_alltime['sea'][agcd_alltime['sea'].time.dt.season==jcolnames].sel(time=slice('2001', '2014')).mean(dim='time')
+        agcd_sea = regrid(agcd_alltime['sea'][agcd_alltime['sea'].time.dt.season==jcolnames].sel(time=slice('2001', '2014')), ds_out=era5_sl_mon_alltime['am'].pipe(regrid).pipe(replace_x_y_nominal_lat_lon).sel(y=slice(min_lat, max_lat), x=slice(min_lon, max_lon)))
+        agcd_sm = agcd_sea.mean(dim='time').compute()
+        
+        plt_data['ERA5/AGCD - 1'][jcolnames] = ((regrid(era5_sl_mon_alltime['sea'][era5_sl_mon_alltime['sea'].time.dt.season==jcolnames].sel(time=slice('2001', '2014')).mean(dim='time'), ds_out=agcd_sm) / agcd_sm - 1) * 100).compute()
+        
+        plt_data['BARRA-R2/AGCD - 1'][jcolnames] = ((regrid(barra_r2_mon_alltime['sea'][barra_r2_mon_alltime['sea'].time.dt.season==jcolnames].sel(time=slice('2001', '2014')).mean(dim='time'), ds_out=agcd_sm) / agcd_sm - 1) * 100).compute()
+        
+        plt_data['BARRA-C2/AGCD - 1'][jcolnames] = ((regrid(barra_c2_mon_alltime['sea'][barra_c2_mon_alltime['sea'].time.dt.season==jcolnames].sel(time=slice('2001', '2014')).mean(dim='time'), ds_out=agcd_sm) / agcd_sm - 1) * 100).compute()
+        
+        plt_data[r'$historical$/AGCD - 1'][jcolnames] = ((historical_regridded_alltime_ens['sea'][:, historical_regridded_alltime_ens['sea'].time.dt.season==jcolnames].sel(time=slice('2001', '2014')).mean(dim=['source_id', 'time']).sel(y=slice(min_lat, max_lat), x=slice(min_lon, max_lon)) / agcd_sm - 1) * 100).compute()
+        
+        plt_data[r'$amip$/AGCD - 1'][jcolnames] = ((amip_regridded_alltime_ens['sea'][:, amip_regridded_alltime_ens['sea'].time.dt.season==jcolnames].sel(time=slice('2001', '2014')).mean(dim=['source_id', 'time']).sel(y=slice(min_lat, max_lat), x=slice(min_lon, max_lon)) / agcd_sm - 1) * 100).compute()
+    
+    cbar_label1 = '2001-2014 ' + era5_varlabels[var1]
+    cbar_label2 = 'Difference in 2001-2014 ' + re.sub(r'\[.*?\]', r'[$\%$]', era5_varlabels[var1])
+    extend1 = 'max'
+    extend2 = 'max'
+    
+    # print(stats.describe(np.concatenate([plt_data['AGCD'][colname].values for colname in plt_colnames]), axis=None, nan_policy='omit'))
+    # print(stats.describe(np.concatenate([plt_data[rowname][colname].values for rowname in plt_rownames[1:] for colname in plt_colnames]), axis=None, nan_policy='omit'))
+    
+    if var1 in ['tp']:
+        pltlevel1 = np.array([0, 0.25, 0.5, 0.75, 1, 1.5, 2, 2.5, 3, 4, 5, 6])
+        pltticks1 = np.array([0, 0.25, 0.5, 0.75, 1, 1.5, 2, 2.5, 3, 4, 5, 6])
+        pltnorm1 = BoundaryNorm(pltlevel1, ncolors=len(pltlevel1)-1, clip=True)
+        pltcmp1 = plt.get_cmap('viridis_r', len(pltlevel1)-1)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-100, cm_max=100, cm_interval1=10, cm_interval2=20, cmap='BrBG_r')
+    
+    nrow=len(plt_rownames)
+    ncol=len(plt_colnames)
+    fm_bottom=1.5/(4*nrow+1.5)
+    
+    fig, axs = plt.subplots(
+        nrow, ncol, figsize=np.array([4.4*ncol, 4*nrow + 1.5]) / 2.54,
+        subplot_kw={'projection': ccrs.PlateCarree(central_longitude=180)},
+        gridspec_kw={'hspace': 0.01, 'wspace': 0.01},)
+    
+    for irow in range(nrow):
+        axs[irow, 0].text(-0.05, 0.5, plt_rownames[irow], ha='right', va='center', rotation='vertical', transform=axs[irow, 0].transAxes)
+        for jcol in range(ncol):
+            axs[irow, jcol] = regional_plot(extent=[min_lon, max_lon, min_lat, max_lat], central_longitude=180, ax_org=axs[irow, jcol])
+            axs[irow, jcol].add_feature(cfeature.OCEAN,color='white',zorder=2,edgecolor=None,lw=0)
+            axs[irow, jcol].text(0, 1.02, f'({string.ascii_lowercase[irow]}{jcol+1})', ha='left', va='bottom', transform=axs[irow, jcol].transAxes,)
+            if irow==0:
+                axs[0, jcol].text(0.5, 1.02, plt_colnames[jcol], ha='center', va='bottom', transform=axs[0, jcol].transAxes)
+    
+    for jcol in range(ncol):
+        plt_mesh1 = axs[0, jcol].pcolormesh(
+            plt_data[plt_rownames[0]][plt_colnames[jcol]].lon,
+            plt_data[plt_rownames[0]][plt_colnames[jcol]].lat,
+            plt_data[plt_rownames[0]][plt_colnames[jcol]].values,
+            norm=pltnorm1, cmap=pltcmp1, transform=ccrs.PlateCarree(),zorder=1)
+    
+    for irow in range(nrow-1):
+        for jcol in range(ncol):
+            plt_mesh2 = axs[irow+1, jcol].pcolormesh(
+                plt_data[plt_rownames[irow+1]][plt_colnames[jcol]].lon,
+                plt_data[plt_rownames[irow+1]][plt_colnames[jcol]].lat,
+                plt_data[plt_rownames[irow+1]][plt_colnames[jcol]].values,
+                norm=pltnorm2, cmap=pltcmp2,
+                transform=ccrs.PlateCarree(),zorder=1)
+    
+    cbar1 = fig.colorbar(
+        plt_mesh1, #cm.ScalarMappable(norm=pltnorm1, cmap=pltcmp1), #
+        format=remove_trailing_zero_pos,
+        orientation="horizontal", ticks=pltticks1, extend=extend1,
+        cax=fig.add_axes([0.05, fm_bottom-0.01, 0.4, 0.015]))
+    cbar1.ax.set_xlabel(cbar_label1)
+    cbar2 = fig.colorbar(
+        plt_mesh2, #cm.ScalarMappable(norm=pltnorm2, cmap=pltcmp2), #
+        format=remove_trailing_zero_pos,
+        orientation="horizontal", ticks=pltticks2, extend=extend2,
+        cax=fig.add_axes([0.55, fm_bottom-0.01, 0.4, 0.015]))
+    cbar2.ax.set_xlabel(cbar_label2)
+    
+    fig.subplots_adjust(left=0.03, right=0.995, bottom=fm_bottom, top=0.98)
+    fig.savefig(f'figures/4_um/4.0_barra/4.0.0_whole region/4.0.0.1 agcd vs. barra_c2, era5, and cmip6 am sm {var1} pct.png')
     
     del era5_sl_mon_alltime, barra_c2_mon_alltime, historical_regridded_alltime_ens, amip_regridded_alltime_ens
 

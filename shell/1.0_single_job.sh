@@ -1,8 +1,8 @@
 #PBS -N single_job
-#PBS -q normal
-#PBS -l walltime=12:00:00
-#PBS -l mem=192GB
-#PBS -l jobfs=60GB
+#PBS -q hugemem
+#PBS -l walltime=10:00:00
+#PBS -l mem=1470GB
+#PBS -l jobfs=100GB
 #PBS -l ncpus=1
 #PBS -j oe
 #PBS -l storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38
@@ -11,9 +11,11 @@
 
 # cp -ruv /scratch/v46/qg8515/data/obs/jaxa/clp /home/563/qg8515/data/obs/jaxa
 
+# /home/563/qg8515/code/gbr_future/shell/2.0_get_clean_jaxa.sh 2015 07
+
 cd $HOME
 source ${HOME}/miniconda3/bin/activate rcm_gbr
-python ${HOME}/code/gbr_future/shell/0_runpy/run2.py
+python /home/563/qg8515/code/gbr_future/shell/0_runpy/run1.py
 
 
 # #PBS -J 1-10
