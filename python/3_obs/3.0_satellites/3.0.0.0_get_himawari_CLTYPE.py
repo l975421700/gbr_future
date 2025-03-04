@@ -148,6 +148,8 @@ with open(ofile, 'wb') as f:
 
 
 '''
+# Memory Used: 526.97GB, Walltime Used: 02:33:21
+
 #-------------------------------- check
 
 
@@ -182,6 +184,10 @@ with open(ofile, 'wb') as f:
 
 '''
 #-------------------------------- check
+with open('/scratch/v46/qg8515/data/obs/jaxa/clp/cltype_frequency_alltime.pkl', 'rb') as f:
+    cltype_frequency_alltime = pickle.load(f)
+with open('/scratch/v46/qg8515/data/obs/jaxa/clp/cltype_count_alltime.pkl', 'rb') as f:
+    cltype_count_alltime = pickle.load(f)
 
 
 '''

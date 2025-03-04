@@ -1,5 +1,8 @@
 
 
+# qsub -I -q normal -l walltime=10:00:00,ncpus=1,mem=192GB,jobfs=100GB,storage=gdata/v46+scratch/v46
+
+
 # region import packages
 
 # data analysis
@@ -88,7 +91,10 @@ from calculations import (
 # region import data
 
 
-CL_RelFreq = xr.open_dataset('data/obs/jaxa/clp/CL_RelFreq_2016.nc').CL_RelFreq
+with open('/scratch/v46/qg8515/data/obs/jaxa/clp/cltype_frequency_alltime.pkl', 'rb') as f:
+    cltype_frequency_alltime = pickle.load(f)
+
+# CL_RelFreq = xr.open_dataset('data/obs/jaxa/clp/CL_RelFreq_2016.nc').CL_RelFreq
 
 cloudtypes = [
     'Cirrus', 'Cirrostratus', 'Deep convection',
@@ -101,7 +107,7 @@ cloudtypes = [
 
 # region plot the frequency
 
-opng = 'figures/3_satellites/3.0_hamawari_cl/3.0.0_CL_RelFreq_2016.png'
+opng = 'figures/3_satellites/3.0_hamawari/3.0.0_cltype_frequency_2016.png'
 nrow = 3
 ncol = 3
 fm_bottom = 1.5 / (6.6*nrow + 2)
@@ -128,9 +134,9 @@ for irow in range(nrow):
             transform=axs[irow, jcol].transAxes, fontsize=10,
             ha='left', va='bottom', rotation='horizontal')
         
-        plt_data = CL_RelFreq.sel(types=cloudtypes[ipanel])
+        plt_data = cltype_frequency_alltime['ann'].sel(time='2016', types=cloudtypes[ipanel]).squeeze()
         plt_mesh = axs[irow, jcol].pcolormesh(
-            plt_data.longitude, plt_data.latitude, plt_data,
+            plt_data.lon, plt_data.lat, plt_data,
             norm=pltnorm, cmap=pltcmp, transform=ccrs.PlateCarree(),)
         ipanel += 1
 
@@ -150,13 +156,13 @@ fig.savefig(opng)
 
 # region plot high, medium, and low cloud frequency
 
-opng = 'figures/3_satellites/3.0_hamawari_cl/3.0.0_CL_RelFreq_2016_HML.png'
+opng = 'figures/3_satellites/3.0_hamawari/3.0.0_cltype_frequency_2016_hml.png'
 
 nrow = 1
 ncol = 3
 fm_bottom = 1.6 / (6.6*nrow + 2)
 
-cloudgroups = ['High cloud', 'Medium cloud', 'Low cloud', 'Total cloud', ]
+cloudgroups = ['High cloud', 'Middle cloud', 'Low cloud', 'Total cloud', ]
 
 cbar_label = r'Cloud occurrence frequency in 2016 from Himawari 8 [$\%$]'
 pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
@@ -177,14 +183,14 @@ for jcol in range(ncol):
         ha='left', va='bottom', rotation='horizontal')
     
     if jcol < 3:
-        print(CL_RelFreq[(jcol*3+1):(jcol*3+4)].types.values)
-        plt_data = CL_RelFreq[(jcol*3+1):(jcol*3+4)].sum(dim='types')
+        print(cltype_frequency_alltime['ann'].types[(jcol*3+1):(jcol*3+4)].values)
+        plt_data = cltype_frequency_alltime['ann'].sel(time='2016').squeeze()[(jcol*3+1):(jcol*3+4)].sum(dim='types')
     elif jcol == 3:
         print('Total cloud')
         # plt_data = CL_RelFreq[1:].sum(dim='types')
     
     plt_mesh = axs[jcol].pcolormesh(
-        plt_data.longitude, plt_data.latitude, plt_data,
+        plt_data.lon, plt_data.lat, plt_data,
         norm=pltnorm, cmap=pltcmp, transform=ccrs.PlateCarree(),)
 
 cbar = fig.colorbar(
@@ -201,7 +207,7 @@ fig.savefig(opng)
 
 # region plot total cloud cover
 
-opng = 'figures/3_satellites/3.0_hamawari_cl/3.0.0_CL_RelFreq_2016_T.png'
+opng = 'figures/3_satellites/3.0_hamawari/3.0.0_cltype_frequency_2016_t.png'
 
 cbar_label = 'Total cloud occurrence frequency\nin 2016 from Himawari 8 [%]'
 pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
@@ -209,13 +215,13 @@ pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
 
 fig, ax = regional_plot(extent=[80, 200, -60, 60], central_longitude=180, figsize = np.array([6.6, 8.6]) / 2.54)
 
-plt_data = CL_RelFreq[1:].sum(dim='types')
+plt_data = cltype_frequency_alltime['ann'].sel(time='2016').squeeze()[1:-1].sum(dim='types')
 plt_mesh = ax.pcolormesh(
-    plt_data.longitude, plt_data.latitude, plt_data,
+    plt_data.lon, plt_data.lat, plt_data,
     norm=pltnorm, cmap=pltcmp, transform=ccrs.PlateCarree(),)
 
 cbar = fig.colorbar(
-    cm.ScalarMappable(norm=pltnorm, cmap=pltcmp),
+    plt_mesh,
     ax=ax, aspect=30, format=remove_trailing_zero_pos,
     orientation="horizontal", shrink=0.9, ticks=pltticks, extend='neither',
     pad=0.03, fraction=0.12,)
