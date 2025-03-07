@@ -56,6 +56,8 @@ mamba install ipywidgets -y
 mamba install wget -y
 mamba install ncview -y
 mamba install xmip -y
+mamba install satpy -y
+mamba install libgdal-hdf5
 
 pip install SkillMetrics
 pip install igra
