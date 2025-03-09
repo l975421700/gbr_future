@@ -1,6 +1,6 @@
 
 
-# qsub -I -q copyq -l walltime=2:00:00,ncpus=1,mem=20GB,storage=gdata/v46+gdata/rt52+gdata/ob53+gdata/zv2+gdata/ra22
+# qsub -I -q copyq -l walltime=10:00:00,ncpus=1,mem=192GB,storage=gdata/v46+gdata/rt52+gdata/ob53+gdata/zv2+gdata/ra22
 
 
 # region import packages
@@ -8,6 +8,7 @@
 # data analysis
 import numpy as np
 import xarray as xr
+from netCDF4 import Dataset
 import dask
 dask.config.set({"array.slicing.split_large_chunks": True})
 from dask.diagnostics import ProgressBar
@@ -47,12 +48,11 @@ from mapplot import (
 
 start_time = time.perf_counter()
 
-year, month, day, hour, minute = 2025, 3, 7, 12, 0
+year, month, day, hour, minute = 2020, 7, 1, 8, 0
 ioption='true_color'
 # ioption='night_microphysics'
 
-# dfolder = Path('/g/data/ra22/satellite-products/arc/obs/himawari-ahi/fldk/latest')
-dfolder = Path('/g/data/ra22/satellite-products/nrt/obs/himawari-ahi/fldk/latest')
+dfolder = Path('/g/data/ra22/satellite-products/arc/obs/himawari-ahi/fldk/latest')
 opng = Path(f'figures/3_satellites/3.0_hamawari/3.0.0_image/3.0.0.0 himawari {ioption} {year}{month:02d}{day:02d}{hour:02d}{minute:02d}.png')
 
 band_map = {
@@ -72,9 +72,10 @@ for iband in bands:
         print('Warning: No file found')
         continue
     
-    channels[iband] = xr.open_dataset(ifile[-1], chunks={})
-    var_name = next(var for var in channels[iband].data_vars if var.startswith('channel_00'))
-    channels[iband] = channels[iband][var_name].squeeze().values
+    channels[iband] = Dataset(ifile[-1], 'r')
+    var_name = next(var for var in channels[iband].variables if var.startswith("channel_00"))
+    channels[iband] = np.squeeze(channels[iband].variables[var_name][:])
+    channels[iband] = channels[iband].filled(0)
     
     if iband == 'B03':
         channels[iband] = block_reduce(channels[iband], block_size=(2, 2), func=np.mean)
@@ -86,45 +87,46 @@ rgb = np.zeros(channels[bands[0]].shape + (3,), dtype=np.float32)
 for idx, iband in enumerate(bands):
     print(f'{idx} {iband}')
     rgb[:, :, idx] = channels[iband]
-
-rgb = rgb.clip(0, 1) ** (1 / 2.2)
+rgb = np.clip(rgb, 0, 1, out=rgb)
+rgb **= (1 / 2.2)
 
 end_time = time.perf_counter()
 print(f"Execution time: {end_time - start_time:.6f} seconds")
 
 
 start_time = time.perf_counter()
-
-fig, ax = plt.subplots(figsize=np.array([6.6, 6.6+0.9])/2.54, subplot_kw={'projection': transform})
+fig, ax = plt.subplots(figsize=np.array([7, 7+1])/2.54, subplot_kw={'projection': transform})
 
 ax.imshow(rgb, extent=extent,
-          transform=transform, rasterized=True,
-          interpolation='none', origin='upper', resample=False)
+          transform=transform,
+          rasterized=True, interpolation='none', origin='upper', resample=False,
+          )
 
 coastline = cfeature.NaturalEarthFeature(
-    'physical', 'coastline', '10m', edgecolor='yellow',
+    'physical', 'coastline', '50m', edgecolor='yellow',
     facecolor='none', lw=0.1)
 ax.add_feature(coastline, zorder=2, rasterized=True, alpha=0.75)
 borders = cfeature.NaturalEarthFeature(
-    'cultural', 'admin_0_boundary_lines_land', '10m',
+    'cultural', 'admin_0_boundary_lines_land', '50m',
     edgecolor='yellow', facecolor='none', lw=0.1)
 ax.add_feature(borders, zorder=2, rasterized=True, alpha=0.75)
-ax.gridlines(
+gl = ax.gridlines(
     crs=ccrs.PlateCarree(), lw=0.1, zorder=2, alpha=0.35,
-    color='yellow', linestyle='--',
-    xlocs = np.arange(0, 360 + 1e-4, 10), ylocs=np.arange(-90, 90 + 1e-4, 10))
+    color='yellow', linestyle='--',)
+gl.xlocator = mticker.FixedLocator(np.arange(0, 360 + 1e-4, 10))
+gl.ylocator = mticker.FixedLocator(np.arange(-90, 90 + 1e-4, 10))
+plt.text(0.5, -0.03, plt_text, transform=ax.transAxes, fontsize=8,
+         ha='center', va='top', rotation='horizontal', linespacing=1.5)
 
-plt.text(
-        0.5, -0.03, plt_text, transform=ax.transAxes, fontsize=8,
-        ha='center', va='top', rotation='horizontal', linespacing=1.5)
-
-fig.subplots_adjust(left=0.01, right=0.99, bottom=0.9/(6.6+0.9), top=0.99)
+fig.subplots_adjust(left=0.01, right=0.99, bottom=1/(7+1), top=0.99)
 fig.savefig(opng)
 plt.close()
 
 end_time = time.perf_counter()
 print(f"Execution time: {end_time - start_time:.6f} seconds")
 
+
+del channels, rgb
 
 
 '''
@@ -158,7 +160,24 @@ rgb **= (1 / 2.2)
 
 rgb = np.dstack([channels['B03'], channels['B02'], channels['B01']])
 
+dfolder = Path('/g/data/ra22/satellite-products/nrt/obs/himawari-ahi/fldk/latest')
 
-# change projection
+
+
+    # use xarray
+    %%timeit
+    channels[iband] = xr.open_dataset(ifile[-1], chunks={})
+    var_name = next(var for var in channels[iband].data_vars if var.startswith('channel_00'))
+    channels[iband] = channels[iband][var_name].squeeze().values
+    if iband == 'B03':
+        channels[iband] = block_reduce(channels[iband], block_size=(2, 2), func=np.mean)
+    
+    
+    # use netCDF4
+    %%timeit
+
 '''
 # endregion
+
+
+

@@ -1,7 +1,7 @@
 
 # source miniconda3/bin/activate
-# conda create --name rcm_gbr -y
-# source miniconda3/bin/activate rcm_gbr
+# conda create --name lowclouds -y
+# source miniconda3/bin/activate lowclouds
 # conda config --add channels conda-forge
 
 #-------------------------------- Primary packages

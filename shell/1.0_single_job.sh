@@ -32,3 +32,4 @@ python /home/563/qg8515/code/gbr_future/shell/0_runpy/run1.py
 # https://opus.nci.org.au/spaces/Help/pages/236881198/Queue+Limits...
 # lquota: check project usage
 # quota: check user usage
+# qstat -Q: check queue status
