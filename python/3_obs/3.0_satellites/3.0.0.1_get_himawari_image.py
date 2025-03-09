@@ -15,6 +15,7 @@ from dask.diagnostics import ProgressBar
 pbar = ProgressBar()
 pbar.register()
 from skimage.measure import block_reduce
+from scipy import stats
 
 # plot
 import matplotlib as mpl
@@ -49,11 +50,14 @@ from mapplot import (
 start_time = time.perf_counter()
 
 year, month, day, hour, minute = 2020, 7, 1, 8, 0
-ioption='true_color'
-# ioption='night_microphysics'
+# ioption='true_color'
+ioption='night_microphysics'
 
 dfolder = Path('/g/data/ra22/satellite-products/arc/obs/himawari-ahi/fldk/latest')
+# dfolder = Path('/g/data/ra22/satellite-products/nrt/obs/himawari-ahi/fldk/latest')
 opng = Path(f'figures/3_satellites/3.0_hamawari/3.0.0_image/3.0.0.0 himawari {ioption} {year}{month:02d}{day:02d}{hour:02d}{minute:02d}.png')
+extent = [-5499500., 5499500., -5499500., 5499500.]
+transform = ccrs.Geostationary(central_longitude=140.7, satellite_height=35785863.0)
 
 band_map = {
     'true_color': ['B03', 'B02', 'B01'],
@@ -64,7 +68,7 @@ plt_text = f'{year}-{month:02d}-{day:02d} {hour:02d}:{minute:02d} UTC\n{ioption.
 
 channels = {}
 for iband in bands:
-    # iband='B03'
+    # iband='B07'
     print(f'#-------------------------------- {iband}')
     
     ifile = sorted(Path(dfolder/f'{year}/{month:02d}/{day:02d}/{hour:02d}{minute:02d}').glob(f'*OBS_{iband}*'))
@@ -74,21 +78,37 @@ for iband in bands:
     
     channels[iband] = Dataset(ifile[-1], 'r')
     var_name = next(var for var in channels[iband].variables if var.startswith("channel_00"))
+    # print(f'#---------------- {var_name}')
     channels[iband] = np.squeeze(channels[iband].variables[var_name][:])
-    channels[iband] = channels[iband].filled(0)
+    
+    if iband in ['B03', 'B02', 'B01']:
+        channels[iband] = channels[iband].filled(0)
     
     if iband == 'B03':
         channels[iband] = block_reduce(channels[iband], block_size=(2, 2), func=np.mean)
 
-extent = [-5499500., 5499500., -5499500., 5499500.]
-transform = ccrs.Geostationary(central_longitude=140.7, satellite_height=35785863.0)
+if ioption=='night_microphysics':
+    # stats.describe(channels['B13'], axis=None)
+    channels['B15-B13'] = channels['B15']-channels['B13']
+    channels['B13-B07'] = channels['B13']-channels['B07']
+    
+    channels['B15-B13'] = (channels['B15-B13'] + 4) / (2 + 4)
+    channels['B13-B07'] = (channels['B13-B07'] + 0) / (10 + 0)
+    channels['B13'] = (channels['B13'] - 243) / (293 - 243)
+    
+    bands=['B15-B13', 'B13-B07', 'B13']
+    for iband in bands: channels[iband] = channels[iband].filled(0)
+    gamma=1
+else:
+    gamma=2.2
+
 
 rgb = np.zeros(channels[bands[0]].shape + (3,), dtype=np.float32)
 for idx, iband in enumerate(bands):
     print(f'{idx} {iband}')
     rgb[:, :, idx] = channels[iband]
 rgb = np.clip(rgb, 0, 1, out=rgb)
-rgb **= (1 / 2.2)
+rgb **= (1 / gamma)
 
 end_time = time.perf_counter()
 print(f"Execution time: {end_time - start_time:.6f} seconds")
@@ -97,19 +117,17 @@ print(f"Execution time: {end_time - start_time:.6f} seconds")
 start_time = time.perf_counter()
 fig, ax = plt.subplots(figsize=np.array([7, 7+1])/2.54, subplot_kw={'projection': transform})
 
-ax.imshow(rgb, extent=extent,
-          transform=transform,
-          rasterized=True, interpolation='none', origin='upper', resample=False,
-          )
+ax.imshow(rgb, extent=extent, transform=transform,
+          interpolation='none', origin='upper', resample=False)
 
 coastline = cfeature.NaturalEarthFeature(
-    'physical', 'coastline', '50m', edgecolor='yellow',
+    'physical', 'coastline', '10m', edgecolor='yellow',
     facecolor='none', lw=0.1)
-ax.add_feature(coastline, zorder=2, rasterized=True, alpha=0.75)
+ax.add_feature(coastline, zorder=2, alpha=0.75)
 borders = cfeature.NaturalEarthFeature(
-    'cultural', 'admin_0_boundary_lines_land', '50m',
+    'cultural', 'admin_0_boundary_lines_land', '10m',
     edgecolor='yellow', facecolor='none', lw=0.1)
-ax.add_feature(borders, zorder=2, rasterized=True, alpha=0.75)
+ax.add_feature(borders, zorder=2, alpha=0.75)
 gl = ax.gridlines(
     crs=ccrs.PlateCarree(), lw=0.1, zorder=2, alpha=0.35,
     color='yellow', linestyle='--',)
@@ -119,7 +137,7 @@ plt.text(0.5, -0.03, plt_text, transform=ax.transAxes, fontsize=8,
          ha='center', va='top', rotation='horizontal', linespacing=1.5)
 
 fig.subplots_adjust(left=0.01, right=0.99, bottom=1/(7+1), top=0.99)
-fig.savefig(opng)
+fig.savefig(opng, transparent=True)
 plt.close()
 
 end_time = time.perf_counter()
@@ -132,7 +150,6 @@ del channels, rgb
 '''
 #-------------------------------- projection using pyproj
 import pyproj
-# import rioxarray as rxr
 ds = xr.open_dataset(ifile)
 
 iproj = pyproj.CRS.from_proj4(ds.geostationary.proj4)
@@ -144,8 +161,6 @@ lon, lat = transformer.transform(xx, yy)
 
 np.nanmax(lon[np.isfinite(lon)])
 np.nanmax(lat[np.isfinite(lat)])
-
-
 dis = 3840000
 print(transformer.transform(3840000, 3840000))
 
@@ -155,15 +170,6 @@ print(transformer.transform(3840000, 3840000))
 ifile = sorted(glob.glob(f'{dfolder}/{year}/{month:02d}/{day:02d}/{hour:02d}{minute:02d}/*OBS_{iband}*'))[-1]
 channels[iband] = channels[iband].coarsen(y=2, x=2, boundary='trim').mean()
 
-rgb = np.clip(rgb, 0, 1)
-rgb **= (1 / 2.2)
-
-rgb = np.dstack([channels['B03'], channels['B02'], channels['B01']])
-
-dfolder = Path('/g/data/ra22/satellite-products/nrt/obs/himawari-ahi/fldk/latest')
-
-
-
     # use xarray
     %%timeit
     channels[iband] = xr.open_dataset(ifile[-1], chunks={})
@@ -171,11 +177,13 @@ dfolder = Path('/g/data/ra22/satellite-products/nrt/obs/himawari-ahi/fldk/latest
     channels[iband] = channels[iband][var_name].squeeze().values
     if iband == 'B03':
         channels[iband] = block_reduce(channels[iband], block_size=(2, 2), func=np.mean)
-    
-    
-    # use netCDF4
-    %%timeit
 
+
+
+# Himawari User's Guide: https://www.data.jma.go.jp/mscweb/en/support/support.html
+# Real time image: https://www.data.jma.go.jp/mscweb/data/himawari/sat_img.php?area=fd_
+Thresholds: https://user.eumetsat.int/resources/case-studies/night-time-fog-over-india
+# RGB: https://www.jma.go.jp/jma/jma-eng/satellite/VLab/RGB_QG.html / rubbish
 '''
 # endregion
 
