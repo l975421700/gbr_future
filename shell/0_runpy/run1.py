@@ -1,403 +1,193 @@
 
 
-# qsub -I -q normal -l walltime=2:00:00,ncpus=1,mem=192GB,storage=gdata/v46+gdata/rt52+gdata/ob53+gdata/zv2
-
-
 # region import packages
 
 # data analysis
 import numpy as np
 import xarray as xr
+from netCDF4 import Dataset
 import dask
 dask.config.set({"array.slicing.split_large_chunks": True})
 from dask.diagnostics import ProgressBar
 pbar = ProgressBar()
 pbar.register()
+from skimage.measure import block_reduce
 from scipy import stats
-import pandas as pd
-from metpy.interpolate import cross_section
-from statsmodels.stats import multitest
-from metpy.calc import pressure_to_height_std, geopotential_to_height
-from metpy.units import units
-import metpy.calc as mpcalc
-import pickle
-from xmip.preprocessing import rename_cmip6, broadcast_lonlat, correct_lon, promote_empty_dims, replace_x_y_nominal_lat_lon, correct_units, correct_coordinates, parse_lon_lat_bounds, maybe_convert_bounds_to_vertex, maybe_convert_vertex_to_bounds, combined_preprocessing
 
 # plot
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-from matplotlib.colors import BoundaryNorm
 import cartopy.crs as ccrs
-from matplotlib import cm
 plt.rcParams['pcolor.shading'] = 'auto'
 mpl.rcParams['figure.dpi'] = 600
 mpl.rcParams['axes.linewidth'] = 0.2
 plt.rcParams.update({"mathtext.fontset": "stix"})
-import matplotlib.animation as animation
-import seaborn as sns
-from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
-from matplotlib.ticker import AutoMinorLocator
-import geopandas as gpd
-import matplotlib.patches as mpatches
-from matplotlib.lines import Line2D
+mpl.rc('font', family='Times New Roman', size=10)
 import cartopy.feature as cfeature
+import matplotlib.ticker as mticker
+import matplotlib.animation as animation
 
 # management
 import os
 import sys  # print(sys.path)
 sys.path.append(os.getcwd() + '/code/gbr_future/module')
-import psutil
-process = psutil.Process()
-# print(process.memory_info().rss / 2**30)
-import string
-import warnings
-warnings.filterwarnings('ignore')
-import re
 import glob
+import time
+from pathlib import Path
+import argparse
+import calendar
+import pandas as pd
 
 # self defined
 from mapplot import (
-    globe_plot,
     regional_plot,
-    ticks_labels,
-    scale_bar,
-    plot_maxmin_points,
-    remove_trailing_zero,
-    remove_trailing_zero_pos,
     )
-
-from namelist import (
-    month,
-    monthini,
-    seasons,
-    seconds_per_d,
-    zerok,
-    panel_labels,
-    era5_varlabels,
-    cmip6_era5_var,
-    )
-
-from component_plot import (
-    rainbow_text,
-    change_snsbar_width,
-    cplot_wind_vectors,
-    cplot_lon180,
-    cplot_lon180_ctr,
-    plt_mesh_pars,
-)
-
-from calculations import (
-    mon_sea_ann,
-    regrid,
-    cdo_regrid,
-    time_weighted_mean)
-
-from statistics0 import (
-    ttest_fdr_control,)
 
 # endregion
 
 
-# region plot Himawari, ERA5, BARRA-R2, BARRA-C2, am
+# region animate himawari true color and/or night microphysics
 
-with open('/scratch/v46/qg8515/data/obs/jaxa/clp/cltype_frequency_alltime.pkl', 'rb') as f:
-    cltype_frequency_alltime = pickle.load(f)
+parser=argparse.ArgumentParser()
+parser.add_argument('-y', '--year', type=int, required=True,)
+parser.add_argument('-m', '--month', type=int, required=True,)
+args = parser.parse_args()
 
-mpl.rc('font', family='Times New Roman', size=8)
-plt_colnames = ['Himawari', 'ERA5 - Himawari', 'BARRA-R2 - Himawari', 'BARRA-C2 - Himawari']
-min_lon, max_lon, min_lat, max_lat = [110.58, 157.34, -43.69, -7.01]
+year=args.year
+month=args.month
+# year=2020; month=7
 
-for var2 in ['cll', 'clm', 'clh', 'clt']:
-    # var2='cll'
-    var1 = cmip6_era5_var[var2]
-    print(f'#-------------------------------- {var1} and {var2}')
-    
-    with open(f'data/obs/era5/mon/era5_sl_mon_alltime_{var1}.pkl', 'rb') as f:
-        era5_sl_mon_alltime = pickle.load(f)
-    with open(f'data/sim/um/barra_r2/barra_r2_mon_alltime_{var2}.pkl','rb') as f:
-        barra_r2_mon_alltime = pickle.load(f)
-    with open(f'data/sim/um/barra_c2/barra_c2_mon_alltime_{var2}.pkl','rb') as f:
-        barra_c2_mon_alltime = pickle.load(f)
-    
-    plt_data = {}
-    plt_rmse = {}
-    
-    if var2=='cll':
-        himawari_ann = cltype_frequency_alltime['ann'].sel(types=['Cumulus', 'Stratocumulus', 'Stratus'])
-    elif var2=='clm':
-        himawari_ann = cltype_frequency_alltime['ann'].sel(types=['Altocumulus', 'Altostratus', 'Nimbostratus'])
-    elif var2=='clh':
-        himawari_ann = cltype_frequency_alltime['ann'].sel(types=['Cirrus', 'Cirrostratus', 'Deep convection'])
-    elif var2=='clt':
-        himawari_ann = cltype_frequency_alltime['ann'].sel(types=['Cumulus', 'Stratocumulus', 'Stratus', 'Altocumulus', 'Altostratus', 'Nimbostratus', 'Cirrus', 'Cirrostratus', 'Deep convection'])
-    himawari_ann = himawari_ann.sum(dim='types').sel(time=slice('2016', '2023'), lat=slice(max_lat, min_lat), lon=slice(min_lon, max_lon))
-    plt_data['Himawari'] = himawari_ann.mean(dim='time')
-    plt_mean = plt_data['Himawari'].weighted(np.cos(np.deg2rad(plt_data['Himawari'].lat))).mean().values
-    
-    era5_ann = regrid(era5_sl_mon_alltime['ann'].sel(time=slice('2016', '2023')), ds_out=plt_data['Himawari'])
-    plt_data['ERA5 - Himawari'] = (era5_ann.mean(dim='time') - plt_data['Himawari']).compute()
-    plt_rmse['ERA5 - Himawari'] = np.sqrt(np.square(plt_data['ERA5 - Himawari']).weighted(np.cos(np.deg2rad(plt_data['ERA5 - Himawari'].lat))).mean()).values
-    ttest_fdr_res = ttest_fdr_control(himawari_ann, era5_ann)
-    plt_data['ERA5 - Himawari'] = plt_data['ERA5 - Himawari'].where(ttest_fdr_res, np.nan)
-    
-    barra_r2_ann = regrid(barra_r2_mon_alltime['ann'].sel(time=slice('2016', '2023')), ds_out=plt_data['Himawari'])
-    plt_data['BARRA-R2 - Himawari'] = (barra_r2_ann.mean(dim='time') - plt_data['Himawari']).compute()
-    plt_rmse['BARRA-R2 - Himawari'] = np.sqrt(np.square(plt_data['BARRA-R2 - Himawari']).weighted(np.cos(np.deg2rad(plt_data['BARRA-R2 - Himawari'].lat))).mean()).values
-    ttest_fdr_res = ttest_fdr_control(himawari_ann, barra_r2_ann)
-    plt_data['BARRA-R2 - Himawari'] = plt_data['BARRA-R2 - Himawari'].where(ttest_fdr_res, np.nan)
-    
-    barra_c2_ann = regrid(barra_c2_mon_alltime['ann'].sel(time=slice('2016', '2023')), ds_out=plt_data['Himawari'])
-    plt_data['BARRA-C2 - Himawari'] = (barra_c2_ann.mean(dim='time') - plt_data['Himawari']).compute()
-    plt_rmse['BARRA-C2 - Himawari'] = np.sqrt(np.square(plt_data['BARRA-C2 - Himawari']).weighted(np.cos(np.deg2rad(plt_data['BARRA-C2 - Himawari'].lat))).mean()).values
-    ttest_fdr_res = ttest_fdr_control(himawari_ann, barra_c2_ann)
-    plt_data['BARRA-C2 - Himawari'] = plt_data['BARRA-C2 - Himawari'].where(ttest_fdr_res, np.nan)
-    
-    print(stats.describe(plt_data['Himawari'].values, axis=None, nan_policy='omit'))
-    print(stats.describe(np.concatenate([plt_data[colname].values for colname in plt_colnames[1:]]), axis=None, nan_policy='omit'))
-    
-    cbar_label1 = '2016-2023 ' + era5_varlabels[var1]
-    cbar_label2 = 'Difference in 2016-2023 ' + era5_varlabels[var1]
-    extend1 = 'neither'
-    extend2 = 'both'
-    
-    if var2 in ['clh', 'clm', 'cll', 'clt']:
-        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-            cm_min=0, cm_max=100, cm_interval1=10, cm_interval2=10, cmap='viridis_r',)
-        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-30, cm_max=30, cm_interval1=5, cm_interval2=10, cmap='BrBG_r',)
-    
-    nrow=1
-    ncol=len(plt_colnames)
-    fm_bottom=1.5/(4*nrow+1.5)
-    
-    fig, axs = plt.subplots(
-        nrow, ncol, figsize=np.array([4.4*ncol, 4*nrow + 1.5]) / 2.54,
-        subplot_kw={'projection': ccrs.PlateCarree(central_longitude=180)},
-        gridspec_kw={'hspace': 0.01, 'wspace': 0.01},)
-    
-    for jcol in range(ncol):
-        axs[jcol] = regional_plot(extent=[min_lon, max_lon, min_lat, max_lat], central_longitude=180, ax_org=axs[jcol])
-        if jcol==0:
-            plt_text = f'({string.ascii_lowercase[jcol]}) {plt_colnames[jcol]}, Mean: {np.round(plt_mean, 1)}'
-        elif jcol==1:
-            plt_text = f'({string.ascii_lowercase[jcol]}) {plt_colnames[jcol]}, RMSE: {np.round(plt_rmse[plt_colnames[jcol]], 1)}'
-        else:
-            plt_text = f'({string.ascii_lowercase[jcol]}) {plt_colnames[jcol]}, {np.round(plt_rmse[plt_colnames[jcol]], 1)}'
-        axs[jcol].text(0, 1.02, plt_text, ha='left', va='bottom', transform=axs[jcol].transAxes, size=8)
-    
-    plt_mesh1 = axs[0].pcolormesh(
-            plt_data[plt_colnames[0]].lon,
-            plt_data[plt_colnames[0]].lat,
-            plt_data[plt_colnames[0]].values,
-            norm=pltnorm1, cmap=pltcmp1, transform=ccrs.PlateCarree(),zorder=1)
-    for jcol in range(ncol-1):
-        plt_mesh2 = axs[jcol+1].pcolormesh(
-            plt_data[plt_colnames[jcol+1]].lon,
-            plt_data[plt_colnames[jcol+1]].lat,
-            plt_data[plt_colnames[jcol+1]].values,
-            norm=pltnorm2, cmap=pltcmp2, transform=ccrs.PlateCarree(),zorder=1)
-    
-    cbar1 = fig.colorbar(
-        plt_mesh1, #cm.ScalarMappable(norm=pltnorm1, cmap=pltcmp1), #
-        format=remove_trailing_zero_pos,
-        orientation="horizontal", ticks=pltticks1, extend=extend1,
-        cax=fig.add_axes([0.05, fm_bottom-0.05, 0.4, 0.05]))
-    cbar1.ax.set_xlabel(cbar_label1)
-    cbar2 = fig.colorbar(
-        plt_mesh2, #cm.ScalarMappable(norm=pltnorm2, cmap=pltcmp2), #
-        format=remove_trailing_zero_pos,
-        orientation="horizontal", ticks=pltticks2, extend=extend2,
-        cax=fig.add_axes([0.55, fm_bottom-0.05, 0.4, 0.05]))
-    cbar2.ax.set_xlabel(cbar_label2)
-    
-    fig.subplots_adjust(left=0.005, right=0.995, bottom=fm_bottom, top=0.95)
-    fig.savefig(f'figures/4_um/4.0_barra/4.0.0_whole region/4.0.0.1 himawari vs. barra_c2, and era5 am {var1}.png')
-    
-    del era5_sl_mon_alltime, barra_r2_mon_alltime, barra_c2_mon_alltime
+last_day = calendar.monthrange(year, month)[1]
+time_series = pd.date_range(start=f'{year}-{month:02d}-01 00:00',
+                            end=f'{year}-{month:02d}-{last_day} 23:50',
+                            freq='10min')
+time_step = 'hourly' #minutely
+if time_step == 'hourly': time_series = time_series[::6]
+time_series=time_series[:24]
 
+# ioption='true_color'
+# ioption='night_microphysics'
+ioption='true_color_and_night_microphysics'
+band_map = {
+    'true_color': ['B03', 'B02', 'B01'],
+    'night_microphysics': ['B07', 'B13', 'B15'],
+    'true_color_and_night_microphysics': ['B03', 'B02', 'B01', 'B07', 'B13', 'B15']}
+
+dfolder = Path('/g/data/ra22/satellite-products/arc/obs/himawari-ahi/fldk/latest')
+# dfolder = Path('/g/data/ra22/satellite-products/nrt/obs/himawari-ahi/fldk/latest')
+omp4 = Path(f'figures/3_satellites/3.0_hamawari/3.0.0_image/3.0.0.0 himawari {ioption} {year}{month:02d} {time_step}.mp4')
+extent = [-5499500., 5499500., -5499500., 5499500.]
+transform = ccrs.Geostationary(central_longitude=140.7, satellite_height=35785863.0)
+
+fig, ax = plt.subplots(figsize=np.array([7, 7+1])/2.54, subplot_kw={'projection': transform})
+coastline = cfeature.NaturalEarthFeature(
+    'physical', 'coastline', '10m', edgecolor='yellow',
+    facecolor='none', lw=0.1)
+ax.add_feature(coastline, zorder=2, alpha=0.75)
+borders = cfeature.NaturalEarthFeature(
+    'cultural', 'admin_0_boundary_lines_land', '10m',
+    edgecolor='yellow', facecolor='none', lw=0.1)
+ax.add_feature(borders, zorder=2, alpha=0.75)
+gl = ax.gridlines(
+    crs=ccrs.PlateCarree(), lw=0.1, zorder=2, alpha=0.35,
+    color='yellow', linestyle='--',)
+gl.xlocator = mticker.FixedLocator(np.arange(0, 360 + 1e-4, 10))
+gl.ylocator = mticker.FixedLocator(np.arange(-90, 90 + 1e-4, 10))
+
+plt_objs = []
+def update_frames(itime):
+    # itime = -1
+    global plt_objs
+    for plt_obj in plt_objs:
+        plt_obj.remove()
+    plt_objs = []
+    
+    start_time = time.perf_counter()
+    day = time_series[itime].day
+    hour = time_series[itime].hour
+    minute = time_series[itime].minute
+    title = f'{year}-{month:02d}-{day:02d} {hour:02d}:{minute:02d} UTC\n{ioption.replace('_', ' ').title().replace('And', 'and')} RGB Himawari 8/9'
+    print(f'#-------------------------------- {year}{month:02d}{day:02d}{hour:02d}{minute:02d}')
+    
+    bands = band_map[ioption]
+    channels = {}
+    for iband in bands:
+        # iband='B07'
+        print(f'#---------------- {iband}')
+        ifile = sorted(Path(dfolder/f'{year}/{month:02d}/{day:02d}/{hour:02d}{minute:02d}').glob(f'*OBS_{iband}*'))
+        if not ifile:
+            print('Warning: No file found')
+            return
+        
+        channels[iband] = Dataset(ifile[-1], 'r')
+        var_name = next(var for var in channels[iband].variables if var.startswith("channel_00"))
+        channels[iband] = np.squeeze(channels[iband].variables[var_name][:])
+        
+        if iband in ['B03', 'B02', 'B01']:
+            channels[iband] = channels[iband].filled(0)
+        
+        if iband == 'B03':
+            channels[iband] = block_reduce(channels[iband], block_size=(2, 2), func=np.mean)
+    
+    if ioption in ['night_microphysics', 'true_color_and_night_microphysics']:
+        channels['B15-B13'] = channels['B15']-channels['B13']
+        channels['B13-B07'] = channels['B13']-channels['B07']
+        
+        channels['B15-B13'] = (channels['B15-B13'] + 4) / (2 + 4)
+        channels['B13-B07'] = (channels['B13-B07'] + 0) / (10 + 0)
+        channels['B13'] = (channels['B13'] - 243) / (293 - 243)
+        
+        if ioption=='night_microphysics': bands=['B15-B13', 'B13-B07', 'B13']
+        for iband in ['B15-B13', 'B13-B07', 'B13']:
+            channels[iband] = channels[iband].filled(0)
+    
+    if ioption in ['true_color', 'night_microphysics']:
+        rgb = np.zeros(channels[bands[0]].shape + (3,), dtype=np.float32)
+        for idx, iband in enumerate(bands):
+            rgb[:, :, idx] = channels[iband]
+        rgb = np.clip(rgb, 0, 1, out=rgb)
+        if ioption=='true_color': rgb **= (1 / 2.2)
+    elif ioption=='true_color_and_night_microphysics':
+        rgb1 = np.zeros(channels['B03'].shape + (3,), dtype=np.float32)
+        for idx, iband in enumerate(['B03', 'B02', 'B01']):
+            rgb1[:, :, idx] = channels[iband]
+        rgb1 = np.clip(rgb1, 0, 1, out=rgb1)
+        rgb1 **= (1 / 2.2)
+        
+        rgb2 = np.zeros(channels['B15-B13'].shape + (3,), dtype=np.float32)
+        for idx, iband in enumerate(['B15-B13', 'B13-B07', 'B13']):
+            rgb2[:, :, idx] = channels[iband]
+        rgb2 = np.clip(rgb2, 0, 1, out=rgb2)
+        rgb2 = np.kron(rgb2, np.ones((2, 2, 1)))
+        
+        luminance = 0.2126 * rgb1[..., 0] + 0.7152 * rgb1[..., 1] + 0.0722 * rgb1[..., 2]
+        rgb = np.where((luminance > 0.05)[..., None], rgb1, rgb2)
+    
+    plt_im = ax.imshow(
+        rgb, extent=extent, transform=transform,
+        interpolation='none', origin='upper', resample=False)
+    plt_text = plt.text(
+        0.5, -0.03, title, transform=ax.transAxes, fontsize=8,
+        ha='center', va='top', rotation='horizontal', linespacing=1.5)
+    
+    del channels
+    end_time = time.perf_counter()
+    print(f"Execution time: {end_time - start_time:.6f} seconds")
+    plt_objs = [plt_im, plt_text]
+    return(plt_objs)
+
+fig.subplots_adjust(left=0.01, right=0.99, bottom=1/(7+1), top=0.99)
+
+ani = animation.FuncAnimation(
+    fig, update_frames, frames=len(time_series), interval=500, blit=False)
+if os.path.exists(omp4): os.remove(omp4)
+ani.save(omp4, progress_callback=lambda iframe, n: print(f'Frame {iframe}/{n}'))
 
 
 
 '''
+print(time_series[-1].day)
+print(time_series[-1].hour)
 '''
-# endregion
-
-
-# region plot Himawari, ERA5, BARRA-R2, BARRA-C2, am sm
-
-with open('/scratch/v46/qg8515/data/obs/jaxa/clp/cltype_frequency_alltime.pkl', 'rb') as f:
-    cltype_frequency_alltime = pickle.load(f)
-
-# settings
-mpl.rc('font', family='Times New Roman', size=10)
-plt_colnames = ['Annual mean', 'DJF', 'MAM', 'JJA', 'SON']
-plt_rownames = ['Himawari', 'ERA5 - Himawari', 'BARRA-R2 - Himawari', 'BARRA-C2 - Himawari']
-min_lon, max_lon, min_lat, max_lat = [110.58, 157.34, -43.69, -7.01]
-
-for var2 in ['cll', 'clm', 'clh', 'clt']:
-    # var2='cll'
-    var1 = cmip6_era5_var[var2]
-    print(f'#-------------------------------- {var1} and {var2}')
-    
-    with open(f'data/obs/era5/mon/era5_sl_mon_alltime_{var1}.pkl', 'rb') as f:
-        era5_sl_mon_alltime = pickle.load(f)
-    with open(f'data/sim/um/barra_r2/barra_r2_mon_alltime_{var2}.pkl','rb') as f:
-        barra_r2_mon_alltime = pickle.load(f)
-    with open(f'data/sim/um/barra_c2/barra_c2_mon_alltime_{var2}.pkl','rb') as f:
-        barra_c2_mon_alltime = pickle.load(f)
-    
-    plt_data = {}
-    for irow in plt_rownames: plt_data[irow] = {}
-    plt_mean = {}
-    plt_rmse = {}
-    for irow in plt_rownames[1:]: plt_rmse[irow] = {}
-    
-    if var2=='cll':
-        himawari_ann = cltype_frequency_alltime['ann'].sel(types=['Cumulus', 'Stratocumulus', 'Stratus'])
-    elif var2=='clm':
-        himawari_ann = cltype_frequency_alltime['ann'].sel(types=['Altocumulus', 'Altostratus', 'Nimbostratus'])
-    elif var2=='clh':
-        himawari_ann = cltype_frequency_alltime['ann'].sel(types=['Cirrus', 'Cirrostratus', 'Deep convection'])
-    elif var2=='clt':
-        himawari_ann = cltype_frequency_alltime['ann'].sel(types=['Cumulus', 'Stratocumulus', 'Stratus', 'Altocumulus', 'Altostratus', 'Nimbostratus', 'Cirrus', 'Cirrostratus', 'Deep convection'])
-    himawari_ann = himawari_ann.sum(dim='types').sel(time=slice('2016', '2023'), lat=slice(max_lat, min_lat), lon=slice(min_lon, max_lon))
-    plt_data['Himawari']['Annual mean'] = himawari_ann.mean(dim='time')
-    plt_mean['Annual mean'] = plt_data['Himawari']['Annual mean'].weighted(np.cos(np.deg2rad(plt_data['Himawari']['Annual mean'].lat))).mean().values
-    
-    era5_ann = regrid(era5_sl_mon_alltime['ann'].sel(time=slice('2016', '2023')), ds_out=plt_data['Himawari']['Annual mean'])
-    plt_data['ERA5 - Himawari']['Annual mean'] = (era5_ann.mean(dim='time') - plt_data['Himawari']['Annual mean']).compute()
-    plt_rmse['ERA5 - Himawari']['Annual mean'] = np.sqrt(np.square(plt_data['ERA5 - Himawari']['Annual mean']).weighted(np.cos(np.deg2rad(plt_data['ERA5 - Himawari']['Annual mean'].lat))).mean()).values
-    ttest_fdr_res = ttest_fdr_control(himawari_ann, era5_ann)
-    plt_data['ERA5 - Himawari']['Annual mean'] = plt_data['ERA5 - Himawari']['Annual mean'].where(ttest_fdr_res, np.nan)
-    
-    barra_r2_ann = regrid(barra_r2_mon_alltime['ann'].sel(time=slice('2016', '2023')), ds_out=plt_data['Himawari']['Annual mean'])
-    plt_data['BARRA-R2 - Himawari']['Annual mean'] = (barra_r2_ann.mean(dim='time') - plt_data['Himawari']['Annual mean']).compute()
-    plt_rmse['BARRA-R2 - Himawari']['Annual mean'] = np.sqrt(np.square(plt_data['BARRA-R2 - Himawari']['Annual mean']).weighted(np.cos(np.deg2rad(plt_data['BARRA-R2 - Himawari']['Annual mean'].lat))).mean()).values
-    ttest_fdr_res = ttest_fdr_control(himawari_ann, barra_r2_ann)
-    plt_data['BARRA-R2 - Himawari']['Annual mean'] = plt_data['BARRA-R2 - Himawari']['Annual mean'].where(ttest_fdr_res, np.nan)
-    
-    barra_c2_ann = regrid(barra_c2_mon_alltime['ann'].sel(time=slice('2016', '2023')), ds_out=plt_data['Himawari']['Annual mean'])
-    plt_data['BARRA-C2 - Himawari']['Annual mean'] = (barra_c2_ann.mean(dim='time') - plt_data['Himawari']['Annual mean']).compute()
-    plt_rmse['BARRA-C2 - Himawari']['Annual mean'] = np.sqrt(np.square(plt_data['BARRA-C2 - Himawari']['Annual mean']).weighted(np.cos(np.deg2rad(plt_data['BARRA-C2 - Himawari']['Annual mean'].lat))).mean()).values
-    ttest_fdr_res = ttest_fdr_control(himawari_ann, barra_c2_ann)
-    plt_data['BARRA-C2 - Himawari']['Annual mean'] = plt_data['BARRA-C2 - Himawari']['Annual mean'].where(ttest_fdr_res, np.nan)
-    
-    for jcolnames in plt_colnames[1:]:
-        # jcolnames='DJF'
-        print(f'#---------------- {jcolnames}')
-        
-        if var2=='cll':
-            himawari_sea = cltype_frequency_alltime['sea'].sel(types=['Cumulus', 'Stratocumulus', 'Stratus'])
-        elif var2=='clm':
-            himawari_sea = cltype_frequency_alltime['sea'].sel(types=['Altocumulus', 'Altostratus', 'Nimbostratus'])
-        elif var2=='clh':
-            himawari_sea = cltype_frequency_alltime['sea'].sel(types=['Cirrus', 'Cirrostratus', 'Deep convection'])
-        elif var2=='clt':
-            himawari_sea = cltype_frequency_alltime['sea'].sel(types=['Cumulus', 'Stratocumulus', 'Stratus', 'Altocumulus', 'Altostratus', 'Nimbostratus', 'Cirrus', 'Cirrostratus', 'Deep convection'])
-        himawari_sea = himawari_sea[himawari_sea.time.dt.season==jcolnames].sum(dim='types').sel(time=slice('2016', '2023'), lat=slice(max_lat, min_lat), lon=slice(min_lon, max_lon))
-        plt_data['Himawari'][jcolnames] = himawari_sea.mean(dim='time')
-        plt_mean[jcolnames] = plt_data['Himawari'][jcolnames].weighted(np.cos(np.deg2rad(plt_data['Himawari'][jcolnames].lat))).mean().values
-        
-        era5_sea = regrid(era5_sl_mon_alltime['sea'][era5_sl_mon_alltime['sea'].time.dt.season==jcolnames].sel(time=slice('2016', '2023')), ds_out=plt_data['Himawari']['Annual mean'])
-        plt_data['ERA5 - Himawari'][jcolnames] = (era5_sea.mean(dim='time') - plt_data['Himawari'][jcolnames]).compute()
-        plt_rmse['ERA5 - Himawari'][jcolnames] = np.sqrt(np.square(plt_data['ERA5 - Himawari'][jcolnames]).weighted(np.cos(np.deg2rad(plt_data['ERA5 - Himawari'][jcolnames].lat))).mean()).values
-        ttest_fdr_res = ttest_fdr_control(himawari_sea, era5_sea)
-        plt_data['ERA5 - Himawari'][jcolnames] = plt_data['ERA5 - Himawari'][jcolnames].where(ttest_fdr_res, np.nan)
-        
-        barra_r2_sea = regrid(barra_r2_mon_alltime['sea'][barra_r2_mon_alltime['sea'].time.dt.season==jcolnames].sel(time=slice('2016', '2023')), ds_out=plt_data['Himawari']['Annual mean'])
-        plt_data['BARRA-R2 - Himawari'][jcolnames] = (barra_r2_sea.mean(dim='time') - plt_data['Himawari'][jcolnames]).compute()
-        plt_rmse['BARRA-R2 - Himawari'][jcolnames] = np.sqrt(np.square(plt_data['BARRA-R2 - Himawari'][jcolnames]).weighted(np.cos(np.deg2rad(plt_data['BARRA-R2 - Himawari'][jcolnames].lat))).mean()).values
-        ttest_fdr_res = ttest_fdr_control(himawari_sea, barra_r2_sea)
-        plt_data['BARRA-R2 - Himawari'][jcolnames] = plt_data['BARRA-R2 - Himawari'][jcolnames].where(ttest_fdr_res, np.nan)
-        
-        barra_c2_sea = regrid(barra_c2_mon_alltime['sea'][barra_c2_mon_alltime['sea'].time.dt.season==jcolnames].sel(time=slice('2016', '2023')), ds_out=plt_data['Himawari']['Annual mean'])
-        plt_data['BARRA-C2 - Himawari'][jcolnames] = (barra_c2_sea.mean(dim='time') - plt_data['Himawari'][jcolnames]).compute()
-        plt_rmse['BARRA-C2 - Himawari'][jcolnames] = np.sqrt(np.square(plt_data['BARRA-C2 - Himawari'][jcolnames]).weighted(np.cos(np.deg2rad(plt_data['BARRA-C2 - Himawari'][jcolnames].lat))).mean()).values
-        ttest_fdr_res = ttest_fdr_control(himawari_sea, barra_c2_sea)
-        plt_data['BARRA-C2 - Himawari'][jcolnames] = plt_data['BARRA-C2 - Himawari'][jcolnames].where(ttest_fdr_res, np.nan)
-    
-    # print(stats.describe(np.concatenate([plt_data['Himawari'][colname].values for colname in plt_colnames]), axis=None, nan_policy='omit'))
-    # print(stats.describe(np.concatenate([plt_data[rowname][colname].values for rowname in plt_rownames[1:] for colname in plt_colnames]), axis=None, nan_policy='omit'))
-    
-    cbar_label1 = '2016-2023 ' + era5_varlabels[var1]
-    cbar_label2 = 'Difference in 2016-2023 ' + era5_varlabels[var1]
-    extend1 = 'neither'
-    extend2 = 'both'
-    
-    if var2 in ['clh', 'clm', 'cll', 'clt']:
-        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-            cm_min=0, cm_max=100, cm_interval1=10, cm_interval2=10, cmap='viridis_r',)
-        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-30, cm_max=30, cm_interval1=5, cm_interval2=10, cmap='BrBG_r',)
-    
-    nrow=len(plt_rownames)
-    ncol=len(plt_colnames)
-    fm_bottom=1.4/(4*nrow+1.4)
-    
-    fig, axs = plt.subplots(
-        nrow, ncol, figsize=np.array([4.4*ncol, 4*nrow + 1.4]) / 2.54,
-        subplot_kw={'projection': ccrs.PlateCarree(central_longitude=180)},
-        gridspec_kw={'hspace': 0.01, 'wspace': 0.01},)
-    
-    for irow in range(nrow):
-        axs[irow, 0].text(-0.05, 0.5, plt_rownames[irow], ha='right', va='center', rotation='vertical', transform=axs[irow, 0].transAxes)
-        for jcol in range(ncol):
-            axs[irow, jcol] = regional_plot(extent=[min_lon, max_lon, min_lat, max_lat], central_longitude=180, ax_org=axs[irow, jcol])
-            axs[irow, jcol].text(0, 1.02, f'({string.ascii_lowercase[irow]}{jcol+1})', ha='left', va='bottom', transform=axs[irow, jcol].transAxes,)
-            if irow==0:
-                axs[0, jcol].text(0.5, 1.14, plt_colnames[jcol], ha='center', va='bottom', transform=axs[0, jcol].transAxes)
-    
-    for jcol in range(ncol):
-        plt_mesh1 = axs[0, jcol].pcolormesh(
-            plt_data[plt_rownames[0]][plt_colnames[jcol]].lon,
-            plt_data[plt_rownames[0]][plt_colnames[jcol]].lat,
-            plt_data[plt_rownames[0]][plt_colnames[jcol]].values,
-            norm=pltnorm1, cmap=pltcmp1, transform=ccrs.PlateCarree(),zorder=1)
-        if jcol==0:
-            plt_text='Mean: '+str(np.round(plt_mean[plt_colnames[jcol]],1))
-        else:
-            plt_text = np.round(plt_mean[plt_colnames[jcol]], 1)
-        axs[0, jcol].text(
-            0.5, 1.02, plt_text,
-            ha='center', va='bottom', transform=axs[0, jcol].transAxes)
-    
-    for irow in range(nrow-1):
-        for jcol in range(ncol):
-            plt_mesh2 = axs[irow+1, jcol].pcolormesh(
-                plt_data[plt_rownames[irow+1]][plt_colnames[jcol]].lon,
-                plt_data[plt_rownames[irow+1]][plt_colnames[jcol]].lat,
-                plt_data[plt_rownames[irow+1]][plt_colnames[jcol]].values,
-                norm=pltnorm2, cmap=pltcmp2,
-                transform=ccrs.PlateCarree(),zorder=1)
-            if (irow==0)&(jcol==0):
-                plt_text='RMSE: '+str(np.round(plt_rmse[plt_rownames[irow+1]][plt_colnames[jcol]], 1))
-            else:
-                plt_text = np.round(plt_rmse[plt_rownames[irow+1]][plt_colnames[jcol]], 1)
-            axs[irow+1, jcol].text(
-                0.5, 1.02, plt_text,
-                ha='center', va='bottom', transform=axs[irow+1, jcol].transAxes)
-    
-    cbar1 = fig.colorbar(
-        plt_mesh1, #cm.ScalarMappable(norm=pltnorm1, cmap=pltcmp1), #
-        format=remove_trailing_zero_pos,
-        orientation="horizontal", ticks=pltticks1, extend=extend1,
-        cax=fig.add_axes([0.05, fm_bottom-0.01, 0.4, 0.015]))
-    cbar1.ax.set_xlabel(cbar_label1)
-    cbar2 = fig.colorbar(
-        plt_mesh2, #cm.ScalarMappable(norm=pltnorm2, cmap=pltcmp2), #
-        format=remove_trailing_zero_pos,
-        orientation="horizontal", ticks=pltticks2, extend=extend2,
-        cax=fig.add_axes([0.55, fm_bottom-0.01, 0.4, 0.015]))
-    cbar2.ax.set_xlabel(cbar_label2)
-    
-    fig.subplots_adjust(left=0.03, right=0.995, bottom=fm_bottom, top=0.96)
-    fig.savefig(f'figures/4_um/4.0_barra/4.0.0_whole region/4.0.0.1 himawari vs. barra_c2, and era5 am sm {var1}.png')
-    
-    del era5_sl_mon_alltime, barra_r2_mon_alltime, barra_c2_mon_alltime
-
-
-
-
-
 # endregion
 
