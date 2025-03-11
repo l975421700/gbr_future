@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -l walltime=10:00:00,ncpus=1,mem=192GB,storage=gdata/v46+gdata/rt52+gdata/ob53
+# qsub -I -q normal -l walltime=5:00:00,ncpus=1,mem=192GB,storage=gdata/v46+gdata/rt52+gdata/ob53
 
 
 # region import packages
@@ -14,41 +14,26 @@ from dask.diagnostics import ProgressBar
 pbar = ProgressBar()
 pbar.register()
 from scipy import stats
-import pandas as pd
-from metpy.interpolate import cross_section
-from statsmodels.stats import multitest
-from metpy.calc import pressure_to_height_std, geopotential_to_height
-from metpy.units import units
-import metpy.calc as mpcalc
 import pickle
-from xmip.preprocessing import rename_cmip6, broadcast_lonlat, correct_lon, promote_empty_dims, replace_x_y_nominal_lat_lon, correct_units, correct_coordinates, parse_lon_lat_bounds, maybe_convert_bounds_to_vertex, maybe_convert_vertex_to_bounds, combined_preprocessing
+from xmip.preprocessing import replace_x_y_nominal_lat_lon
+import pandas as pd
 
 # plot
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-from matplotlib.colors import BoundaryNorm
 import cartopy.crs as ccrs
-from matplotlib import cm
 plt.rcParams['pcolor.shading'] = 'auto'
 mpl.rcParams['figure.dpi'] = 600
 mpl.rc('font', family='Times New Roman', size=10)
 mpl.rcParams['axes.linewidth'] = 0.2
 plt.rcParams.update({"mathtext.fontset": "stix"})
-import matplotlib.animation as animation
-import seaborn as sns
-from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
-from matplotlib.ticker import AutoMinorLocator
-import geopandas as gpd
-import matplotlib.patches as mpatches
-from matplotlib.lines import Line2D
-import cartopy.feature as cfeature
 
 # management
 import os
 import sys  # print(sys.path)
 sys.path.append(os.getcwd() + '/code/gbr_future/module')
-import psutil
-process = psutil.Process()
+# import psutil
+# process = psutil.Process()
 # print(process.memory_info().rss / 2**30)
 import string
 import warnings
@@ -59,41 +44,23 @@ import re
 from mapplot import (
     globe_plot,
     regional_plot,
-    ticks_labels,
-    scale_bar,
-    plot_maxmin_points,
-    remove_trailing_zero,
-    remove_trailing_zero_pos,
-    )
+    remove_trailing_zero_pos)
 
 from namelist import (
-    month,
-    monthini,
-    seasons,
-    seconds_per_d,
-    zerok,
-    panel_labels,
+    month_jan,
     era5_varlabels,
-    cmip6_era5_var,
-    )
+    cmip6_era5_var)
 
 from component_plot import (
-    rainbow_text,
-    change_snsbar_width,
-    cplot_wind_vectors,
-    cplot_lon180,
-    cplot_lon180_ctr,
-    plt_mesh_pars,
-)
+    plt_mesh_pars)
 
 from calculations import (
-    mon_sea_ann,
     regrid,
     cdo_regrid,
     time_weighted_mean)
 
 from statistics0 import (
-    ttest_fdr_control,)
+    ttest_fdr_control)
 
 # endregion
 
@@ -359,7 +326,7 @@ for var2 in ['rsut', 'rlut', 'rsdt']:
     cbar2.ax.set_xlabel(cbar_label2)
     
     fig.subplots_adjust(left=0.03, right=0.995, bottom=fm_bottom, top=0.98)
-    fig.savefig(f'figures/4_um/4.0_barra/4.0.0_whole region/4.0.0.1 ceres vs. barra_c2, era5, and cmip6 am sm {var1} new.png')
+    fig.savefig(f'figures/4_um/4.0_barra/4.0.0_whole region/4.0.0.1 ceres vs. barra_c2, era5, and cmip6 am sm {var1}.png')
     
     del era5_sl_mon_alltime, barra_c2_mon_alltime, historical_regridded_alltime_ens, amip_regridded_alltime_ens
 
@@ -702,4 +669,85 @@ stats.describe(plt_data[plt_colnames[3]].values, axis=None, nan_policy='omit')
 '''
 # endregion
 
+
+# region plot CERES and BARRA-C2 ann
+
+
+# endregion
+
+
+# region plot CERES and BARRA-C2 mon
+
+year = 2020
+var2 = 'rsut'
+var1 = cmip6_era5_var[var2]
+
+# import data
+ceres_ebaf_toa = xr.open_dataset('data/obs/CERES/CERES_EBAF-TOA_Ed4.2.1_Subset_200003-202411.nc').sel(time=slice(str(year), str(year)))
+ceres_ebaf_toa = ceres_ebaf_toa.rename({
+    'toa_sw_all_mon': 'mtuwswrf',
+    'toa_lw_all_mon': 'mtnlwrf',
+    'solar_mon': 'mtdwswrf'})
+ceres_ebaf_toa['mtuwswrf'] *= (-1)
+ceres_ebaf_toa['mtnlwrf'] *= (-1)
+
+barra_c2_mon_alltime = pd.read_pickle(f'data/sim/um/barra_c2/barra_c2_mon_alltime_{var2}.pkl')
+
+with open(f'data/sim/um/barra_c2/barra_c2_mon_alltime_{var2}.pkl','rb') as f:
+    barra_c2_mon_alltime = pickle.load(f)
+
+
+if var1 in ['mtuwswrf', 'mtuwswrfcs']:
+    pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+        cm_min=-40, cm_max=40, cm_interval1=2, cm_interval2=8, cmap='BrBG')
+
+min_lon, max_lon, min_lat, max_lat = [110.58, 157.34, -43.69, -7.01]
+cbar_label = f'Difference in {year} {era5_varlabels[var1]}'
+nrow=3
+ncol=4
+fm_bottom=1.5/(4*nrow+1.5)
+
+fig, axs = plt.subplots(
+    nrow, ncol, figsize=np.array([4.4*ncol, 4*nrow + 1.5]) / 2.54,
+    subplot_kw={'projection': ccrs.PlateCarree(central_longitude=180)},
+    gridspec_kw={'hspace': 0.01, 'wspace': 0.01},)
+
+for irow in range(nrow):
+    for jcol in range(ncol):
+        axs[irow, jcol] = regional_plot(extent=[min_lon, max_lon, min_lat, max_lat], central_longitude=180, ax_org=axs[irow, jcol])
+        
+        ceres_mon = ceres_ebaf_toa[var1][irow*4+jcol].pipe(regrid).pipe(replace_x_y_nominal_lat_lon).sel(y=slice(min_lat, max_lat), x=slice(min_lon, max_lon)).compute()
+        
+        import xesmf as xe
+        barra_c2_org = barra_c2_mon_alltime['mon'].sel(time=slice(str(year), str(year)))[irow*4+jcol].compute()
+        barra_c2_mon = xe.Regridder(barra_c2_org, ceres_mon, method='bilinear')(barra_c2_org)
+        barra_c2_mon = cdo_regrid(barra_c2_org, target_grid=ceres_mon)
+        
+        barra_c2_mon = regrid(barra_c2_mon_alltime['mon'].sel(time=slice(str(year), str(year)))[irow*4+jcol].compute(), ds_out=ceres_mon)
+        
+        plt_data = (ceres_mon - barra_c2_mon).compute()
+        plt_rmse = np.sqrt(np.square(plt_data).weighted(np.cos(np.deg2rad(plt_data.lat))).mean()).values
+        
+        if irow==0 & jcol==0:
+            plt_text = f'({string.ascii_lowercase[irow]}{jcol+1}) {month_jan[irow*4+jcol]} RMSE: {np.round(plt_rmse, 1)}'
+        else:
+            plt_text = f'({string.ascii_lowercase[irow]}{jcol+1}) {month_jan[irow*4+jcol]} {np.round(plt_rmse, 1)}'
+        
+        axs[irow, jcol].text(0, 1.02, plt_text, ha='left', va='bottom', transform=axs[irow, jcol].transAxes)
+        plt_mesh = axs[irow, jcol].pcolormesh(
+            plt_data.lon, plt_data.lat, plt_data.values,
+            norm=pltnorm, cmap=pltcmp, transform=ccrs.PlateCarree(),zorder=1)
+
+cbar = fig.colorbar(
+    plt_mesh, #cm.ScalarMappable(norm=pltnorm1, cmap=pltcmp1), #
+    format=remove_trailing_zero_pos,
+    orientation="horizontal", ticks=pltticks, extend='both',
+    cax=fig.add_axes([0.25, fm_bottom-0.01, 0.5, 0.015]))
+cbar.ax.set_xlabel(cbar_label)
+
+fig.subplots_adjust(left=0.03, right=0.995, bottom=fm_bottom, top=0.98)
+fig.savefig(f'figures/4_um/4.0_barra/4.0.0_whole region/4.0.0.1 ceres vs. barra_c2 {year} mon.png')
+
+
+# endregion
 
