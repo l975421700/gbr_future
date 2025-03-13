@@ -16,12 +16,12 @@ pbar.register()
 from scipy import stats
 import pickle
 from xmip.preprocessing import replace_x_y_nominal_lat_lon
-import pandas as pd
 
 # plot
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
+from matplotlib import cm
 plt.rcParams['pcolor.shading'] = 'auto'
 mpl.rcParams['figure.dpi'] = 600
 mpl.rc('font', family='Times New Roman', size=10)
@@ -30,11 +30,8 @@ plt.rcParams.update({"mathtext.fontset": "stix"})
 
 # management
 import os
-import sys  # print(sys.path)
+import sys
 sys.path.append(os.getcwd() + '/code/gbr_future/module')
-# import psutil
-# process = psutil.Process()
-# print(process.memory_info().rss / 2**30)
 import string
 import warnings
 warnings.filterwarnings('ignore')
@@ -56,7 +53,6 @@ from component_plot import (
 
 from calculations import (
     regrid,
-    cdo_regrid,
     time_weighted_mean)
 
 from statistics0 import (
@@ -691,18 +687,15 @@ ceres_ebaf_toa = ceres_ebaf_toa.rename({
 ceres_ebaf_toa['mtuwswrf'] *= (-1)
 ceres_ebaf_toa['mtnlwrf'] *= (-1)
 
-barra_c2_mon_alltime = pd.read_pickle(f'data/sim/um/barra_c2/barra_c2_mon_alltime_{var2}.pkl')
-
 with open(f'data/sim/um/barra_c2/barra_c2_mon_alltime_{var2}.pkl','rb') as f:
     barra_c2_mon_alltime = pickle.load(f)
-
 
 if var1 in ['mtuwswrf', 'mtuwswrfcs']:
     pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
         cm_min=-40, cm_max=40, cm_interval1=2, cm_interval2=8, cmap='BrBG')
 
 min_lon, max_lon, min_lat, max_lat = [110.58, 157.34, -43.69, -7.01]
-cbar_label = f'Difference in {year} {era5_varlabels[var1]}'
+cbar_label = f'{year} BARRA-C2 - CERES {era5_varlabels[var1]}'
 nrow=3
 ncol=4
 fm_bottom=1.5/(4*nrow+1.5)
@@ -717,18 +710,11 @@ for irow in range(nrow):
         axs[irow, jcol] = regional_plot(extent=[min_lon, max_lon, min_lat, max_lat], central_longitude=180, ax_org=axs[irow, jcol])
         
         ceres_mon = ceres_ebaf_toa[var1][irow*4+jcol].pipe(regrid).pipe(replace_x_y_nominal_lat_lon).sel(y=slice(min_lat, max_lat), x=slice(min_lon, max_lon)).compute()
-        
-        import xesmf as xe
-        barra_c2_org = barra_c2_mon_alltime['mon'].sel(time=slice(str(year), str(year)))[irow*4+jcol].compute()
-        barra_c2_mon = xe.Regridder(barra_c2_org, ceres_mon, method='bilinear')(barra_c2_org)
-        barra_c2_mon = cdo_regrid(barra_c2_org, target_grid=ceres_mon)
-        
-        barra_c2_mon = regrid(barra_c2_mon_alltime['mon'].sel(time=slice(str(year), str(year)))[irow*4+jcol].compute(), ds_out=ceres_mon)
-        
-        plt_data = (ceres_mon - barra_c2_mon).compute()
+        barra_c2_mon = regrid(barra_c2_mon_alltime['mon'].sel(time=slice(str(year), str(year)))[irow*4+jcol], ds_out=ceres_mon)
+        plt_data = (barra_c2_mon - ceres_mon).compute()
         plt_rmse = np.sqrt(np.square(plt_data).weighted(np.cos(np.deg2rad(plt_data.lat))).mean()).values
         
-        if irow==0 & jcol==0:
+        if ((irow==0) & (jcol==0)):
             plt_text = f'({string.ascii_lowercase[irow]}{jcol+1}) {month_jan[irow*4+jcol]} RMSE: {np.round(plt_rmse, 1)}'
         else:
             plt_text = f'({string.ascii_lowercase[irow]}{jcol+1}) {month_jan[irow*4+jcol]} {np.round(plt_rmse, 1)}'
@@ -739,13 +725,13 @@ for irow in range(nrow):
             norm=pltnorm, cmap=pltcmp, transform=ccrs.PlateCarree(),zorder=1)
 
 cbar = fig.colorbar(
-    plt_mesh, #cm.ScalarMappable(norm=pltnorm1, cmap=pltcmp1), #
+    plt_mesh, #cm.ScalarMappable(norm=pltnorm, cmap=pltcmp), #
     format=remove_trailing_zero_pos,
     orientation="horizontal", ticks=pltticks, extend='both',
-    cax=fig.add_axes([0.25, fm_bottom-0.01, 0.5, 0.015]))
+    cax=fig.add_axes([0.25, fm_bottom-0.01, 0.5, 0.02]))
 cbar.ax.set_xlabel(cbar_label)
 
-fig.subplots_adjust(left=0.03, right=0.995, bottom=fm_bottom, top=0.98)
+fig.subplots_adjust(left=0.01, right=0.99, bottom=fm_bottom, top=0.98)
 fig.savefig(f'figures/4_um/4.0_barra/4.0.0_whole region/4.0.0.1 ceres vs. barra_c2 {year} mon.png')
 
 

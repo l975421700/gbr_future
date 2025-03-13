@@ -27,6 +27,7 @@ mamba install siphon -y
 mamba install scikit-image -y
 mamba install geopandas -y
 mamba install rioxarray -y
+mamba install mscorefonts -y
 
 
 
@@ -38,7 +39,6 @@ mamba install rioxarray -y
 # mamba install pingouin -y
 # mamba install windrose -y
 # mamba install pycircstat -y
-# mamba install mscorefonts -y
 # mamba install numba -y
 # pip install cdo
 # mamba install xskillscore -y
