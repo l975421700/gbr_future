@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -l walltime=2:00:00,ncpus=1,mem=192GB,storage=gdata/v46+gdata/rt52+gdata/ob53+gdata/zv2
+# qsub -I -q normal -l walltime=5:00:00,ncpus=1,mem=192GB,jobfs=100MB,storage=gdata/v46+gdata/rt52+gdata/ob53+gdata/zv2+scratch/v46
 
 
 # region import packages
@@ -16,12 +16,12 @@ pbar.register()
 from scipy import stats
 import pandas as pd
 from metpy.interpolate import cross_section
-from statsmodels.stats import multitest
 from metpy.calc import pressure_to_height_std, geopotential_to_height
 from metpy.units import units
 import metpy.calc as mpcalc
 import pickle
 from xmip.preprocessing import rename_cmip6, broadcast_lonlat, correct_lon, promote_empty_dims, replace_x_y_nominal_lat_lon, correct_units, correct_coordinates, parse_lon_lat_bounds, maybe_convert_bounds_to_vertex, maybe_convert_vertex_to_bounds, combined_preprocessing
+import xesmf as xe
 
 # plot
 import matplotlib as mpl
@@ -34,7 +34,6 @@ mpl.rcParams['figure.dpi'] = 600
 mpl.rcParams['axes.linewidth'] = 0.2
 plt.rcParams.update({"mathtext.fontset": "stix"})
 import matplotlib.animation as animation
-import seaborn as sns
 from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
 from matplotlib.ticker import AutoMinorLocator
 import geopandas as gpd
@@ -67,7 +66,7 @@ from mapplot import (
     )
 
 from namelist import (
-    month,
+    month_jan,
     monthini,
     seasons,
     seconds_per_d,
@@ -400,4 +399,194 @@ for var2 in ['cll', 'clm', 'clh', 'clt']:
 
 
 # endregion
+
+
+# region plot Himawari vs. BARRA-C2 mm 2016-2023
+
+with open('/scratch/v46/qg8515/data/obs/jaxa/clp/cltype_frequency_alltime.pkl', 'rb') as f:
+    cltype_frequency_alltime = pickle.load(f)
+
+cltypes = {
+    'hcc': ['Cirrus', 'Cirrostratus', 'Deep convection'],
+    'mcc': ['Altocumulus', 'Altostratus', 'Nimbostratus'],
+    'lcc': ['Cumulus', 'Stratocumulus', 'Stratus'],
+    'tcc': ['Cirrus', 'Cirrostratus', 'Deep convection', 'Altocumulus', 'Altostratus', 'Nimbostratus', 'Cumulus', 'Stratocumulus', 'Stratus']}
+
+mpl.rc('font', family='Times New Roman', size=10)
+extent = [110.58, 157.34, -43.69, -7.01]
+min_lon, max_lon, min_lat, max_lat = extent
+panelh = 4
+panelw = 4.4
+
+nrow = 3
+ncol = 4
+fm_bottom = 1.4 / (panelh*nrow + 1.4)
+
+for icltype2 in ['clm', 'clh', 'clt']:
+    # ['cll', 'clm', 'clh', 'clt']
+    # icltype2='cll'
+    icltype = cmip6_era5_var[icltype2]
+    print(f'#-------------------------------- {icltype} {icltype2}')
+    print(cltypes[icltype])
+    
+    with open(f'data/sim/um/barra_c2/barra_c2_mon_alltime_{icltype2}.pkl','rb') as f:
+        barra_c2_mon_alltime = pickle.load(f)
+    
+    opng = f'figures/4_um/4.0_barra/4.0.0_whole region/4.0.0.1 himawari vs. barra_c2 mm {icltype}.png'
+    cbar_label = f'2016-2023 BARRA-C2 - Himawari {era5_varlabels[icltype]}'
+    
+    if icltype in ['hcc', 'mcc', 'lcc', 'tcc']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-30, cm_max=30, cm_interval1=5, cm_interval2=10, cmap='BrBG_r',)
+    
+    fig, axs = plt.subplots(
+        nrow, ncol, figsize=np.array([panelw*ncol, panelh*nrow + 1.4]) / 2.54,
+        subplot_kw={'projection': ccrs.PlateCarree(central_longitude=180)},
+        gridspec_kw={'hspace': 0.01, 'wspace': 0.01},)
+    
+    for irow in range(nrow):
+        for jcol in range(ncol):
+            # irow=0; jcol=0
+            print(f'#---------------- {irow} {jcol} {month_jan[irow*4+jcol]}')
+            axs[irow, jcol] = regional_plot(
+                extent=extent, central_longitude=180, ax_org=axs[irow, jcol])
+            
+            himawari_mon = cltype_frequency_alltime['mon'][cltype_frequency_alltime['mon'].time.dt.month == (irow*4+jcol+1)].sel(time=slice('2016', '2023'), lon=slice(min_lon, max_lon), lat=slice(max_lat, min_lat), types=cltypes[icltype]).sum(dim='types')
+            himawari_mm = himawari_mon.mean(dim='time')
+            # barra_c2_mon = regrid(barra_c2_mon_alltime['mon'][barra_c2_mon_alltime['mon'].time.dt.month == (irow*4+jcol+1)].sel(time=slice('2016', '2023')).compute(), ds_out=himawari_mm)
+            barra_c2_mon = barra_c2_mon_alltime['mon'][barra_c2_mon_alltime['mon'].time.dt.month == (irow*4+jcol+1)].sel(time=slice('2016', '2023')).compute()
+            if ((irow==0) & (jcol==0)):
+                regridder = xe.Regridder(barra_c2_mon, himawari_mm, method='bilinear')
+            barra_c2_mon = regridder(barra_c2_mon)
+            barra_c2_mm = barra_c2_mon.mean(dim='time')
+            
+            plt_data = barra_c2_mm - himawari_mm
+            plt_rmse = np.sqrt(np.square(plt_data).weighted(np.cos(np.deg2rad(plt_data.lat))).mean()).values
+            ttest_fdr_res = ttest_fdr_control(barra_c2_mon, himawari_mon)
+            plt_data = plt_data.where(ttest_fdr_res, np.nan)
+            plt_mesh = axs[irow, jcol].pcolormesh(
+                plt_data.lon, plt_data.lat, plt_data,
+                norm=pltnorm, cmap=pltcmp, transform=ccrs.PlateCarree(),)
+            
+            if ((irow==0) & (jcol==0)):
+                plt_text = f'({string.ascii_lowercase[irow]}{jcol+1}) {month_jan[irow*4+jcol]} RMSE: {np.round(plt_rmse, 1)}'
+            else:
+                plt_text = f'({string.ascii_lowercase[irow]}{jcol+1}) {month_jan[irow*4+jcol]} {np.round(plt_rmse, 1)}'
+            
+            # plt_text = f'({string.ascii_lowercase[irow]}{jcol+1}) {month_jan[irow*4+jcol]}'
+            plt.text(
+                0, 1.02, plt_text,
+                transform=axs[irow, jcol].transAxes, fontsize=10,
+                ha='left', va='bottom', rotation='horizontal')
+    
+    cbar = fig.colorbar(
+        plt_mesh, #cm.ScalarMappable(norm=pltnorm, cmap=pltcmp), #
+        format=remove_trailing_zero_pos,
+        orientation="horizontal", ticks=pltticks, extend='both',
+        cax=fig.add_axes([0.25, fm_bottom-0.01, 0.5, 0.02]))
+    cbar.ax.set_xlabel(cbar_label)
+    fig.subplots_adjust(left=0.01, right = 0.99, bottom = fm_bottom, top = 0.98)
+    fig.savefig(opng)
+    
+    del barra_c2_mon_alltime
+
+
+
+
+
+# endregion
+
+
+# region plot Himawari vs. BARRA-C2 ann
+
+with open('/scratch/v46/qg8515/data/obs/jaxa/clp/cltype_frequency_alltime.pkl', 'rb') as f:
+    cltype_frequency_alltime = pickle.load(f)
+
+cltypes = {
+    'hcc': ['Cirrus', 'Cirrostratus', 'Deep convection'],
+    'mcc': ['Altocumulus', 'Altostratus', 'Nimbostratus'],
+    'lcc': ['Cumulus', 'Stratocumulus', 'Stratus'],
+    'tcc': ['Cirrus', 'Cirrostratus', 'Deep convection', 'Altocumulus', 'Altostratus', 'Nimbostratus', 'Cumulus', 'Stratocumulus', 'Stratus']}
+
+mpl.rc('font', family='Times New Roman', size=10)
+extent = [110.58, 157.34, -43.69, -7.01]
+min_lon, max_lon, min_lat, max_lat = extent
+panelh = 4
+panelw = 4.4
+
+nrow = 3
+ncol = 3
+fm_bottom = 1.4 / (panelh*nrow + 1.4)
+
+for icltype2 in ['clm', 'clh', 'clt']:
+    # ['cll', 'clm', 'clh', 'clt']
+    # icltype2='cll'
+    icltype = cmip6_era5_var[icltype2]
+    print(f'#-------------------------------- {icltype} {icltype2}')
+    print(cltypes[icltype])
+    
+    with open(f'data/sim/um/barra_c2/barra_c2_mon_alltime_{icltype2}.pkl','rb') as f:
+        barra_c2_mon_alltime = pickle.load(f)
+    
+    opng = f'figures/4_um/4.0_barra/4.0.0_whole region/4.0.0.1 himawari vs. barra_c2 ann {icltype}.png'
+    cbar_label = f'BARRA-C2 - Himawari {era5_varlabels[icltype]}'
+    
+    if icltype in ['hcc', 'mcc', 'lcc', 'tcc']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-30, cm_max=30, cm_interval1=5, cm_interval2=10, cmap='BrBG_r',)
+    
+    fig, axs = plt.subplots(
+        nrow, ncol, figsize=np.array([panelw*ncol, panelh*nrow + 1.4]) / 2.54,
+        subplot_kw={'projection': ccrs.PlateCarree(central_longitude=180)},
+        gridspec_kw={'hspace': 0.01, 'wspace': 0.01},)
+    
+    for irow in range(nrow):
+        for jcol in range(ncol):
+            # irow=0; jcol=0
+            year = 2016+irow*ncol+jcol
+            if year>=2024: continue
+            print(f'#---------------- {irow} {jcol} {year}')
+            axs[irow, jcol] = regional_plot(
+                extent=extent, central_longitude=180, ax_org=axs[irow, jcol])
+            
+            himawari_ann = cltype_frequency_alltime['ann'].sel(time=slice(str(year), str(year)), lon=slice(min_lon, max_lon), lat=slice(max_lat, min_lat), types=cltypes[icltype]).sum(dim='types').squeeze()
+            barra_c2_ann = barra_c2_mon_alltime['ann'].sel(time=slice(str(year), str(year))).squeeze()
+            if ((irow==0) & (jcol==0)):
+                regridder = xe.Regridder(barra_c2_ann, himawari_ann, method='bilinear')
+            barra_c2_ann = regridder(barra_c2_ann)
+            
+            plt_data = (barra_c2_ann - himawari_ann).compute()
+            plt_rmse = np.sqrt(np.square(plt_data).weighted(np.cos(np.deg2rad(plt_data.lat))).mean()).values
+            
+            plt_mesh = axs[irow, jcol].pcolormesh(
+                plt_data.lon, plt_data.lat, plt_data,
+                norm=pltnorm, cmap=pltcmp, transform=ccrs.PlateCarree(),)
+            
+            if ((irow==0) & (jcol==0)):
+                plt_text = f'({string.ascii_lowercase[irow]}{jcol+1}) {year} RMSE: {np.round(plt_rmse, 1)}'
+            else:
+                plt_text = f'({string.ascii_lowercase[irow]}{jcol+1}) {year} {np.round(plt_rmse, 1)}'
+            
+            axs[irow, jcol].text(
+                0, 1.02, plt_text,
+                transform=axs[irow, jcol].transAxes, fontsize=10,
+                ha='left', va='bottom', rotation='horizontal')
+    
+    axs[nrow-1, ncol-1].set_visible(False)
+    
+    cbar = fig.colorbar(
+        plt_mesh, #cm.ScalarMappable(norm=pltnorm, cmap=pltcmp), #
+        format=remove_trailing_zero_pos,
+        orientation="horizontal", ticks=pltticks, extend='both',
+        cax=fig.add_axes([0.25, fm_bottom-0.01, 0.5, 0.02]))
+    cbar.ax.set_xlabel(cbar_label)
+    fig.subplots_adjust(left=0.01, right=0.99, bottom=fm_bottom, top=0.98)
+    fig.savefig(opng)
+    
+    del barra_c2_mon_alltime
+
+
+
+# endregion
+
 

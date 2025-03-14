@@ -34,7 +34,6 @@ mpl.rc('font', family='Times New Roman', size=10)
 mpl.rcParams['axes.linewidth'] = 0.2
 plt.rcParams.update({"mathtext.fontset": "stix"})
 import matplotlib.animation as animation
-import seaborn as sns
 from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
 from matplotlib.ticker import AutoMinorLocator
 import geopandas as gpd
@@ -65,7 +64,7 @@ from mapplot import (
     )
 
 from namelist import (
-    month,
+    month_jan,
     monthini,
     seasons,
     seconds_per_d,
@@ -821,5 +820,76 @@ for var2 in ['clh']:
 # endregion
 
 
+# region plot barra-c2 mm data
 
+panelh=6
+panelw=6.6
+extent=[110.58, 157.34, -43.69, -7.01]
+nrow = 3
+ncol = 4
+fm_bottom = 1.6 / (panelh*nrow + 2)
+min_lon, max_lon, min_lat, max_lat = extent
+
+
+barra_c2_mon_alltime = {}
+for var in ['cll']:
+    # var = 'cll'
+    print(f'#-------------------------------- {var}')
+    with open(f'data/sim/um/barra_c2/barra_c2_mon_alltime_{var}.pkl','rb') as f:
+        barra_c2_mon_alltime[var] = pickle.load(f)
+    
+    opng=f'figures/4_um/4.0_barra/4.0.0_whole region/4.0.0.0 whole region barra_c2 mm {var}.png'
+    cbar_label = f'2016-2023 BARRA-C2 {era5_varlabels[cmip6_era5_var[var]]}'
+    
+    if var in ['cll', 'clm', 'clh']:
+        extend='max'
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=0, cm_max=60, cm_interval1=5, cm_interval2=10, cmap='Blues_r',)
+    
+    fig, axs = plt.subplots(
+        nrow, ncol, figsize=np.array([panelw*ncol, panelh*nrow + 2]) / 2.54,
+        subplot_kw={'projection': ccrs.PlateCarree(central_longitude=180)},
+        gridspec_kw={'hspace': 0.1, 'wspace': 0.02},)
+    
+    for irow in range(nrow):
+        for jcol in range(ncol):
+            # irow=0; jcol=0
+            print(f'#---------------- {irow} {jcol} {month_jan[irow*4+jcol]}')
+            axs[irow, jcol] = regional_plot(
+                extent=extent, central_longitude=180, ax_org=axs[irow, jcol])
+            
+            plt_data = barra_c2_mon_alltime[var]['mon'][barra_c2_mon_alltime[var]['mon'].time.dt.month==(irow*4+jcol+1)].sel(time=slice('2016', '2023')).sel(lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat)).mean(dim='time')
+            plt_mesh = axs[irow, jcol].pcolormesh(
+                plt_data.lon, plt_data.lat, plt_data,
+                norm=pltnorm, cmap=pltcmp, transform=ccrs.PlateCarree(),)
+            
+            pltmean = plt_data.weighted(np.cos(np.deg2rad(plt_data.lat))).mean().values
+            if ((irow==0) & (jcol==0)):
+                plt_text = f'({string.ascii_lowercase[irow]}{jcol+1}) {month_jan[irow*4+jcol]} Mean: {np.round(pltmean, 1)}'
+            else:
+                plt_text = f'({string.ascii_lowercase[irow]}{jcol+1}) {month_jan[irow*4+jcol]} {np.round(pltmean, 1)}'
+            
+            plt.text(
+                0, 1.02, plt_text,
+                transform=axs[irow, jcol].transAxes, fontsize=10,
+                ha='left', va='bottom', rotation='horizontal')
+    
+    cbar = fig.colorbar(
+        plt_mesh, #cm.ScalarMappable(norm=pltnorm, cmap=pltcmp), #
+        ax=axs, aspect=30, format=remove_trailing_zero_pos,
+        orientation="horizontal", shrink=0.5, ticks=pltticks, extend=extend,
+        anchor=(0.5, -0.56),)
+    cbar.ax.set_xlabel(cbar_label)
+    fig.subplots_adjust(left=0.01, right = 0.99, bottom = fm_bottom, top = 0.97)
+    fig.savefig(opng)
+
+
+
+
+
+
+'''
+['pr', 'clh', 'clm', 'cll', 'clt', 'evspsbl', 'hfls', 'hfss', 'psl', 'rlds', 'rldscs', 'rlus', 'rluscs', 'rlut', 'rlutcs', 'rsds', 'rsdscs', 'rsdt', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'sfcWind', 'tas', 'ts', 'evspsblpot', 'uas', 'vas', 'rlns',  'rsns',  'rlnscs', 'rsnscs',  'rlnscl', 'rsnscl', 'rldscl', 'rsdscl',  'rluscl', 'rsuscl',  'rsnt',  'rsntcs',  'rlutcl', 'rsntcl', 'rsutcl']
+'''
+# endregion
 
