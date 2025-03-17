@@ -1,6 +1,6 @@
 
 
-# qsub -I -q copyq -l walltime=5:00:00,ncpus=1,mem=192GB,jobfs=100MB,storage=gdata/v46+scratch/v46
+# qsub -I -q normal -l walltime=5:00:00,ncpus=1,mem=192GB,jobfs=100MB,storage=gdata/v46+scratch/v46
 
 
 # region import packages

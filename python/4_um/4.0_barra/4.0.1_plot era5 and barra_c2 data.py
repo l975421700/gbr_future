@@ -820,7 +820,7 @@ for var2 in ['clh']:
 # endregion
 
 
-# region plot barra-c2 mm data
+# region plot barra-c2/barra-r2/era5 mm data
 
 panelh=6
 panelw=6.6

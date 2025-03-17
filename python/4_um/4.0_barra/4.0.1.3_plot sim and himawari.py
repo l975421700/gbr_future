@@ -401,7 +401,7 @@ for var2 in ['cll', 'clm', 'clh', 'clt']:
 # endregion
 
 
-# region plot Himawari vs. BARRA-C2 mm 2016-2023
+# region plot Himawari vs. ERA5/BARRA-R2/BARRA-C2 mm 2016-2023
 
 with open('/scratch/v46/qg8515/data/obs/jaxa/clp/cltype_frequency_alltime.pkl', 'rb') as f:
     cltype_frequency_alltime = pickle.load(f)
@@ -417,23 +417,31 @@ extent = [110.58, 157.34, -43.69, -7.01]
 min_lon, max_lon, min_lat, max_lat = extent
 panelh = 4
 panelw = 4.4
-
 nrow = 3
 ncol = 4
 fm_bottom = 1.4 / (panelh*nrow + 1.4)
 
-for icltype2 in ['clm', 'clh', 'clt']:
+ids = 'ERA5' #'BARRA-R2' #'BARRA-C2' #
+
+for icltype2 in ['cll', 'clm', 'clh', 'clt']:
     # ['cll', 'clm', 'clh', 'clt']
     # icltype2='cll'
     icltype = cmip6_era5_var[icltype2]
     print(f'#-------------------------------- {icltype} {icltype2}')
     print(cltypes[icltype])
     
-    with open(f'data/sim/um/barra_c2/barra_c2_mon_alltime_{icltype2}.pkl','rb') as f:
-        barra_c2_mon_alltime = pickle.load(f)
+    if ids == 'BARRA-C2':
+        with open(f'data/sim/um/barra_c2/barra_c2_mon_alltime_{icltype2}.pkl','rb') as f:
+            ds_mon_alltime = pickle.load(f)
+    elif ids == 'BARRA-R2':
+        with open(f'data/sim/um/barra_r2/barra_r2_mon_alltime_{icltype2}.pkl','rb') as f:
+            ds_mon_alltime = pickle.load(f)
+    elif ids == 'ERA5':
+        with open(f'data/obs/era5/mon/era5_sl_mon_alltime_{icltype}.pkl', 'rb') as f:
+            ds_mon_alltime = pickle.load(f)
     
-    opng = f'figures/4_um/4.0_barra/4.0.0_whole region/4.0.0.1 himawari vs. barra_c2 mm {icltype}.png'
-    cbar_label = f'2016-2023 BARRA-C2 - Himawari {era5_varlabels[icltype]}'
+    opng = f'figures/4_um/4.0_barra/4.0.0_whole region/4.0.0.1 himawari vs. {ids} mm {icltype}.png'
+    cbar_label = f'2016-2023 {ids} - Himawari {era5_varlabels[icltype]}'
     
     if icltype in ['hcc', 'mcc', 'lcc', 'tcc']:
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
@@ -453,16 +461,16 @@ for icltype2 in ['clm', 'clh', 'clt']:
             
             himawari_mon = cltype_frequency_alltime['mon'][cltype_frequency_alltime['mon'].time.dt.month == (irow*4+jcol+1)].sel(time=slice('2016', '2023'), lon=slice(min_lon, max_lon), lat=slice(max_lat, min_lat), types=cltypes[icltype]).sum(dim='types')
             himawari_mm = himawari_mon.mean(dim='time')
-            # barra_c2_mon = regrid(barra_c2_mon_alltime['mon'][barra_c2_mon_alltime['mon'].time.dt.month == (irow*4+jcol+1)].sel(time=slice('2016', '2023')).compute(), ds_out=himawari_mm)
-            barra_c2_mon = barra_c2_mon_alltime['mon'][barra_c2_mon_alltime['mon'].time.dt.month == (irow*4+jcol+1)].sel(time=slice('2016', '2023')).compute()
-            if ((irow==0) & (jcol==0)):
-                regridder = xe.Regridder(barra_c2_mon, himawari_mm, method='bilinear')
-            barra_c2_mon = regridder(barra_c2_mon)
-            barra_c2_mm = barra_c2_mon.mean(dim='time')
             
-            plt_data = barra_c2_mm - himawari_mm
+            ds_mon = ds_mon_alltime['mon'][ds_mon_alltime['mon'].time.dt.month == (irow*4+jcol+1)].sel(time=slice('2016', '2023')).compute()
+            if ((irow==0) & (jcol==0)):
+                regridder = xe.Regridder(ds_mon, himawari_mm, method='bilinear')
+            ds_mon = regridder(ds_mon)
+            ds_mm = ds_mon.mean(dim='time')
+            
+            plt_data = ds_mm - himawari_mm
             plt_rmse = np.sqrt(np.square(plt_data).weighted(np.cos(np.deg2rad(plt_data.lat))).mean()).values
-            ttest_fdr_res = ttest_fdr_control(barra_c2_mon, himawari_mon)
+            ttest_fdr_res = ttest_fdr_control(ds_mon, himawari_mon)
             plt_data = plt_data.where(ttest_fdr_res, np.nan)
             plt_mesh = axs[irow, jcol].pcolormesh(
                 plt_data.lon, plt_data.lat, plt_data,
@@ -488,7 +496,7 @@ for icltype2 in ['clm', 'clh', 'clt']:
     fig.subplots_adjust(left=0.01, right = 0.99, bottom = fm_bottom, top = 0.98)
     fig.savefig(opng)
     
-    del barra_c2_mon_alltime
+    del ds_mon_alltime
 
 
 
@@ -588,5 +596,166 @@ for icltype2 in ['clm', 'clh', 'clt']:
 
 
 # endregion
+
+
+# region plot overlapping of am clouds in ERA5, BARRA-R2, and BARRA-C2
+
+mpl.rc('font', family='Times New Roman', size=8)
+plt_colnames = ['ERA5', 'BARRA-R2', 'BARRA-C2']
+extent = [110.58, 157.34, -43.69, -7.01]
+min_lon, max_lon, min_lat, max_lat = extent
+
+# import data
+era5_sl_mon_alltime = {}
+barra_r2_mon_alltime = {}
+barra_c2_mon_alltime = {}
+for var2 in ['cll', 'clm', 'clh', 'clt']:
+    # var2='cll'
+    var1 = cmip6_era5_var[var2]
+    print(f'#-------------------------------- {var1} and {var2}')
+    
+    with open(f'data/obs/era5/mon/era5_sl_mon_alltime_{var1}.pkl', 'rb') as f:
+        era5_sl_mon_alltime[var1] = pickle.load(f)
+    with open(f'data/sim/um/barra_r2/barra_r2_mon_alltime_{var2}.pkl','rb') as f:
+        barra_r2_mon_alltime[var2] = pickle.load(f)
+    with open(f'data/sim/um/barra_c2/barra_c2_mon_alltime_{var2}.pkl','rb') as f:
+        barra_c2_mon_alltime[var2] = pickle.load(f)
+
+plt_data = {}
+plt_mean = {}
+plt_data['ERA5'] = (era5_sl_mon_alltime['lcc']['ann'] + era5_sl_mon_alltime['mcc']['ann'] + era5_sl_mon_alltime['hcc']['ann'] - era5_sl_mon_alltime['tcc']['ann']).sel(time=slice('2016', '2023'), lon=slice(min_lon, max_lon), lat=slice(max_lat, min_lat)).mean(dim='time')
+plt_mean['ERA5'] = plt_data['ERA5'].weighted(np.cos(np.deg2rad(plt_data['ERA5'].lat))).mean().values
+
+plt_data['BARRA-R2'] = (barra_r2_mon_alltime['cll']['ann'] + barra_r2_mon_alltime['clm']['ann'] + barra_r2_mon_alltime['clh']['ann'] - barra_r2_mon_alltime['clt']['ann']).sel(time=slice('2016', '2023'), lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat)).mean(dim='time')
+plt_mean['BARRA-R2'] = plt_data['BARRA-R2'].weighted(np.cos(np.deg2rad(plt_data['BARRA-R2'].lat))).mean().values
+
+plt_data['BARRA-C2'] = (barra_c2_mon_alltime['cll']['ann'] + barra_c2_mon_alltime['clm']['ann'] + barra_c2_mon_alltime['clh']['ann'] - barra_c2_mon_alltime['clt']['ann']).sel(time=slice('2016', '2023'), lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat)).mean(dim='time')
+plt_mean['BARRA-C2'] = plt_data['BARRA-C2'].weighted(np.cos(np.deg2rad(plt_data['BARRA-C2'].lat))).mean().values
+
+
+cbar_label = r'Difference in 2016-2023 (low+middle+high) and total cloud cover [$\%$]'
+pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+    cm_min=0, cm_max=80, cm_interval1=5, cm_interval2=10, cmap='viridis_r',)
+nrow=1
+ncol=3
+fm_bottom=1.5/(4*nrow+1.5)
+
+
+fig, axs = plt.subplots(
+    nrow, ncol, figsize=np.array([4.4*ncol, 4*nrow + 1.5]) / 2.54,
+    subplot_kw={'projection': ccrs.PlateCarree(central_longitude=180)},
+    gridspec_kw={'hspace': 0.01, 'wspace': 0.01},)
+
+for jcol in range(ncol):
+    axs[jcol] = regional_plot(extent=[min_lon, max_lon, min_lat, max_lat], central_longitude=180, ax_org=axs[jcol])
+    if jcol==0:
+        plt_text = f'({string.ascii_lowercase[jcol]}) {plt_colnames[jcol]} Mean: {np.round(plt_mean[plt_colnames[jcol]], 1)}'
+    else:
+        plt_text = f'({string.ascii_lowercase[jcol]}) {plt_colnames[jcol]} {np.round(plt_mean[plt_colnames[jcol]], 1)}'
+    axs[jcol].text(0, 1.02, plt_text, ha='left', va='bottom', transform=axs[jcol].transAxes)
+    plt_mesh = axs[jcol].pcolormesh(
+            plt_data[plt_colnames[jcol]].lon,
+            plt_data[plt_colnames[jcol]].lat,
+            plt_data[plt_colnames[jcol]].values,
+            norm=pltnorm1, cmap=pltcmp1, transform=ccrs.PlateCarree(),zorder=1)
+
+cbar1 = fig.colorbar(
+    plt_mesh, #cm.ScalarMappable(norm=pltnorm1, cmap=pltcmp1), #
+    format=remove_trailing_zero_pos,
+    orientation="horizontal", ticks=pltticks1, extend='max',
+    cax=fig.add_axes([0.25, fm_bottom-0.05, 0.5, 0.05]))
+cbar1.ax.set_xlabel(cbar_label)
+
+fig.subplots_adjust(left=0.005, right=0.995, bottom=fm_bottom, top=0.95)
+fig.savefig(f'figures/4_um/4.0_barra/4.0.0_whole region/4.0.0.1 era5, barra_r2, and barra_c2 am overlap cc.png')
+
+
+
+# endregion
+
+
+# region plot overlapping of mm clouds in ERA5, BARRA-R2, and BARRA-C2
+
+
+mpl.rc('font', family='Times New Roman', size=10)
+extent = [110.58, 157.34, -43.69, -7.01]
+min_lon, max_lon, min_lat, max_lat = extent
+panelh = 4
+panelw = 4.4
+nrow = 3
+ncol = 4
+fm_bottom = 1.4 / (panelh*nrow + 1.4)
+pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+    cm_min=0, cm_max=80, cm_interval1=5, cm_interval2=10, cmap='viridis_r',)
+
+
+for ids in ['ERA5', 'BARRA-R2', 'BARRA-C2']:
+    # ids = 'BARRA-C2'
+    print(f'#-------------------------------- {ids}')
+    
+    ds_mon_alltime = {}
+    for var2 in ['cll', 'clm', 'clh', 'clt']:
+        # var2='cll'
+        var1 = cmip6_era5_var[var2]
+        print(f'#---------------- {var1} and {var2}')
+        
+        if ids=='ERA5':
+            with open(f'data/obs/era5/mon/era5_sl_mon_alltime_{var1}.pkl', 'rb') as f:
+                ds_mon_alltime[var2] = pickle.load(f)
+        elif ids=='BARRA-R2':
+            with open(f'data/sim/um/barra_r2/barra_r2_mon_alltime_{var2}.pkl','rb') as f:
+                ds_mon_alltime[var2] = pickle.load(f)
+        elif ids=='BARRA-C2':
+            with open(f'data/sim/um/barra_c2/barra_c2_mon_alltime_{var2}.pkl','rb') as f:
+                ds_mon_alltime[var2] = pickle.load(f)
+    
+    opng = f'figures/4_um/4.0_barra/4.0.0_whole region/4.0.0.1 {ids} mm overlap cc.png'
+    cbar_label = f'Difference in 2016-2023 {ids} (low+middle+high) and total cloud cover ' + r'[$\%$]'
+    
+    fig, axs = plt.subplots(
+        nrow, ncol, figsize=np.array([panelw*ncol, panelh*nrow + 1.4]) / 2.54,
+        subplot_kw={'projection': ccrs.PlateCarree(central_longitude=180)},
+        gridspec_kw={'hspace': 0.01, 'wspace': 0.01},)
+    
+    for irow in range(nrow):
+        for jcol in range(ncol):
+            # irow=0; jcol=0
+            print(f'#---------------- {irow} {jcol} {month_jan[irow*4+jcol]}')
+            axs[irow, jcol] = regional_plot(
+                extent=extent, central_longitude=180, ax_org=axs[irow, jcol])
+            
+            plt_data = (ds_mon_alltime['cll']['mon'][ds_mon_alltime['cll']['mon'].time.dt.month == (irow*4+jcol+1)].sel(time=slice('2016', '2023')) + ds_mon_alltime['clm']['mon'][ds_mon_alltime['clm']['mon'].time.dt.month == (irow*4+jcol+1)].sel(time=slice('2016', '2023')) + ds_mon_alltime['clh']['mon'][ds_mon_alltime['clh']['mon'].time.dt.month == (irow*4+jcol+1)].sel(time=slice('2016', '2023')) - ds_mon_alltime['clt']['mon'][ds_mon_alltime['clt']['mon'].time.dt.month == (irow*4+jcol+1)].sel(time=slice('2016', '2023'))).mean(dim='time')
+            if ids=='ERA5':
+                plt_data = plt_data.sel(lon=slice(min_lon, max_lon), lat=slice(max_lat, min_lat)).compute()
+            elif ids in ['BARRA-R2', 'BARRA-C2']:
+                plt_data = plt_data.sel(lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat)).compute()
+            plt_mean = plt_data.weighted(np.cos(np.deg2rad(plt_data.lat))).mean().values
+            
+            plt_mesh = axs[irow, jcol].pcolormesh(
+                plt_data.lon, plt_data.lat, plt_data,
+                norm=pltnorm, cmap=pltcmp, transform=ccrs.PlateCarree(),)
+            
+            if ((irow==0) & (jcol==0)):
+                plt_text = f'({string.ascii_lowercase[irow]}{jcol+1}) {month_jan[irow*4+jcol]} Mean: {str(np.round(plt_mean, 1))}'
+            else:
+                plt_text = f'({string.ascii_lowercase[irow]}{jcol+1}) {month_jan[irow*4+jcol]} {str(np.round(plt_mean, 1))}'
+            plt.text(
+                0, 1.02, plt_text,
+                transform=axs[irow, jcol].transAxes,
+                ha='left', va='bottom', rotation='horizontal')
+    
+    cbar = fig.colorbar(
+        plt_mesh, #cm.ScalarMappable(norm=pltnorm, cmap=pltcmp), #
+        format=remove_trailing_zero_pos,
+        orientation="horizontal", ticks=pltticks, extend='max',
+        cax=fig.add_axes([0.25, fm_bottom-0.01, 0.5, 0.02]))
+    cbar.ax.set_xlabel(cbar_label)
+    fig.subplots_adjust(left=0.01, right = 0.99, bottom = fm_bottom, top = 0.98)
+    fig.savefig(opng)
+
+
+
+# endregion
+
 
 

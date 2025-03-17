@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -l walltime=4:00:00,ncpus=1,mem=96GB,storage=gdata/v46+gdata/ob53
+# qsub -I -q normal -l walltime=2:00:00,ncpus=1,mem=192GB,storage=gdata/v46+gdata/ob53
 
 
 # region import packages
@@ -61,6 +61,8 @@ for var in ['pr', 'evspsbl', 'evspsblpot', 'tas', 'ts', 'rlus', 'rluscs', 'rlut'
     del barra_c2_mon, barra_c2_mon_alltime
 
 
+
+
 '''
 parameter description
 https://opus.nci.org.au/spaces/NDP/pages/338002591/BARRA2+Parameter+Descriptions
@@ -93,6 +95,20 @@ for var in ['pr', 'clh', 'clm', 'cll', 'clt', 'evspsbl', 'hfls', 'hfss', 'psl', 
     print((data1.squeeze().values.astype(np.float32)[np.isfinite(data1.squeeze().values.astype(np.float32))] == data2.values[np.isfinite(data2.values)]).all())
     del barra_c2_mon_alltime[var]
 
+
+
+#-------------------------------- check
+barra_c2_mon_alltime = {}
+for var in ['clh', 'clm', 'cll', 'clt']:
+    # var = 'evspsblpot'
+    print(f'#-------- {var}')
+    
+    with open(f'data/sim/um/barra_c2/barra_c2_mon_alltime_{var}.pkl','rb') as f:
+        barra_c2_mon_alltime[var] = pickle.load(f)
+
+
+(barra_c2_mon_alltime['clh']['am'] + barra_c2_mon_alltime['clm']['am'] + barra_c2_mon_alltime['cll']['am']).to_netcdf('data/others/test/test.nc')
+(barra_c2_mon_alltime['clh']['am'] + barra_c2_mon_alltime['clm']['am'] + barra_c2_mon_alltime['cll']['am'] - barra_c2_mon_alltime['clt']['am']).to_netcdf('data/others/test/test1.nc')
 
 
 
@@ -316,3 +332,40 @@ del barra_c2_mon_alltime['rsntcl'], barra_c2_mon_alltime['rsutcl']
 # endregion
 
 
+# region get BARRA-C2 hourly data
+
+for var in ['clh', 'clm', 'cll', 'clt', 'pr', 'tas']:
+    # var = 'cll'
+    print(f'#-------------------------------- {var}')
+    
+    fl = sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/{var}/latest/*'))[:540]
+    
+    barra_c2_hourly = xr.open_mfdataset(fl, parallel=True)[var] #.sel(time=slice('1979', '2023'))
+    if var in ['pr', 'evspsbl', 'evspsblpot']:
+        barra_c2_hourly = barra_c2_hourly * seconds_per_d
+    elif var in ['tas', 'ts']:
+        barra_c2_hourly = barra_c2_hourly - zerok
+    elif var in ['rlus', 'rluscs', 'rlut', 'rlutcs', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'hfls', 'hfss']:
+        barra_c2_hourly = barra_c2_hourly * (-1)
+    elif var in ['psl']:
+        barra_c2_hourly = barra_c2_hourly / 100
+    elif var in ['huss']:
+        barra_c2_hourly = barra_c2_hourly * 1000
+    
+    ofile = f'data/sim/um/barra_c2/barra_c2_hourly_{var}.pkl'
+    if os.path.exists(ofile): os.remove(ofile)
+    with open(ofile,'wb') as f:
+        pickle.dump(barra_c2_hourly, f)
+    
+    del barra_c2_hourly
+
+
+
+
+'''
+    barra_c2_hourly1 = barra_c2_hourly
+    ofile = f'data/sim/um/barra_c2/barra_c2_hourly_{var}.nc'
+    if os.path.exists(ofile): os.remove(ofile)
+    barra_c2_hourly1.to_netcdf(ofile)
+'''
+# endregion
