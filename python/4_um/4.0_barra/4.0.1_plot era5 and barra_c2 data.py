@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -l walltime=10:00:00,ncpus=1,mem=192GB,storage=gdata/v46+gdata/rt52+gdata/ob53
+# qsub -I -q express -l walltime=2:00:00,ncpus=1,mem=192GB,storage=gdata/v46+gdata/rt52+gdata/ob53
 
 
 # region import packages
@@ -822,34 +822,51 @@ for var2 in ['clh']:
 
 # region plot barra-c2/barra-r2/era5 mm data
 
-panelh=6
-panelw=6.6
+mpl.rc('font', family='Times New Roman', size=10)
 extent=[110.58, 157.34, -43.69, -7.01]
+min_lon, max_lon, min_lat, max_lat = extent
+panelh = 4
+panelw = 4.4
 nrow = 3
 ncol = 4
-fm_bottom = 1.6 / (panelh*nrow + 2)
-min_lon, max_lon, min_lat, max_lat = extent
+fm_bottom = 1.4 / (panelh*nrow + 1.4)
 
 
-barra_c2_mon_alltime = {}
-for var in ['cll']:
-    # var = 'cll'
-    print(f'#-------------------------------- {var}')
-    with open(f'data/sim/um/barra_c2/barra_c2_mon_alltime_{var}.pkl','rb') as f:
-        barra_c2_mon_alltime[var] = pickle.load(f)
+ids = 'ERA5' #'BARRA-R2' #'BARRA-C2' #
+
+
+ds_mon_alltime = {}
+for var2 in ['cll', 'clm', 'clh', 'clt']:
+    # var2='cll'
+    var1 = cmip6_era5_var[var2]
+    print(f'#-------------------------------- {var1} and {var2}')
     
-    opng=f'figures/4_um/4.0_barra/4.0.0_whole region/4.0.0.0 whole region barra_c2 mm {var}.png'
-    cbar_label = f'2016-2023 BARRA-C2 {era5_varlabels[cmip6_era5_var[var]]}'
+    if ids=='ERA5':
+        with open(f'data/obs/era5/mon/era5_sl_mon_alltime_{var1}.pkl', 'rb') as f:
+            ds_mon_alltime[var2] = pickle.load(f)
+    elif ids=='BARRA-R2':
+        with open(f'data/sim/um/barra_r2/barra_r2_mon_alltime_{var2}.pkl','rb') as f:
+            ds_mon_alltime[var2] = pickle.load(f)
+    elif ids=='BARRA-C2':
+        with open(f'data/sim/um/barra_c2/barra_c2_mon_alltime_{var2}.pkl','rb') as f:
+            ds_mon_alltime[var2] = pickle.load(f)
     
-    if var in ['cll', 'clm', 'clh']:
+    opng=f'figures/4_um/4.0_barra/4.0.0_whole region/4.0.0.0 mm {var2} {ids}.png'
+    cbar_label = f'2016-2023 {ids} {era5_varlabels[var1]}'
+    
+    if var2 in ['cll', 'clm', 'clh']:
         extend='max'
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
             cm_min=0, cm_max=60, cm_interval1=5, cm_interval2=10, cmap='Blues_r',)
+    elif var2 in ['clt']:
+        extend='neither'
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=0, cm_max=100, cm_interval1=5, cm_interval2=10, cmap='Blues_r',)
     
     fig, axs = plt.subplots(
-        nrow, ncol, figsize=np.array([panelw*ncol, panelh*nrow + 2]) / 2.54,
+        nrow, ncol, figsize=np.array([panelw*ncol, panelh*nrow + 1.4]) / 2.54,
         subplot_kw={'projection': ccrs.PlateCarree(central_longitude=180)},
-        gridspec_kw={'hspace': 0.1, 'wspace': 0.02},)
+        gridspec_kw={'hspace': 0.01, 'wspace': 0.01},)
     
     for irow in range(nrow):
         for jcol in range(ncol):
@@ -858,30 +875,36 @@ for var in ['cll']:
             axs[irow, jcol] = regional_plot(
                 extent=extent, central_longitude=180, ax_org=axs[irow, jcol])
             
-            plt_data = barra_c2_mon_alltime[var]['mon'][barra_c2_mon_alltime[var]['mon'].time.dt.month==(irow*4+jcol+1)].sel(time=slice('2016', '2023')).sel(lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat)).mean(dim='time')
+            plt_data = ds_mon_alltime[var2]['mon'][ds_mon_alltime[var2]['mon'].time.dt.month==(irow*4+jcol+1)].sel(time=slice('2016', '2023')).mean(dim='time')
+            if ids=='ERA5':
+                plt_data = plt_data.sel(lon=slice(min_lon, max_lon), lat=slice(max_lat, min_lat)).compute()
+            elif ids in ['BARRA-R2', 'BARRA-C2']:
+                plt_data = plt_data.sel(lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat)).compute()
             plt_mesh = axs[irow, jcol].pcolormesh(
                 plt_data.lon, plt_data.lat, plt_data,
                 norm=pltnorm, cmap=pltcmp, transform=ccrs.PlateCarree(),)
             
-            pltmean = plt_data.weighted(np.cos(np.deg2rad(plt_data.lat))).mean().values
+            plt_mean = plt_data.weighted(np.cos(np.deg2rad(plt_data.lat))).mean().values
             if ((irow==0) & (jcol==0)):
-                plt_text = f'({string.ascii_lowercase[irow]}{jcol+1}) {month_jan[irow*4+jcol]} Mean: {np.round(pltmean, 1)}'
+                plt_text = f'({string.ascii_lowercase[irow]}{jcol+1}) {month_jan[irow*4+jcol]} Mean: {str(np.round(plt_mean, 1))}'
             else:
-                plt_text = f'({string.ascii_lowercase[irow]}{jcol+1}) {month_jan[irow*4+jcol]} {np.round(pltmean, 1)}'
+                plt_text = f'({string.ascii_lowercase[irow]}{jcol+1}) {month_jan[irow*4+jcol]} {str(np.round(plt_mean, 1))}'
             
             plt.text(
                 0, 1.02, plt_text,
-                transform=axs[irow, jcol].transAxes, fontsize=10,
+                transform=axs[irow, jcol].transAxes,
                 ha='left', va='bottom', rotation='horizontal')
     
     cbar = fig.colorbar(
         plt_mesh, #cm.ScalarMappable(norm=pltnorm, cmap=pltcmp), #
-        ax=axs, aspect=30, format=remove_trailing_zero_pos,
-        orientation="horizontal", shrink=0.5, ticks=pltticks, extend=extend,
-        anchor=(0.5, -0.56),)
+        format=remove_trailing_zero_pos,
+        orientation="horizontal", ticks=pltticks, extend=extend,
+        cax=fig.add_axes([0.25, fm_bottom-0.01, 0.5, 0.02]))
     cbar.ax.set_xlabel(cbar_label)
-    fig.subplots_adjust(left=0.01, right = 0.99, bottom = fm_bottom, top = 0.97)
+    fig.subplots_adjust(left=0.01, right = 0.99, bottom = fm_bottom, top = 0.98)
     fig.savefig(opng)
+    
+    del ds_mon_alltime[var2]
 
 
 
@@ -892,4 +915,7 @@ for var in ['cll']:
 ['pr', 'clh', 'clm', 'cll', 'clt', 'evspsbl', 'hfls', 'hfss', 'psl', 'rlds', 'rldscs', 'rlus', 'rluscs', 'rlut', 'rlutcs', 'rsds', 'rsdscs', 'rsdt', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'sfcWind', 'tas', 'ts', 'evspsblpot', 'uas', 'vas', 'rlns',  'rsns',  'rlnscs', 'rsnscs',  'rlnscl', 'rsnscl', 'rldscl', 'rsdscl',  'rluscl', 'rsuscl',  'rsnt',  'rsntcs',  'rlutcl', 'rsntcl', 'rsutcl']
 '''
 # endregion
+
+
+
 

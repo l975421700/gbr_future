@@ -1,7 +1,6 @@
 
 
 import numpy as np
-import cartopy as ctp
 
 
 # region names
@@ -58,6 +57,13 @@ panel_labels = ['(a)', '(b)', '(c)', '(d)', '(e)', '(f)', '(g)',
                 '(v)', '(w)', '(x)', '(y)', '(z)',
                 ]
 
+ds_color = {
+    'Himawari': 'black',
+    'CERES': 'black',
+    'ERA5': 'tab:blue',
+    'BARRA-R2': 'tab:orange',
+    'BARRA-C2': 'tab:green',
+}
 
 # endregion
 

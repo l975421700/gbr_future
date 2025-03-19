@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -l walltime=2:00:00,ncpus=1,mem=192GB,storage=gdata/v46+gdata/ob53
+# qsub -I -q express -l walltime=4:00:00,ncpus=12,mem=48GB,storage=gdata/v46+gdata/ob53+scratch/v46+gdata/rr1+gdata/rt52+gdata/oi10+gdata/hh5+gdata/fs38
 
 
 # region import packages
@@ -13,6 +13,7 @@ dask.config.set({"array.slicing.split_large_chunks": True})
 from dask.diagnostics import ProgressBar
 pbar = ProgressBar()
 pbar.register()
+import joblib
 
 # management
 import os
@@ -21,11 +22,15 @@ sys.path.append(os.getcwd() + '/code/gbr_future/module')
 import glob
 import pickle
 import datetime
+# import psutil
+# process = psutil.Process()
+# print(process.memory_info().rss / 2**30)
+
 from calculations import (
     mon_sea_ann,
     )
 
-from namelist import cmip6_units, zerok, seconds_per_d
+from namelist import zerok, seconds_per_d
 
 # endregion
 
@@ -363,9 +368,142 @@ for var in ['clh', 'clm', 'cll', 'clt', 'pr', 'tas']:
 
 
 '''
+#-------------------------------- check
+# 4TB data, 390GB memory storage, 40Gb storage
+var = 'cll'
+with open(f'data/sim/um/barra_c2/barra_c2_hourly_{var}.pkl','rb') as f:
+    barra_c2_hourly = pickle.load(f)
+
+fl = sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/{var}/latest/*'))[:540]
+ifile = -1
+ds = xr.open_dataset(fl[ifile])
+
+print((barra_c2_hourly[-744:, :, :] == ds[var]).all().values)
+
+
+
+
     barra_c2_hourly1 = barra_c2_hourly
     ofile = f'data/sim/um/barra_c2/barra_c2_hourly_{var}.nc'
     if os.path.exists(ofile): os.remove(ofile)
     barra_c2_hourly1.to_netcdf(ofile)
 '''
 # endregion
+
+
+# region get BARRA-C2 monthly hourly data
+# qsub -I -q normal -l walltime=4:00:00,ncpus=48,mem=192GB,storage=gdata/v46+gdata/ob53+scratch/v46+gdata/rr1+gdata/rt52+gdata/oi10+gdata/hh5+gdata/fs38
+
+
+var = 'cll' # ['clh', 'clm', 'cll', 'clt', 'pr', 'tas']
+print(f'#-------------------------------- {var}')
+odir = f'scratch/data/sim/um/barra_c2/{var}'
+os.makedirs(odir, exist_ok=True)
+
+def process_year_month(year, month, var, odir):
+    print(f'#---------------- {year} {month:02d}')
+    
+    ifile = sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/{var}/latest/{var}_AUST-04_ERA5_historical_hres_BOM_BARRA-C2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc'))[0]
+    ofile = f'{odir}/{var}_hourly_{year}{month:02d}.nc'
+    
+    ds = xr.open_dataset(ifile, chunks={})
+    ds = ds[var].groupby('time.hour').mean().astype(np.float32).expand_dims(dim={'time': [ds.time[0].values]}).compute()
+    
+    if os.path.exists(ofile): os.remove(ofile)
+    ds.to_netcdf(ofile)
+    
+    return f'Finished processing {ofile}'
+
+
+joblib.Parallel(n_jobs=48)(joblib.delayed(process_year_month)(year, month, var, odir) for year in range(1979, 2024) for month in range(1, 13))
+
+
+
+
+
+'''
+# single job
+process_year_month(2020, 1, var, odir)
+
+for var in ['cll']:
+    # var = 'cll'
+    # ['clh', 'clm', 'cll', 'clt', 'pr', 'tas']
+    print(f'#-------------------------------- {var}')
+    
+    fl = sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/{var}/latest/*'))[:540]
+    
+    def preprocess(ds, var=var):
+        ds_out = ds[var].groupby('time.hour').mean().astype(np.float32).expand_dims(dim={'time': [ds.time[0].values]})
+        return(ds_out)
+    
+    %timeit xr.open_mfdataset(fl[:6], preprocess=preprocess, parallel=True).compute()
+    
+    ds = xr.open_dataset(fl[3], chunks={})
+    ds[var].groupby('time.hour').mean().astype(np.float32).expand_dims(dim={'time': [ds.time[0].values]})
+    preprocess(ds)
+
+
+    ds = xr.open_dataset(fl[3], chunks={})
+    ds[var].groupby('time.hour').mean().astype(np.float32).expand_dims(dim={'time': [ds.time[0].values]})
+    
+    ds = xr.open_mfdataset(fl[:12], chunks={})[var]
+    ds.groupby(['time.month', 'time.hour']).mean()
+    # (lat: 1018, lon: 1298, month: 12, hour: 24)
+    
+    
+    ds = xr.open_mfdataset(fl[:24], chunks={})[var]
+    ds.groupby(['time.year', 'time.month', 'time.hour']).mean()
+
+
+for var in ['cll']:
+    # var = 'cll'
+    # ['clh', 'clm', 'cll', 'clt', 'pr', 'tas']
+    print(f'#-------------------------------- {var}')
+    
+    odir = f'scratch/data/sim/um/barra_c2/{var}'
+    os.makedirs(odir, exist_ok=True)
+    
+    for year in np.arange(1979, 2024, 1):
+        print(f'#---------------- {year}')
+        for month in np.arange(1, 13, 1):
+            print(f'#-------- {month}')
+            # year=2020; month=1
+            ifile = sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/{var}/latest/{var}_AUST-04_ERA5_historical_hres_BOM_BARRA-C2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc'))[0]
+            ofile = f'{odir}/{var}_hourly_{year}{month:02d}.nc'
+            
+            ds = xr.open_dataset(ifile, chunks={})
+            ds = ds[var].groupby('time.hour').mean().astype(np.float32).expand_dims(dim={'time': [ds.time[0].values]}).compute()
+            
+            if os.path.exists(ofile): os.remove(ofile)
+            ds.to_netcdf(ofile)
+
+
+# dask
+client = Client(processes=True)
+
+# 0
+client.compute((dask.delayed(process_year_month)(2020, month, var, odir) for month in range(3, 5)))
+# 1
+tasks = [process_year_month(year, month, var, odir)
+         for year in range(2024, 2025)
+         for month in range(1, 7)]
+# 2
+tasks = []
+for year in np.arange(2024, 2025, 1):
+    for month in np.arange(1, 7, 1):
+        print(f'#---------------- {year} {month:02d}')
+        task = dask.delayed(process_year_month)(year, month, var, odir)
+        tasks.append(task)
+
+# 1
+for task in tasks:
+    future = client.compute(task)
+    print(future.result())
+# 2
+futures = client.compute(tasks)
+client.close()
+
+
+'''
+# endregion
+
