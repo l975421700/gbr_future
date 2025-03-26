@@ -21,6 +21,7 @@ from metpy.calc import pressure_to_height_std, geopotential_to_height
 from metpy.units import units
 import metpy.calc as mpcalc
 import pickle
+import xesmf as xe
 
 # plot
 import matplotlib as mpl
@@ -99,7 +100,7 @@ from statistics0 import (
 era5_gridarea = xr.open_dataset('data/obs/era5/era5_gridarea.nc').cell_area
 
 era5_sl_mon_alltime = {}
-for var in ['mper', 'pev']:
+for var in ['tclw', 'tciw', 'tcwv']:
     # var = 'sst'
     # 'tp', 'msl', 'sst', 'hcc', 'mcc', 'lcc', 'tcc', 't2m', 'msnlwrf', 'msnswrf', 'mtdwswrf', 'mtnlwrf', 'mtnswrf', 'msdwlwrf', 'msdwswrf', 'msdwlwrfcs', 'msdwswrfcs', 'msnlwrfcs', 'msnswrfcs', 'mtnlwrfcs', 'mtnswrfcs', 'cbh', 'tciw', 'tclw', 'e', 'z', 'mslhf', 'msshf', 'tcw', 'tcwv', 'tcsw', 'tcrw', 'tcslw', 'si10', 'd2m', 'cp', 'lsp', 'deg0l', 'mper', 'pev', 'skt', 'u10', 'v10', 'u100', 'v100',    'msuwlwrf',  'msuwswrf',  'msuwlwrfcs',  'msuwswrfcs',  'msnlwrfcl', 'msnswrfcl', 'msdwlwrfcl', 'msdwswrfcl', 'msuwlwrfcl', 'msuwswrfcl',  'mtuwswrf',  'mtuwswrfcs',  'mtnlwrfcl', 'mtnswrfcl', 'mtuwswrfcl'
     print(f'#-------------------------------- {var}')
@@ -281,20 +282,21 @@ for var in ['mper', 'pev']:
 # region plot barra-c2 am data
 
 barra_c2_mon_alltime = {}
-for var in ['pr', 'clh', 'clm', 'cll', 'clt', 'evspsbl', 'hfls', 'hfss', 'psl', 'rlds', 'rldscs', 'rlus', 'rluscs', 'rlut', 'rlutcs', 'rsds', 'rsdscs', 'rsdt', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'sfcWind', 'tas', 'ts', 'evspsblpot', 'uas', 'vas', 'rlns',  'rsns',  'rlnscs', 'rsnscs',  'rlnscl', 'rsnscl', 'rldscl', 'rsdscl',  'rluscl', 'rsuscl',  'rsnt',  'rsntcs',  'rlutcl', 'rsntcl', 'rsutcl']:
+for var in ['clwvi', 'clivi', 'prw']:
     # 'hurs', 'huss',
     # var = 'rsut'
+    # ['pr', 'clh', 'clm', 'cll', 'clt', 'evspsbl', 'hfls', 'hfss', 'psl', 'rlds', 'rldscs', 'rlus', 'rluscs', 'rlut', 'rlutcs', 'rsds', 'rsdscs', 'rsdt', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'sfcWind', 'tas', 'ts', 'evspsblpot', 'uas', 'vas', 'rlns',  'rsns',  'rlnscs', 'rsnscs',  'rlnscl', 'rsnscl', 'rldscl', 'rsdscl',  'rluscl', 'rsuscl',  'rsnt',  'rsntcs',  'rlutcl', 'rsntcl', 'rsutcl']
     print(f'#-------------------------------- {var}')
     with open(f'data/sim/um/barra_c2/barra_c2_mon_alltime_{var}.pkl','rb') as f:
         barra_c2_mon_alltime[var] = pickle.load(f)
     plt_data = barra_c2_mon_alltime[var]['am'].squeeze()
     # print(era5_varlabels[cmip6_era5_var[var]])
-    # print(stats.describe(plt_data.values, axis=None, nan_policy='omit'))
+    print(stats.describe(plt_data.values, axis=None, nan_policy='omit'))
     # del barra_c2_mon_alltime[var]
     
-    cbar_label = 'BARRA-C2 annual mean ' + era5_varlabels[cmip6_era5_var[var]]
+    cbar_label = 'BARRA-C2 annual mean\n' + era5_varlabels[cmip6_era5_var[var]]
     
-    if var in ['pr', 'evspsbl']:
+    if var in ['pr', 'evspsbl', 'clwvi', 'clivi', 'prw']:
         extend = 'max'
     elif var in ['clh', 'clm', 'cll', 'clt']:
         extend = 'neither'
@@ -389,6 +391,15 @@ for var in ['pr', 'clh', 'clm', 'cll', 'clt', 'evspsbl', 'hfls', 'hfss', 'psl', 
     elif var in ['rsntcl', 'rsutcl']:
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
             cm_min=-160, cm_max=0, cm_interval1=10, cm_interval2=20, cmap='viridis',)
+    elif var in ['prw']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=0, cm_max=60, cm_interval1=2.5, cm_interval2=10, cmap='viridis_r',)
+    elif var=='clwvi':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=0, cm_max=0.4, cm_interval1=0.05, cm_interval2=0.05, cmap='viridis_r',)
+    elif var=='clivi':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=0, cm_max=1.2, cm_interval1=0.1, cm_interval2=0.1, cmap='viridis_r',)
     else:
         print(f'Warning unspecified colorbar for {var}')
     
@@ -410,6 +421,9 @@ for var in ['pr', 'clh', 'clm', 'cll', 'clt', 'evspsbl', 'hfls', 'hfss', 'psl', 
 
 
 '''
+# ['pr', 'clh', 'clm', 'cll', 'clt', 'evspsbl', 'hfls', 'hfss', 'psl', 'rlds', 'rldscs', 'rlus', 'rluscs', 'rlut', 'rlutcs', 'rsds', 'rsdscs', 'rsdt', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'sfcWind', 'tas', 'ts', 'evspsblpot', 'uas', 'vas', 'rlns',  'rsns',  'rlnscs', 'rsnscs',  'rlnscl', 'rsnscl', 'rldscl', 'rsdscl',  'rluscl', 'rsuscl',  'rsnt',  'rsntcs',  'rlutcl', 'rsntcl', 'rsutcl']
+
+
 Precipitation: pr
 High Level Cloud Fraction: clh
 Mid Level Cloud Fraction: clm
@@ -558,7 +572,7 @@ min_lon, max_lon, min_lat, max_lat = [110.58, 157.34, -43.69, -7.01]
 era5_sl_mon_alltime = {}
 barra_c2_mon_alltime = {}
 
-for var2 in ['clh']:
+for var2 in ['clwvi', 'clivi', 'prw']:
     # var2='clh'
     # 'pr', 'clh', 'clm', 'cll', 'clt', 'evspsbl', 'hfls', 'hfss', 'psl', 'rlds', 'rldscs', 'rlus', 'rluscs', 'rlut', 'rlutcs', 'rsds', 'rsdscs', 'rsdt', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'sfcWind', 'tas', 'ts', 'evspsblpot', 'uas', 'vas', 'rlns',  'rsns',  'rlnscs', 'rsnscs',  'rlnscl', 'rsnscl', 'rldscl', 'rsdscl',  'rluscl', 'rsuscl',  'rsnt',  'rsntcs',  'rlutcl', 'rsntcl', 'rsutcl'
     var1 = cmip6_era5_var[var2]
@@ -599,13 +613,13 @@ for var2 in ['clh']:
                     )
             plt_data['ERA5 - BARRA-C2'][jcolnames] = plt_data['ERA5 - BARRA-C2'][jcolnames].where(ttest_fdr_res, np.nan)
     
-    # print(stats.describe(np.concatenate([np.concatenate([plt_data['ERA5']['Annual mean'].values, plt_data['ERA5']['DJF'].values, plt_data['ERA5']['MAM'].values, plt_data['ERA5']['JJA'].values, plt_data['ERA5']['SON'].values]).ravel(), np.concatenate([plt_data['BARRA-C2']['Annual mean'].values, plt_data['BARRA-C2']['DJF'].values, plt_data['BARRA-C2']['MAM'].values, plt_data['BARRA-C2']['JJA'].values, plt_data['BARRA-C2']['SON'].values]).ravel()]), axis=None, nan_policy='omit'))
-    # print(stats.describe(np.concatenate([plt_data['ERA5 - BARRA-C2']['Annual mean'].values, plt_data['ERA5 - BARRA-C2']['DJF'].values, plt_data['ERA5 - BARRA-C2']['MAM'].values, plt_data['ERA5 - BARRA-C2']['JJA'].values, plt_data['ERA5 - BARRA-C2']['SON'].values]).ravel(), axis=None, nan_policy='omit'))
+    print(stats.describe(np.concatenate([np.concatenate([plt_data['ERA5']['Annual mean'].values, plt_data['ERA5']['DJF'].values, plt_data['ERA5']['MAM'].values, plt_data['ERA5']['JJA'].values, plt_data['ERA5']['SON'].values]).ravel(), np.concatenate([plt_data['BARRA-C2']['Annual mean'].values, plt_data['BARRA-C2']['DJF'].values, plt_data['BARRA-C2']['MAM'].values, plt_data['BARRA-C2']['JJA'].values, plt_data['BARRA-C2']['SON'].values]).ravel()]), axis=None, nan_policy='omit'))
+    print(stats.describe(np.concatenate([plt_data['ERA5 - BARRA-C2']['Annual mean'].values, plt_data['ERA5 - BARRA-C2']['DJF'].values, plt_data['ERA5 - BARRA-C2']['MAM'].values, plt_data['ERA5 - BARRA-C2']['JJA'].values, plt_data['ERA5 - BARRA-C2']['SON'].values]).ravel(), axis=None, nan_policy='omit'))
     
     cbar_label1 = '1979-2023 ' + era5_varlabels[var1]
     cbar_label2 = 'Difference in 1979-2023 ' + era5_varlabels[var1]
     
-    if var1 in ['tp']:
+    if var1 in ['tp', 'tclw', 'tciw', 'tcwv']:
         extend1 = 'max'
     elif var1 in ['hcc', 'mcc', 'lcc', 'tcc']:
         extend1 = 'neither'
@@ -761,6 +775,29 @@ for var2 in ['clh']:
             cm_min=-180, cm_max=30, cm_interval1=10, cm_interval2=20, cmap='PRGn', asymmetric=True)
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
             cm_min=-30, cm_max=60, cm_interval1=5, cm_interval2=10, cmap='BrBG', asymmetric=True)
+    elif var1 in ['tcwv']:
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=0, cm_max=60, cm_interval1=2.5, cm_interval2=10, cmap='viridis_r',)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-10, cm_max=10, cm_interval1=1, cm_interval2=2, cmap='BrBG')
+    elif var1 in ['tclw']:
+        pltlevel1 = np.array([0, 0.01, 0.02, 0.04, 0.06, 0.1, 0.2, 0.3, 0.4])
+        pltticks1 = np.array([0, 0.01, 0.02, 0.04, 0.06, 0.1, 0.2, 0.3, 0.4])
+        pltnorm1 = BoundaryNorm(pltlevel1, ncolors=len(pltlevel1)-1, clip=True)
+        pltcmp1 = plt.get_cmap('viridis', len(pltlevel1)-1)
+        pltlevel2 = np.array([-0.1, -0.06, -0.04, -0.02, -0.01, 0, 0.01, 0.02, 0.04, 0.06, 0.1])
+        pltticks2 = np.array([-0.1, -0.06, -0.04, -0.02, -0.01, 0, 0.01, 0.02, 0.04, 0.06, 0.1])
+        pltnorm2 = BoundaryNorm(pltlevel2, ncolors=len(pltlevel2)-1, clip=True)
+        pltcmp2 = plt.get_cmap('BrBG_r', len(pltlevel2)-1)
+    elif var1 in ['tciw']:
+        pltlevel1 = np.array([0, 0.01, 0.02, 0.05, 0.1, 0.2, 0.4, 0.6, 0.8, 1])
+        pltticks1 = np.array([0, 0.01, 0.02, 0.05, 0.1, 0.2, 0.4, 0.6, 0.8, 1])
+        pltnorm1 = BoundaryNorm(pltlevel1, ncolors=len(pltlevel1)-1, clip=True)
+        pltcmp1 = plt.get_cmap('viridis', len(pltlevel1)-1)
+        pltlevel2 = np.array([-1, -0.8, -0.6, -0.4, -0.2, -0.1, -0.05, -0.02, 0])
+        pltticks2 = np.array([-1, -0.8, -0.6, -0.4, -0.2, -0.1, -0.05, -0.02, 0])
+        pltnorm2 = BoundaryNorm(pltlevel2, ncolors=len(pltlevel2)-1, clip=True)
+        pltcmp2 = plt.get_cmap('Blues_r', len(pltlevel2)-1)
     else:
         print(f'Warning unspecified colorbar for {var1}')
     
@@ -917,5 +954,332 @@ for var2 in ['cll', 'clm', 'clh', 'clt']:
 # endregion
 
 
+# region plot ERA5, BARRA-R2, BARRA-C2 am sm data
 
+years = '2016'
+yeare = '2023'
+
+# settings
+plt_colnames = ['Annual mean', 'DJF', 'MAM', 'JJA', 'SON']
+plt_rownames = ['ERA5', 'BARRA-R2 - ERA5', 'BARRA-C2 - ERA5']
+extent = [110.58, 157.34, -43.69, -7.01]
+min_lon, max_lon, min_lat, max_lat = extent
+
+era5_sl_mon_alltime = {}
+barra_r2_mon_alltime = {}
+barra_c2_mon_alltime = {}
+
+for var2 in ['clwvi', 'clivi', 'prw']:
+    # var2='clwvi'
+    # 'clwvi', 'clivi', 'prw', 'pr', 'clh', 'clm', 'cll', 'clt', 'evspsbl', 'hfls', 'hfss', 'psl', 'rlds', 'rldscs', 'rlus', 'rluscs', 'rlut', 'rlutcs', 'rsds', 'rsdscs', 'rsdt', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'sfcWind', 'tas', 'ts', 'evspsblpot', 'uas', 'vas', 'rlns',  'rsns',  'rlnscs', 'rsnscs',  'rlnscl', 'rsnscl', 'rldscl', 'rsdscl',  'rluscl', 'rsuscl',  'rsnt',  'rsntcs',  'rlutcl', 'rsntcl', 'rsutcl'
+    var1 = cmip6_era5_var[var2]
+    print(f'#-------------------------------- {var1} in ERA5 vs. {var2} in BARRA-R2/C2')
+    
+    with open(f'data/obs/era5/mon/era5_sl_mon_alltime_{var1}.pkl', 'rb') as f:
+        era5_sl_mon_alltime[var1] = pickle.load(f)
+    with open(f'data/sim/um/barra_r2/barra_r2_mon_alltime_{var2}.pkl','rb') as f:
+        barra_r2_mon_alltime[var2] = pickle.load(f)
+    with open(f'data/sim/um/barra_c2/barra_c2_mon_alltime_{var2}.pkl','rb') as f:
+        barra_c2_mon_alltime[var2] = pickle.load(f)
+    
+    plt_data={}
+    for irow in plt_rownames: plt_data[irow] = {}
+    plt_mean = {}
+    plt_rmse = {}
+    for irow in plt_rownames[1:]: plt_rmse[irow] = {}
+    
+    for jcolnames in plt_colnames:
+        print(f'#---------------- {jcolnames}')
+        if jcolnames=='Annual mean':
+            # jcolnames='Annual mean'
+            era5_ann = era5_sl_mon_alltime[var1]['ann'].sel(time=slice(years, yeare), lat=slice(max_lat, min_lat), lon=slice(min_lon, max_lon))
+            plt_data['ERA5'][jcolnames] = era5_ann.mean(dim='time')
+            
+            barra_r2_ann = barra_r2_mon_alltime[var2]['ann'].sel(time=slice(years, yeare))
+            barra_r2_regridder = xe.Regridder(barra_r2_ann,era5_ann,'bilinear')
+            barra_r2_ann = barra_r2_regridder(barra_r2_ann)
+            plt_data['BARRA-R2 - ERA5'][jcolnames] = barra_r2_ann.mean(dim='time') - plt_data['ERA5'][jcolnames]
+            ttest_fdr_res = ttest_fdr_control(era5_ann, barra_r2_ann)
+            plt_data['BARRA-R2 - ERA5'][jcolnames] = plt_data['BARRA-R2 - ERA5'][jcolnames].where(ttest_fdr_res, np.nan)
+            
+            barra_c2_ann = barra_c2_mon_alltime[var2]['ann'].sel(time=slice(years, yeare))
+            barra_c2_regridder = xe.Regridder(barra_c2_ann,era5_ann,'bilinear')
+            barra_c2_ann = barra_c2_regridder(barra_c2_ann)
+            plt_data['BARRA-C2 - ERA5'][jcolnames] = barra_c2_ann.mean(dim='time') - plt_data['ERA5'][jcolnames]
+            ttest_fdr_res = ttest_fdr_control(era5_ann, barra_c2_ann)
+            plt_data['BARRA-C2 - ERA5'][jcolnames] = plt_data['BARRA-C2 - ERA5'][jcolnames].where(ttest_fdr_res, np.nan)
+        else:
+            # jcolnames='DJF'
+            era5_sea = era5_sl_mon_alltime[var1]['sea'][era5_sl_mon_alltime[var1]['sea'].time.dt.season==jcolnames].sel(time=slice(years, yeare), lat=slice(max_lat, min_lat), lon=slice(min_lon, max_lon))
+            plt_data['ERA5'][jcolnames] = era5_sea.mean(dim='time')
+            
+            barra_r2_sea = barra_r2_regridder(barra_r2_mon_alltime[var2]['sea'][barra_r2_mon_alltime[var2]['sea'].time.dt.season==jcolnames].sel(time=slice(years, yeare)))
+            plt_data['BARRA-R2 - ERA5'][jcolnames] = barra_r2_sea.mean(dim='time') - plt_data['ERA5'][jcolnames]
+            ttest_fdr_res = ttest_fdr_control(era5_sea, barra_r2_sea)
+            plt_data['BARRA-R2 - ERA5'][jcolnames] = plt_data['BARRA-R2 - ERA5'][jcolnames].where(ttest_fdr_res, np.nan)
+            
+            barra_c2_sea = barra_c2_regridder(barra_c2_mon_alltime[var2]['sea'][barra_c2_mon_alltime[var2]['sea'].time.dt.season==jcolnames].sel(time=slice(years, yeare)))
+            plt_data['BARRA-C2 - ERA5'][jcolnames] = barra_c2_sea.mean(dim='time') - plt_data['ERA5'][jcolnames]
+            ttest_fdr_res = ttest_fdr_control(era5_sea, barra_c2_sea)
+            plt_data['BARRA-C2 - ERA5'][jcolnames] = plt_data['BARRA-C2 - ERA5'][jcolnames].where(ttest_fdr_res, np.nan)
+        
+        plt_mean[jcolnames] = plt_data['ERA5'][jcolnames].weighted(np.cos(np.deg2rad(plt_data['ERA5'][jcolnames].lat))).mean().values
+        plt_rmse['BARRA-R2 - ERA5'][jcolnames] = np.sqrt(np.square(plt_data['BARRA-R2 - ERA5'][jcolnames]).weighted(np.cos(np.deg2rad(plt_data['BARRA-R2 - ERA5'][jcolnames].lat))).mean()).values
+        plt_rmse['BARRA-C2 - ERA5'][jcolnames] = np.sqrt(np.square(plt_data['BARRA-C2 - ERA5'][jcolnames]).weighted(np.cos(np.deg2rad(plt_data['BARRA-C2 - ERA5'][jcolnames].lat))).mean()).values
+    
+    print(stats.describe(np.concatenate([plt_data['ERA5'][colname].values for colname in plt_colnames]), axis=None, nan_policy='omit'))
+    print(stats.describe(np.concatenate([plt_data[rowname][colname].values for rowname in plt_rownames[1:] for colname in plt_colnames]), axis=None, nan_policy='omit'))
+    
+    cbar_label1 = f'{years}-{yeare} ' + era5_varlabels[var1]
+    cbar_label2 = f'Difference in {years}-{yeare} ' + era5_varlabels[var1]
+    
+    if var1 in ['tp', 'tclw', 'tciw', 'tcwv']:
+        extend1 = 'max'
+    elif var1 in ['hcc', 'mcc', 'lcc', 'tcc']:
+        extend1 = 'neither'
+    else:
+        extend1 = 'both'
+    extend2 = 'both'
+    
+    if var1=='tp':
+        pltlevel1 = np.array([0, 0.5, 1, 2, 3, 4, 6, 8, 10, 12, 16, 20,])
+        pltticks1 = np.array([0, 0.5, 1, 2, 3, 4, 6, 8, 10, 12, 16, 20,])
+        pltnorm1 = BoundaryNorm(pltlevel1, ncolors=len(pltlevel1)-1, clip=True)
+        pltcmp1 = plt.get_cmap('viridis_r', len(pltlevel1)-1)
+        pltlevel2 = np.array([-6, -4, -3, -2, -1, -0.5, 0, 0.5, 1, 2, 3, 4, 6])
+        pltticks2 = np.array([-6, -4, -3, -2, -1, -0.5, 0, 0.5, 1, 2, 3, 4, 6])
+        pltnorm2 = BoundaryNorm(pltlevel2, ncolors=len(pltlevel2)-1, clip=True)
+        pltcmp2 = plt.get_cmap('BrBG', len(pltlevel2)-1)
+    elif var1 in ['hcc', 'mcc', 'lcc', 'tcc']:
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=0, cm_max=100, cm_interval1=10, cm_interval2=10, cmap='viridis_r',)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-30, cm_max=30, cm_interval1=5, cm_interval2=10, cmap='BrBG',)
+    elif var1 in ['e', 'pev']:
+        pltlevel1 = np.array([0, 0.5, 1, 2, 3, 4, 5, 6, 7, 8])
+        pltticks1 = np.array([0, 0.5, 1, 2, 3, 4, 5, 6, 7, 8])
+        pltnorm1 = BoundaryNorm(pltlevel1, ncolors=len(pltlevel1)-1, clip=True)
+        pltcmp1 = plt.get_cmap('viridis_r', len(pltlevel1)-1)
+        pltlevel2 = np.array([-5, -4, -3, -2, -1, -0.5, 0, 0.5, 1, 2, 3, 4, 5])
+        pltticks2 = np.array([-5, -4, -3, -2, -1, -0.5, 0, 0.5, 1, 2, 3, 4, 5])
+        pltnorm2 = BoundaryNorm(pltlevel2, ncolors=len(pltlevel2)-1, clip=True)
+        pltcmp2 = plt.get_cmap('BrBG', len(pltlevel2)-1)
+    elif var1=='mslhf':
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=-460, cm_max=30, cm_interval1=10, cm_interval2=40, cmap='PRGn', asymmetric=True)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-200, cm_max=200, cm_interval1=10, cm_interval2=40, cmap='BrBG',)
+    elif var1=='msshf':
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=-200, cm_max=80, cm_interval1=10, cm_interval2=40, cmap='PRGn', asymmetric=True,)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-160, cm_max=160, cm_interval1=10, cm_interval2=40, cmap='BrBG',)
+    elif var1=='msl':
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=1005, cm_max=1022, cm_interval1=1, cm_interval2=2, cmap='viridis_r',)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-0.5, cm_max=4.5, cm_interval1=0.5, cm_interval2=1, cmap='BrBG', asymmetric=True,)
+    elif var1 in ['msdwlwrf', 'msdwlwrfcs']:
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=200, cm_max=440, cm_interval1=10, cm_interval2=40, cmap='viridis_r',)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-50, cm_max=90, cm_interval1=5, cm_interval2=20, cmap='BrBG', asymmetric=True,)
+    elif var1 in ['msuwlwrf', 'msuwlwrfcs']:
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=-540, cm_max=-300, cm_interval1=10, cm_interval2=40, cmap='viridis',)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-60, cm_max=60, cm_interval1=5, cm_interval2=20, cmap='BrBG',)
+    elif var1 in ['mtnlwrf', 'mtnlwrfcs']:
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=-310, cm_max=-180, cm_interval1=5, cm_interval2=20, cmap='viridis',)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-20, cm_max=20, cm_interval1=2, cm_interval2=4, cmap='BrBG',)
+    elif var1 in ['msdwswrf', 'msdwswrfcs']:
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=40, cm_max=400, cm_interval1=10, cm_interval2=40, cmap='viridis_r',)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-50, cm_max=100, cm_interval1=5, cm_interval2=20, cmap='BrBG', asymmetric=True)
+    elif var1=='mtdwswrf':
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=150, cm_max=490, cm_interval1=10, cm_interval2=40, cmap='viridis_r',)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-0.3, cm_max=0.6, cm_interval1=0.1, cm_interval2=0.1, cmap='BrBG',)
+    elif var1 in ['msuwswrf', 'msuwswrfcs']:
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=-160, cm_max=0, cm_interval1=5, cm_interval2=20, cmap='viridis',)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-40, cm_max=100, cm_interval1=5, cm_interval2=20, cmap='BrBG', asymmetric=True)
+    elif var1 in ['mtuwswrf', 'mtuwswrfcs']:
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=-250, cm_max=-20, cm_interval1=10, cm_interval2=40, cmap='viridis',)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-30, cm_max=100, cm_interval1=5, cm_interval2=20, cmap='BrBG', asymmetric=True)
+    elif var1 in ['si10']:
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=1, cm_max=11, cm_interval1=1, cm_interval2=1, cmap='viridis_r',)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-5, cm_max=5, cm_interval1=0.5, cm_interval2=1, cmap='BrBG')
+    elif var1=='t2m':
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=-2, cm_max=34, cm_interval1=1, cm_interval2=4, cmap='viridis_r',)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-4, cm_max=10, cm_interval1=1, cm_interval2=1, cmap='BrBG', asymmetric=True)
+    elif var1=='skt':
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=-2, cm_max=40, cm_interval1=1, cm_interval2=4, cmap='viridis_r',)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-7, cm_max=10, cm_interval1=1, cm_interval2=1, cmap='BrBG', asymmetric=True)
+    elif var1 in ['u10', 'v10']:
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=-9, cm_max=9, cm_interval1=1, cm_interval2=2, cmap='PRGn',)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-5, cm_max=5, cm_interval1=1, cm_interval2=2, cmap='BrBG',)
+    elif var1 in ['msnlwrf', 'msnlwrfcs']:
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=-150, cm_max=0, cm_interval1=10, cm_interval2=20, cmap='viridis',)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10, cmap='BrBG',)
+    elif var1 in ['msnswrf', 'msnswrfcs']:
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=30, cm_max=350, cm_interval1=10, cm_interval2=40, cmap='viridis',)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-40, cm_max=100, cm_interval1=5, cm_interval2=20, cmap='BrBG', asymmetric=True)
+    elif var1=='msnlwrfcl':
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=-25, cm_max=70, cm_interval1=5, cm_interval2=10, cmap='PRGn', asymmetric=True)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-30, cm_max=30, cm_interval1=2.5, cm_interval2=5, cmap='BrBG',)
+    elif var1=='msnswrfcl':
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=-230, cm_max=30, cm_interval1=10, cm_interval2=40, cmap='PRGn', asymmetric=True)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-30, cm_max=80, cm_interval1=5, cm_interval2=10, cmap='BrBG', asymmetric=True)
+    elif var1=='msdwlwrfcl':
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=0, cm_max=70, cm_interval1=2.5, cm_interval2=10, cmap='viridis_r',)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-40, cm_max=10, cm_interval1=2.5, cm_interval2=5, cmap='BrBG', asymmetric=True)
+    elif var1=='msdwswrfcl':
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=-270, cm_max=0, cm_interval1=10, cm_interval2=40, cmap='viridis',)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-30, cm_max=100, cm_interval1=5, cm_interval2=10, cmap='BrBG', asymmetric=True)
+    elif var1=='msuwlwrfcl':
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10, cmap='PRGn',)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10, cmap='BrBG',)
+    elif var1=='msuwswrfcl':
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=-40, cm_max=60, cm_interval1=5, cm_interval2=10, cmap='PRGn', asymmetric=True)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-50, cm_max=50, cm_interval1=5, cm_interval2=10, cmap='BrBG',)
+    elif var1 in ['mtnswrf', 'mtnswrfcs']:
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=70, cm_max=440, cm_interval1=10, cm_interval2=40, cmap='viridis_r',)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-30, cm_max=100, cm_interval1=5, cm_interval2=10, cmap='BrBG', asymmetric=True)
+    elif var1=='mtnlwrfcl':
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=0, cm_max=80, cm_interval1=5, cm_interval2=10, cmap='viridis_r',)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-16, cm_max=12, cm_interval1=2, cm_interval2=4, cmap='BrBG', asymmetric=True)
+    elif var1 in ['mtnswrfcl', 'mtuwswrfcl']:
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=-180, cm_max=30, cm_interval1=10, cm_interval2=20, cmap='PRGn', asymmetric=True)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-30, cm_max=60, cm_interval1=5, cm_interval2=10, cmap='BrBG', asymmetric=True)
+    elif var1 in ['tcwv']:
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=0, cm_max=60, cm_interval1=2.5, cm_interval2=10, cmap='viridis',)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-2, cm_max=2, cm_interval1=0.2, cm_interval2=0.4, cmap='BrBG_r')
+    elif var1 in ['tclw']:
+        pltlevel1 = np.array([0, 0.01, 0.02, 0.04, 0.06, 0.1, 0.2, 0.3, 0.4])
+        pltticks1 = np.array([0, 0.01, 0.02, 0.04, 0.06, 0.1, 0.2, 0.3, 0.4])
+        pltnorm1 = BoundaryNorm(pltlevel1, ncolors=len(pltlevel1)-1, clip=True)
+        pltcmp1 = plt.get_cmap('viridis_r', len(pltlevel1)-1)
+        pltlevel2 = np.array([-0.1, -0.06, -0.04, -0.02, 0, 0.02, 0.04, 0.06, 0.1])
+        pltticks2 = np.array([-0.1, -0.06, -0.04, -0.02, 0, 0.02, 0.04, 0.06, 0.1])
+        pltnorm2 = BoundaryNorm(pltlevel2, ncolors=len(pltlevel2)-1, clip=True)
+        pltcmp2 = plt.get_cmap('BrBG', len(pltlevel2)-1)
+    elif var1 in ['tciw']:
+        pltlevel1 = np.array([0, 0.01, 0.02, 0.05, 0.1, 0.2, 0.4, 0.6, 0.8, 1])
+        pltticks1 = np.array([0, 0.01, 0.02, 0.05, 0.1, 0.2, 0.4, 0.6, 0.8, 1])
+        pltnorm1 = BoundaryNorm(pltlevel1, ncolors=len(pltlevel1)-1, clip=True)
+        pltcmp1 = plt.get_cmap('viridis_r', len(pltlevel1)-1)
+        pltlevel2 = np.array([-1, -0.8, -0.6, -0.4, -0.2, -0.1, 0, 0.1, 0.2, 0.4, 0.6, 0.8, 1])
+        pltticks2 = np.array([-1, -0.8, -0.6, -0.4, -0.2, -0.1, 0, 0.1, 0.2, 0.4, 0.6, 0.8, 1])
+        pltnorm2 = BoundaryNorm(pltlevel2, ncolors=len(pltlevel2)-1, clip=True)
+        pltcmp2 = plt.get_cmap('BrBG', len(pltlevel2)-1)
+    else:
+        print(f'Warning unspecified colorbar for {var1}')
+    
+    nrow=3
+    ncol=5
+    fm_bottom=1.5/(4*nrow+1.5)
+    
+    fig, axs = plt.subplots(
+        nrow, ncol, figsize=np.array([4.4*ncol, 4*nrow + 1.5]) / 2.54,
+        subplot_kw={'projection': ccrs.PlateCarree(central_longitude=180)},
+        gridspec_kw={'hspace': 0.01, 'wspace': 0.01},)
+    
+    for irow in range(nrow):
+        axs[irow, 0].text(-0.05, 0.5, plt_rownames[irow], ha='right', va='center', rotation='vertical', transform=axs[irow, 0].transAxes)
+        for jcol in range(ncol):
+            axs[irow, jcol] = regional_plot(extent=extent, central_longitude=180, ax_org=axs[irow, jcol])
+            axs[irow, jcol].text(0, 1.02, f'({string.ascii_lowercase[irow]}{jcol+1})', ha='left', va='bottom', transform=axs[irow, jcol].transAxes,)
+            if irow==0:
+                axs[0, jcol].text(0.5, 1.14, plt_colnames[jcol], ha='center', va='bottom', transform=axs[0, jcol].transAxes)
+    
+    for jcol in range(ncol):
+        plt_mesh1 = axs[0, jcol].pcolormesh(
+            plt_data[plt_rownames[0]][plt_colnames[jcol]].lon,
+            plt_data[plt_rownames[0]][plt_colnames[jcol]].lat,
+            plt_data[plt_rownames[0]][plt_colnames[jcol]].values,
+            norm=pltnorm1, cmap=pltcmp1, transform=ccrs.PlateCarree(),zorder=1)
+        if jcol==0:
+            plt_text = 'Mean: '+str(np.round(plt_mean[plt_colnames[jcol]], 2))
+        else:
+            plt_text = np.round(plt_mean[plt_colnames[jcol]], 2)
+        axs[0, jcol].text(
+            0.5, 1.02, plt_text,
+            ha='center', va='bottom', transform=axs[0, jcol].transAxes)
+    
+    for irow in range(nrow-1):
+        for jcol in range(ncol):
+            plt_mesh2 = axs[irow+1, jcol].pcolormesh(
+                plt_data[plt_rownames[irow+1]][plt_colnames[jcol]].lon,
+                plt_data[plt_rownames[irow+1]][plt_colnames[jcol]].lat,
+                plt_data[plt_rownames[irow+1]][plt_colnames[jcol]].values,
+                norm=pltnorm2, cmap=pltcmp2,
+                transform=ccrs.PlateCarree(),zorder=1)
+            if (irow==0)&(jcol==0):
+                plt_text = 'RMSE: '+str(np.round(plt_rmse[plt_rownames[irow+1]][plt_colnames[jcol]], 2))
+            else:
+                plt_text = np.round(plt_rmse[plt_rownames[irow+1]][plt_colnames[jcol]], 2)
+            axs[irow+1, jcol].text(
+                0.5, 1.02, plt_text,
+                ha='center', va='bottom', transform=axs[irow+1, jcol].transAxes)
+    
+    cbar1 = fig.colorbar(
+        plt_mesh1, #cm.ScalarMappable(norm=pltnorm1, cmap=pltcmp1), #
+        aspect=30, format=remove_trailing_zero_pos,
+        orientation="horizontal", ticks=pltticks1, extend=extend1,
+        cax=fig.add_axes([0.05, fm_bottom-0.02, 0.4, 0.02]))
+    cbar1.ax.set_xlabel(cbar_label1)
+    cbar2 = fig.colorbar(
+        plt_mesh2, #cm.ScalarMappable(norm=pltnorm2, cmap=pltcmp2), #
+        aspect=30, format=remove_trailing_zero_pos,
+        orientation="horizontal", ticks=pltticks2, extend=extend2,
+        cax=fig.add_axes([0.55, fm_bottom-0.02, 0.4, 0.02]))
+    cbar2.ax.set_xlabel(cbar_label2)
+    
+    fig.subplots_adjust(left=0.03, right=0.995, bottom=fm_bottom, top=0.95)
+    fig.savefig(f'figures/4_um/4.0_barra/4.0.0_whole region/4.0.0.1 barra_r2_c2 vs. era5 am sm {var1}.png')
+    
+    del era5_sl_mon_alltime[var1], barra_c2_mon_alltime[var2], barra_r2_mon_alltime[var2]
+
+
+# endregion
 

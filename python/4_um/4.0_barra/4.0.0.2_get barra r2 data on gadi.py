@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -l walltime=4:00:00,ncpus=1,mem=96GB,storage=gdata/v46+gdata/ob53
+# qsub -I -q express -l walltime=4:00:00,ncpus=1,mem=20GB,jobfs=20GB,storage=gdata/v46+gdata/ob53+scratch/v46+gdata/rr1+gdata/rt52+gdata/oi10+gdata/hh5+gdata/fs38
 
 
 # region import packages
@@ -16,6 +16,7 @@ pbar.register()
 from cdo import Cdo
 cdo=Cdo()
 import tempfile
+import joblib
 
 # management
 import os
@@ -34,8 +35,9 @@ from namelist import cmip6_units, zerok, seconds_per_d
 
 
 # region get BARRA-R2 mon data
+# mem=20GB, jobfs=20GB, lowclouds, 30 min
 
-for var in ['rsut', 'pr']:
+for var in ['prw']:
     # var = 'rsut'
     print(var)
     
@@ -72,7 +74,7 @@ for var in ['rsut', 'pr']:
 ifile = -100
 
 barra_r2_mon_alltime = {}
-for var in ['clh', 'clm', 'cll', 'clt', 'evspsbl', 'hfls', 'hfss', 'psl', 'rlds', 'rldscs', 'rlus', 'rluscs', 'rlut', 'rlutcs', 'rsds', 'rsdscs', 'rsdt', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'sfcWind', 'tas', 'ts', 'evspsblpot', 'hurs', 'huss', 'uas', 'vas']:
+for var in ['clivi', 'clwvi', 'prw']:
     # ['pr', 'clh', 'clm', 'cll', 'clt', 'evspsbl', 'hfls', 'hfss', 'psl', 'rlds', 'rldscs', 'rlus', 'rluscs', 'rlut', 'rlutcs', 'rsds', 'rsdscs', 'rsdt', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'sfcWind', 'tas', 'ts', 'evspsblpot', 'hurs', 'huss', 'uas', 'vas']
     # var = 'huss'
     print(f'#-------- {var}')
@@ -101,4 +103,104 @@ for var in ['clh', 'clm', 'cll', 'clt', 'evspsbl', 'hfls', 'hfss', 'psl', 'rlds'
 '''
 # endregion
 
+
+# region get BARRA-R2 hourly data
+# qsub -I -q normal -l walltime=00:30:00,ncpus=48,mem=192GB,storage=gdata/v46+gdata/ob53+scratch/v46+gdata/rr1+gdata/rt52+gdata/oi10+gdata/hh5+gdata/fs38
+
+
+var = 'cll' # ['clh', 'clm', 'cll', 'clt', 'pr', 'tas']
+print(f'#-------------------------------- {var}')
+odir = f'scratch/data/sim/um/barra_r2/{var}'
+os.makedirs(odir, exist_ok=True)
+
+def process_year_month(year, month, var, odir):
+    print(f'#---------------- {year} {month:02d}')
+    
+    ifile = f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/{var}/latest/{var}_AUS-11_ERA5_historical_hres_BOM_BARRA-R2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc'
+    ofile = f'{odir}/{var}_hourly_{year}{month:02d}.nc'
+    
+    ds = xr.open_dataset(ifile, chunks={})[var]
+    if var in ['pr', 'evspsbl', 'evspsblpot']:
+        ds = ds * seconds_per_d
+    elif var in ['tas', 'ts']:
+        ds = ds - zerok
+    elif var in ['rlus', 'rluscs', 'rlut', 'rlutcs', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'hfls', 'hfss']:
+        ds = ds * (-1)
+    elif var in ['psl']:
+        ds = ds / 100
+    elif var in ['huss']:
+        ds = ds * 1000
+    ds = ds.groupby('time.hour').mean().astype(np.float32).expand_dims(dim={'time': [ds.time[0].values]}).compute()
+    
+    if os.path.exists(ofile): os.remove(ofile)
+    ds.to_netcdf(ofile)
+    
+    del ds
+    return f'Finished processing {ofile}'
+
+
+joblib.Parallel(n_jobs=48)(joblib.delayed(process_year_month)(year, month, var, odir) for year in range(1979, 2024) for month in range(1, 13))
+
+
+
+
+'''
+#-------------------------------- check
+var = 'cll' # ['clh', 'clm', 'cll', 'clt', 'pr', 'tas']
+year = 2020
+month = 1
+ds1 = xr.open_dataset(f'scratch/data/sim/um/barra_r2/{var}/{var}_hourly_{year}{month:02d}.nc', chunks={})
+ds2 = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/{var}/latest/{var}_AUS-11_ERA5_historical_hres_BOM_BARRA-R2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc', chunks={})[var]
+if var in ['pr', 'evspsbl', 'evspsblpot']:
+    ds2 = ds2 * seconds_per_d
+elif var in ['tas', 'ts']:
+    ds2 = ds2 - zerok
+elif var in ['rlus', 'rluscs', 'rlut', 'rlutcs', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'hfls', 'hfss']:
+    ds2 = ds2 * (-1)
+elif var in ['psl']:
+    ds2 = ds2 / 100
+elif var in ['huss']:
+    ds2 = ds2 * 1000
+ds2 = ds2.groupby('time.hour').mean().astype(np.float32).compute()
+print((ds1[var].squeeze() == ds2).all().values)
+
+
+'''
+# endregion
+
+
+# region get BARRA-R2 alltime hourly data
+
+
+for var in ['cll', 'clh', 'clm', 'clt', 'pr', 'tas']:
+    # var = 'cll'
+    print(f'#-------------------------------- {var}')
+    
+    fl = sorted(glob.glob(f'scratch/data/sim/um/barra_r2/{var}/{var}_hourly_*.nc'))
+    barra_r2_hourly = xr.open_mfdataset(fl)[var].sel(time=slice('1979', '2023'))
+    barra_r2_hourly_alltime = mon_sea_ann(
+        var_monthly=barra_r2_hourly, lcopy=False, mm=True, sm=True, am=True)
+    
+    ofile = f'data/sim/um/barra_r2/barra_r2_hourly_alltime_{var}.pkl'
+    if os.path.exists(ofile): os.remove(ofile)
+    with open(ofile,'wb') as f:
+        pickle.dump(barra_r2_hourly_alltime, f)
+    
+    del barra_r2_hourly, barra_r2_hourly_alltime
+
+
+
+'''
+#-------------------------------- check
+var = 'tas'
+with open(f'data/sim/um/barra_r2/barra_r2_hourly_alltime_{var}.pkl','rb') as f:
+    barra_r2_hourly_alltime = pickle.load(f)
+
+fl = sorted(glob.glob(f'scratch/data/sim/um/barra_r2/{var}/{var}_hourly_*.nc'))
+ifile = -1
+ds = xr.open_dataset(fl[ifile])
+
+print((barra_r2_hourly_alltime['mon'][ifile] == ds[var].squeeze()).all().values)
+'''
+# endregion
 

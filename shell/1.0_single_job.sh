@@ -11,12 +11,12 @@
 
 cd $HOME
 module load python3/3.12.1
-/apps/python3/3.12.1/bin/python3 /home/563/qg8515/code/gbr_future/shell/0_runpy/run1.py
+/apps/python3/3.12.1/bin/python3 ${HOME}/code/gbr_future/shell/0_runpy/run1.py
 
 
-# /home/563/qg8515/miniconda3/envs/lowclouds/bin/python /home/563/qg8515/code/gbr_future/shell/0_runpy/run1.py
+# ${HOME}/miniconda3/envs/lowclouds/bin/python ${HOME}/code/gbr_future/shell/0_runpy/run1.py
 
-# /home/563/qg8515/code/gbr_future/shell/2.0_get_clean_jaxa.sh 2015 07
+# ${HOME}/code/gbr_future/shell/2.0_get_clean_jaxa.sh 2015 07
 
 #---- remarks
 # max walltime in copyq:10hours

@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -l walltime=4:00:00,ncpus=1,mem=192GB,storage=gdata/v46+gdata/rt52+gdata/ob53
+# qsub -I -q express -l walltime=4:00:00,ncpus=1,mem=192GB,storage=gdata/v46+gdata/rt52+gdata/ob53
 
 
 # region import packages
@@ -75,6 +75,24 @@ for var in ['pev', 'mper']:
         pickle.dump(era5_sl_mon_alltime, f)
     
     del era5_sl_mon, era5_sl_mon_alltime
+
+
+
+
+#-------------------------------- check
+era5_sl_mon_alltime = {}
+for var in ['tciw', 'tclw', 'tcw', 'tcwv', 'tcsw', 'tcrw', 'tcslw']:
+    print(f'#---------------- {var}')
+    with open(f'data/obs/era5/mon/era5_sl_mon_alltime_{var}.pkl', 'rb') as f:
+        era5_sl_mon_alltime[var] = pickle.load(f)
+
+for var in ['tciw', 'tclw', 'tcw', 'tcwv', 'tcsw', 'tcrw', 'tcslw']:
+    print(f'#---------------- {var}')
+    print(era5_sl_mon_alltime[var]['am'].weighted(np.cos(np.deg2rad(era5_sl_mon_alltime[var]['am'].lat))).mean().values)
+
+# tcw = tciw + tclw + tcwv + tcsw + tcrw
+
+
 
 
 

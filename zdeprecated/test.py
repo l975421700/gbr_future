@@ -1,5 +1,59 @@
 
 
+# region get BARRA-C2 hourly data
+
+for var in ['clh', 'clm', 'cll', 'clt', 'pr', 'tas']:
+    # var = 'cll'
+    print(f'#-------------------------------- {var}')
+    
+    fl = sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/{var}/latest/*'))[:540]
+    
+    barra_c2_hourly = xr.open_mfdataset(fl, parallel=True)[var] #.sel(time=slice('1979', '2023'))
+    if var in ['pr', 'evspsbl', 'evspsblpot']:
+        barra_c2_hourly = barra_c2_hourly * seconds_per_d
+    elif var in ['tas', 'ts']:
+        barra_c2_hourly = barra_c2_hourly - zerok
+    elif var in ['rlus', 'rluscs', 'rlut', 'rlutcs', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'hfls', 'hfss']:
+        barra_c2_hourly = barra_c2_hourly * (-1)
+    elif var in ['psl']:
+        barra_c2_hourly = barra_c2_hourly / 100
+    elif var in ['huss']:
+        barra_c2_hourly = barra_c2_hourly * 1000
+    
+    ofile = f'data/sim/um/barra_c2/barra_c2_hourly_{var}.pkl'
+    if os.path.exists(ofile): os.remove(ofile)
+    with open(ofile,'wb') as f:
+        pickle.dump(barra_c2_hourly, f)
+    
+    del barra_c2_hourly
+
+
+
+
+'''
+#-------------------------------- check
+# 4TB data, 390GB memory storage, 40Gb storage
+var = 'cll'
+with open(f'data/sim/um/barra_c2/barra_c2_hourly_{var}.pkl','rb') as f:
+    barra_c2_hourly = pickle.load(f)
+
+fl = sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/{var}/latest/*'))[:540]
+ifile = -1
+ds = xr.open_dataset(fl[ifile])
+
+print((barra_c2_hourly[-744:, :, :] == ds[var]).all().values)
+
+
+
+
+    barra_c2_hourly1 = barra_c2_hourly
+    ofile = f'data/sim/um/barra_c2/barra_c2_hourly_{var}.nc'
+    if os.path.exists(ofile): os.remove(ofile)
+    barra_c2_hourly1.to_netcdf(ofile)
+'''
+# endregion
+
+
 # region get mon_sea_ann data
 
 cmip6_data = {}

@@ -15,14 +15,14 @@ for year in $(seq 2020 2020); do
 #PBS -P v46
 #PBS -r y
 
-cd $HOME
+cd ${HOME}
 source ${HOME}/miniconda3/bin/activate lowclouds
 python ${HOME}/code/gbr_future/shell/0_runpy/run4.py -y $year -m $month
 
 # module load python3/3.12.1
-# /apps/python3/3.12.1/bin/python3 /home/563/qg8515/code/gbr_future/python/3_obs/3.0_satellites/3.0.0.0_get_himawari_CLP.py -y $year -m $month
+# /apps/python3/3.12.1/bin/python3 ${HOME}/code/gbr_future/python/3_obs/3.0_satellites/3.0.0.0_get_himawari_CLP.py -y $year -m $month
 
-# /home/563/qg8515/code/gbr_future/shell/2.0_get_clean_jaxa.sh $year $month
+# ${HOME}/code/gbr_future/shell/2.0_get_clean_jaxa.sh $year $month
 
 EOF
     done

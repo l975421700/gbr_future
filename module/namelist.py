@@ -203,8 +203,12 @@ cmip6_era5_var = {
     'rlutcl': 'mtnlwrfcl',
     'rsntcl': 'mtnswrfcl',
     'rsutcl': 'mtuwswrfcl',
+    'clwvi': 'tclw',
+    'clivi': 'tciw',
+    'prw': 'tcwv',
 }
-# 'cbh', 'tciw', 'tclw', 'tcw', 'tcwv', 'tcsw', 'tcrw', 'tcslw', 'z', 'd2m', 'cp', 'lsp', 'deg0l', 'u100', 'v100'
+# tcw = tcwv + tcsw + tcrw + tclw + tciw
+# 'cbh', 'tcw', 'tcsw', 'tcrw', 'tcslw', 'z', 'd2m', 'cp', 'lsp', 'deg0l', 'u100', 'v100'
 
 
 

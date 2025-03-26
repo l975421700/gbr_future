@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -l walltime=5:00:00,ncpus=1,mem=192GB,jobfs=100MB,storage=gdata/v46+gdata/rt52+gdata/ob53+gdata/zv2+scratch/v46
+# qsub -I -q express -l walltime=5:00:00,ncpus=1,mem=192GB,jobfs=100MB,storage=gdata/v46+gdata/rt52+gdata/ob53+gdata/zv2+scratch/v46
 
 
 # region import packages
@@ -64,19 +64,33 @@ from statistics0 import (
 
 # region import and plot CERES data
 
-ceres_ebaf_toa = xr.open_dataset('data/obs/CERES/CERES_EBAF-TOA_Ed4.2.1_Subset_200003-202411.nc').sel(time=slice('2001', '2014'))
-ceres_ebaf_toa = ceres_ebaf_toa.rename({
-    'toa_sw_all_mon': 'mtuwswrf',
-    'toa_lw_all_mon': 'mtnlwrf',
-    'solar_mon': 'mtdwswrf'})
-ceres_ebaf_toa['mtuwswrf'] *= (-1)
-ceres_ebaf_toa['mtnlwrf'] *= (-1)
 
-for var in ['mtuwswrf', 'mtnlwrf', 'mtdwswrf']:
+# TOA
+# ceres_ebaf = xr.open_dataset('data/obs/CERES/CERES_EBAF-TOA_Ed4.2.1_Subset_200003-202411.nc').sel(time=slice('2001', '2014'))
+# ceres_ebaf = ceres_ebaf.rename({
+#     'toa_sw_all_mon': 'mtuwswrf',
+#     'toa_lw_all_mon': 'mtnlwrf',
+#     'solar_mon': 'mtdwswrf'})
+# ceres_ebaf['mtuwswrf'] *= (-1)
+# ceres_ebaf['mtnlwrf'] *= (-1)
+
+# Surface
+ceres_ebaf = xr.open_dataset('data/obs/CERES/CERES_EBAF_Ed4.2_Subset_200003-202407 (1).nc').sel(time=slice('2001', '2014'))
+ceres_ebaf = ceres_ebaf.rename({
+    'sfc_sw_down_all_mon': 'msdwswrf',
+    'sfc_sw_up_all_mon': 'msuwswrf',
+    'sfc_lw_down_all_mon': 'msdwlwrf',
+    'sfc_lw_up_all_mon': 'msuwlwrf',
+})
+ceres_ebaf['msuwswrf'] *= (-1)
+ceres_ebaf['msuwlwrf'] *= (-1)
+
+for var in ['msdwswrf', 'msuwswrf', 'msdwlwrf', 'msuwlwrf']:
     # var='mtuwswrf'
+    # ['mtuwswrf', 'mtnlwrf', 'mtdwswrf']
     print(f'#-------------------------------- {var}')
     
-    plt_data = ceres_ebaf_toa[var].pipe(time_weighted_mean)
+    plt_data = ceres_ebaf[var].pipe(time_weighted_mean)
     plt_data_gm = plt_data.weighted(np.cos(np.deg2rad(plt_data.lat))).mean().values
     
     cbar_label = 'CERES annual mean (2001-2014) ' + era5_varlabels[var] + '\nglobal mean: ' + str(np.round(plt_data_gm, 2))
@@ -90,6 +104,18 @@ for var in ['mtuwswrf', 'mtnlwrf', 'mtdwswrf']:
     elif var=='mtdwswrf':
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
             cm_min=180, cm_max=420, cm_interval1=10, cm_interval2=20, cmap='viridis_r',)
+    elif var in ['msdwswrf', 'msdwswrfcs']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=60, cm_max=330, cm_interval1=10, cm_interval2=20, cmap='viridis_r',)
+    elif var in ['msuwswrf', 'msuwswrfcs']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-220, cm_max=0, cm_interval1=10, cm_interval2=20, cmap='viridis')
+    elif var in ['msdwlwrf', 'msdwlwrfcs']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=80, cm_max=430, cm_interval1=10, cm_interval2=20, cmap='viridis_r',)
+    elif var in ['msuwlwrf', 'msuwlwrfcs']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-540, cm_max=-120, cm_interval1=10, cm_interval2=40, cmap='viridis')
     
     fig, ax = globe_plot(figsize=np.array([12, 8]) / 2.54, fm_bottom=0.13)
     
@@ -111,13 +137,13 @@ for var in ['mtuwswrf', 'mtnlwrf', 'mtdwswrf']:
 # region plot CERES, ERA5, BARRA-R2, BARRA-C2, historical, amip, am sm
 
 # import data
-ceres_ebaf_toa = xr.open_dataset('data/obs/CERES/CERES_EBAF-TOA_Ed4.2.1_Subset_200003-202411.nc').sel(time=slice('2001', '2014'))
-ceres_ebaf_toa = ceres_ebaf_toa.rename({
+ceres_ebaf = xr.open_dataset('data/obs/CERES/CERES_EBAF-TOA_Ed4.2.1_Subset_200003-202411.nc').sel(time=slice('2001', '2014'))
+ceres_ebaf = ceres_ebaf.rename({
     'toa_sw_all_mon': 'mtuwswrf',
     'toa_lw_all_mon': 'mtnlwrf',
     'solar_mon': 'mtdwswrf'})
-ceres_ebaf_toa['mtuwswrf'] *= (-1)
-ceres_ebaf_toa['mtnlwrf'] *= (-1)
+ceres_ebaf['mtuwswrf'] *= (-1)
+ceres_ebaf['mtnlwrf'] *= (-1)
 
 # settings
 plt_colnames = ['Annual mean', 'DJF', 'MAM', 'JJA', 'SON']
@@ -146,9 +172,9 @@ for var2 in ['rsut', 'rlut', 'rsdt']:
     plt_rmse = {}
     for irow in plt_rownames[1:]: plt_rmse[irow] = {}
     
-    plt_data['CERES']['Annual mean'] = ceres_ebaf_toa[var1].pipe(time_weighted_mean).pipe(regrid).pipe(replace_x_y_nominal_lat_lon).sel(y=slice(min_lat, max_lat), x=slice(min_lon, max_lon)).compute()
+    plt_data['CERES']['Annual mean'] = ceres_ebaf[var1].pipe(time_weighted_mean).pipe(regrid).pipe(replace_x_y_nominal_lat_lon).sel(y=slice(min_lat, max_lat), x=slice(min_lon, max_lon)).compute()
     plt_mean['Annual mean'] = plt_data['CERES']['Annual mean'].weighted(np.cos(np.deg2rad(plt_data['CERES']['Annual mean'].lat))).mean().values
-    ceres_ann = ceres_ebaf_toa[var1].resample({'time': '1YE'}).map(time_weighted_mean).pipe(regrid).pipe(replace_x_y_nominal_lat_lon).sel(y=slice(min_lat, max_lat), x=slice(min_lon, max_lon))
+    ceres_ann = ceres_ebaf[var1].resample({'time': '1YE'}).map(time_weighted_mean).pipe(regrid).pipe(replace_x_y_nominal_lat_lon).sel(y=slice(min_lat, max_lat), x=slice(min_lon, max_lon))
     
     plt_data['ERA5 - CERES']['Annual mean'] = (era5_sl_mon_alltime['mon'].sel(time=slice('2001', '2014')).pipe(time_weighted_mean).pipe(regrid).pipe(replace_x_y_nominal_lat_lon).sel(y=slice(min_lat, max_lat), x=slice(min_lon, max_lon)) - plt_data['CERES']['Annual mean']).compute()
     plt_rmse['ERA5 - CERES']['Annual mean'] = np.sqrt(np.square(plt_data['ERA5 - CERES']['Annual mean']).weighted(np.cos(np.deg2rad(plt_data['ERA5 - CERES']['Annual mean'].lat))).mean()).values
@@ -194,9 +220,9 @@ for var2 in ['rsut', 'rlut', 'rsdt']:
         # jcolnames='DJF'
         print(f'#---------------- {jcolnames}')
         
-        plt_data['CERES'][jcolnames] = ceres_ebaf_toa[var1][ceres_ebaf_toa[var1].time.dt.season==jcolnames].pipe(time_weighted_mean).pipe(regrid).pipe(replace_x_y_nominal_lat_lon).sel(y=slice(min_lat, max_lat), x=slice(min_lon, max_lon)).compute()
+        plt_data['CERES'][jcolnames] = ceres_ebaf[var1][ceres_ebaf[var1].time.dt.season==jcolnames].pipe(time_weighted_mean).pipe(regrid).pipe(replace_x_y_nominal_lat_lon).sel(y=slice(min_lat, max_lat), x=slice(min_lon, max_lon)).compute()
         plt_mean[jcolnames] = plt_data['CERES'][jcolnames].weighted(np.cos(np.deg2rad(plt_data['CERES'][jcolnames].lat))).mean().values
-        ceres_sea = ceres_ebaf_toa[var1].resample({'time': 'QE-FEB'}).map(time_weighted_mean)[1:-1][ceres_ebaf_toa[var1].resample({'time': 'QE-FEB'}).map(time_weighted_mean)[1:-1].time.dt.season==jcolnames].pipe(regrid).pipe(replace_x_y_nominal_lat_lon).sel(y=slice(min_lat, max_lat), x=slice(min_lon, max_lon)).compute()
+        ceres_sea = ceres_ebaf[var1].resample({'time': 'QE-FEB'}).map(time_weighted_mean)[1:-1][ceres_ebaf[var1].resample({'time': 'QE-FEB'}).map(time_weighted_mean)[1:-1].time.dt.season==jcolnames].pipe(regrid).pipe(replace_x_y_nominal_lat_lon).sel(y=slice(min_lat, max_lat), x=slice(min_lon, max_lon)).compute()
         
         plt_data['ERA5 - CERES'][jcolnames] = (era5_sl_mon_alltime['mon'][era5_sl_mon_alltime['mon'].time.dt.season==jcolnames].sel(time=slice('2001', '2014')).pipe(time_weighted_mean).pipe(regrid).pipe(replace_x_y_nominal_lat_lon).sel(y=slice(min_lat, max_lat), x=slice(min_lon, max_lon)) - plt_data['CERES'][jcolnames]).compute()
         plt_rmse['ERA5 - CERES'][jcolnames] = np.sqrt(np.square(plt_data['ERA5 - CERES'][jcolnames]).weighted(np.cos(np.deg2rad(plt_data['ERA5 - CERES'][jcolnames].lat))).mean()).values
@@ -336,21 +362,34 @@ for var2 in ['rsut', 'rlut', 'rsdt']:
 
 # region plot CERES, ERA5, BARRA-R2, BARRA-C2, historical, amip, am
 
-# import data
-ceres_ebaf_toa = xr.open_dataset('data/obs/CERES/CERES_EBAF-TOA_Ed4.2.1_Subset_200003-202411.nc').sel(time=slice('2001', '2014'))
-ceres_ebaf_toa = ceres_ebaf_toa.rename({
-    'toa_sw_all_mon': 'mtuwswrf',
-    'toa_lw_all_mon': 'mtnlwrf',
-    'solar_mon': 'mtdwswrf'})
-ceres_ebaf_toa['mtuwswrf'] *= (-1)
-ceres_ebaf_toa['mtnlwrf'] *= (-1)
+
+# TOA
+# ceres_ebaf = xr.open_dataset('data/obs/CERES/CERES_EBAF-TOA_Ed4.2.1_Subset_200003-202411.nc').sel(time=slice('2001', '2014'))
+# ceres_ebaf = ceres_ebaf.rename({
+#     'toa_sw_all_mon': 'mtuwswrf',
+#     'toa_lw_all_mon': 'mtnlwrf',
+#     'solar_mon': 'mtdwswrf'})
+# ceres_ebaf['mtuwswrf'] *= (-1)
+# ceres_ebaf['mtnlwrf'] *= (-1)
+
+# Surface
+ceres_ebaf = xr.open_dataset('data/obs/CERES/CERES_EBAF_Ed4.2_Subset_200003-202407 (1).nc').sel(time=slice('2001', '2014'))
+ceres_ebaf = ceres_ebaf.rename({
+    'sfc_sw_down_all_mon': 'msdwswrf',
+    'sfc_sw_up_all_mon': 'msuwswrf',
+    'sfc_lw_down_all_mon': 'msdwlwrf',
+    'sfc_lw_up_all_mon': 'msuwlwrf',
+})
+ceres_ebaf['msuwswrf'] *= (-1)
+ceres_ebaf['msuwlwrf'] *= (-1)
+
 
 # settings
 mpl.rc('font', family='Times New Roman', size=8)
 plt_colnames = ['CERES', 'ERA5 - CERES', 'BARRA-R2 - CERES', 'BARRA-C2 - CERES', r'$historical$ - CERES', r'$amip$ - CERES']
 min_lon, max_lon, min_lat, max_lat = [110.58, 157.34, -43.69, -7.01]
 
-for var2 in ['rsut', 'rlut', 'rsdt']:
+for var2 in ['rsus', 'rlus', 'rsds', 'rlds']:
     # var2='rsut'
     var1 = cmip6_era5_var[var2]
     print(f'#-------------------------------- {var1} and {var2}')
@@ -369,9 +408,9 @@ for var2 in ['rsut', 'rlut', 'rsdt']:
     plt_data = {}
     plt_rmse = {}
     
-    plt_data['CERES'] = ceres_ebaf_toa[var1].pipe(time_weighted_mean).pipe(regrid).pipe(replace_x_y_nominal_lat_lon).sel(y=slice(min_lat, max_lat), x=slice(min_lon, max_lon)).compute()
+    plt_data['CERES'] = ceres_ebaf[var1].pipe(time_weighted_mean).pipe(regrid).pipe(replace_x_y_nominal_lat_lon).sel(y=slice(min_lat, max_lat), x=slice(min_lon, max_lon)).compute()
     plt_mean = plt_data['CERES'].weighted(np.cos(np.deg2rad(plt_data['CERES'].lat))).mean().values
-    ceres_ann = ceres_ebaf_toa[var1].resample({'time': '1YE'}).map(time_weighted_mean).pipe(regrid).pipe(replace_x_y_nominal_lat_lon).sel(y=slice(min_lat, max_lat), x=slice(min_lon, max_lon)).compute()
+    ceres_ann = ceres_ebaf[var1].resample({'time': '1YE'}).map(time_weighted_mean).pipe(regrid).pipe(replace_x_y_nominal_lat_lon).sel(y=slice(min_lat, max_lat), x=slice(min_lon, max_lon)).compute()
     
     plt_data['ERA5 - CERES'] = (era5_sl_mon_alltime['mon'].sel(time=slice('2001', '2014')).pipe(time_weighted_mean).pipe(regrid).pipe(replace_x_y_nominal_lat_lon).sel(y=slice(min_lat, max_lat), x=slice(min_lon, max_lon)) - plt_data['CERES']).compute()
     plt_rmse['ERA5 - CERES'] = np.sqrt(np.square(plt_data['ERA5 - CERES']).weighted(np.cos(np.deg2rad(plt_data['ERA5 - CERES'].lat))).mean()).values
@@ -436,6 +475,26 @@ for var2 in ['rsut', 'rlut', 'rsdt']:
             cm_min=310, cm_max=410, cm_interval1=5, cm_interval2=10, cmap='viridis_r',)
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
             cm_min=-1, cm_max=1, cm_interval1=0.2, cm_interval2=0.4, cmap='BrBG')
+    elif var1 in ['msdwswrf', 'msdwswrfcs']:
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=140, cm_max=270, cm_interval1=10, cm_interval2=40, cmap='viridis_r',)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-30, cm_max=30, cm_interval1=2.5, cm_interval2=10, cmap='BrBG')
+    elif var1 in ['msuwswrf', 'msuwswrfcs']:
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=-90, cm_max=0, cm_interval1=5, cm_interval2=20, cmap='viridis',)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-30, cm_max=30, cm_interval1=2.5, cm_interval2=10, cmap='BrBG')
+    elif var1 in ['msuwlwrf', 'msuwlwrfcs']:
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=-480, cm_max=-350, cm_interval1=10, cm_interval2=40, cmap='viridis',)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-30, cm_max=30, cm_interval1=2.5, cm_interval2=10, cmap='BrBG')
+    elif var1 in ['msdwlwrf', 'msdwlwrfcs']:
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=300, cm_max=430, cm_interval1=10, cm_interval2=40, cmap='viridis_r',)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-30, cm_max=30, cm_interval1=2.5, cm_interval2=10, cmap='BrBG')
     
     nrow=1
     ncol=len(plt_colnames)
@@ -456,30 +515,30 @@ for var2 in ['rsut', 'rlut', 'rsdt']:
             plt_text = f'({string.ascii_lowercase[jcol]}) {plt_colnames[jcol]}, {np.round(plt_rmse[plt_colnames[jcol]], 1)}'
         axs[jcol].text(0, 1.02, plt_text, ha='left', va='bottom', transform=axs[jcol].transAxes, size=9)
     
-    # plt_mesh1 = axs[0].pcolormesh(
-    #         plt_data[plt_colnames[0]].lon,
-    #         plt_data[plt_colnames[0]].lat,
-    #         plt_data[plt_colnames[0]].values,
-    #         norm=pltnorm1, cmap=pltcmp1, transform=ccrs.PlateCarree(),zorder=1)
-    # for jcol in range(ncol-1):
-    #     plt_mesh2 = axs[jcol+1].pcolormesh(
-    #         plt_data[plt_colnames[jcol+1]].lon,
-    #         plt_data[plt_colnames[jcol+1]].lat,
-    #         plt_data[plt_colnames[jcol+1]].values,
-    #         norm=pltnorm2, cmap=pltcmp2, transform=ccrs.PlateCarree(),zorder=1)
-    plt_mesh1 = axs[0].contourf(
+    plt_mesh1 = axs[0].pcolormesh(
             plt_data[plt_colnames[0]].lon,
             plt_data[plt_colnames[0]].lat,
             plt_data[plt_colnames[0]].values,
-            norm=pltnorm1, cmap=pltcmp1, levels=pltlevel1, extend=extend1,
-            transform=ccrs.PlateCarree(),zorder=1)
+            norm=pltnorm1, cmap=pltcmp1, transform=ccrs.PlateCarree(),zorder=1)
     for jcol in range(ncol-1):
-        plt_mesh2 = axs[jcol+1].contourf(
+        plt_mesh2 = axs[jcol+1].pcolormesh(
             plt_data[plt_colnames[jcol+1]].lon,
             plt_data[plt_colnames[jcol+1]].lat,
             plt_data[plt_colnames[jcol+1]].values,
-            norm=pltnorm2, cmap=pltcmp2, levels=pltlevel2, extend=extend2,
-            transform=ccrs.PlateCarree(),zorder=1)
+            norm=pltnorm2, cmap=pltcmp2, transform=ccrs.PlateCarree(),zorder=1)
+    # plt_mesh1 = axs[0].contourf(
+    #         plt_data[plt_colnames[0]].lon,
+    #         plt_data[plt_colnames[0]].lat,
+    #         plt_data[plt_colnames[0]].values,
+    #         norm=pltnorm1, cmap=pltcmp1, levels=pltlevel1, extend=extend1,
+    #         transform=ccrs.PlateCarree(),zorder=1)
+    # for jcol in range(ncol-1):
+    #     plt_mesh2 = axs[jcol+1].contourf(
+    #         plt_data[plt_colnames[jcol+1]].lon,
+    #         plt_data[plt_colnames[jcol+1]].lat,
+    #         plt_data[plt_colnames[jcol+1]].values,
+    #         norm=pltnorm2, cmap=pltcmp2, levels=pltlevel2, extend=extend2,
+    #         transform=ccrs.PlateCarree(),zorder=1)
     
     cbar1 = fig.colorbar(
         plt_mesh1, #cm.ScalarMappable(norm=pltnorm1, cmap=pltcmp1), #
@@ -510,13 +569,13 @@ stats.describe(plt_data[plt_colnames[3]].values, axis=None, nan_policy='omit')
 # region plot CERES, ERA5, BARRA-R2, BARRA-C2, historical, amip, am pct
 
 # import data
-ceres_ebaf_toa = xr.open_dataset('data/obs/CERES/CERES_EBAF-TOA_Ed4.2.1_Subset_200003-202411.nc').sel(time=slice('2001', '2014'))
-ceres_ebaf_toa = ceres_ebaf_toa.rename({
+ceres_ebaf = xr.open_dataset('data/obs/CERES/CERES_EBAF-TOA_Ed4.2.1_Subset_200003-202411.nc').sel(time=slice('2001', '2014'))
+ceres_ebaf = ceres_ebaf.rename({
     'toa_sw_all_mon': 'mtuwswrf',
     'toa_lw_all_mon': 'mtnlwrf',
     'solar_mon': 'mtdwswrf'})
-ceres_ebaf_toa['mtuwswrf'] *= (-1)
-ceres_ebaf_toa['mtnlwrf'] *= (-1)
+ceres_ebaf['mtuwswrf'] *= (-1)
+ceres_ebaf['mtnlwrf'] *= (-1)
 
 # settings
 mpl.rc('font', family='Times New Roman', size=8)
@@ -542,9 +601,9 @@ for var2 in ['rsut', 'rlut', 'rsdt']:
     plt_data = {}
     plt_rmse = {}
     
-    plt_data['CERES'] = ceres_ebaf_toa[var1].pipe(time_weighted_mean).pipe(regrid).pipe(replace_x_y_nominal_lat_lon).sel(y=slice(min_lat, max_lat), x=slice(min_lon, max_lon)).compute()
+    plt_data['CERES'] = ceres_ebaf[var1].pipe(time_weighted_mean).pipe(regrid).pipe(replace_x_y_nominal_lat_lon).sel(y=slice(min_lat, max_lat), x=slice(min_lon, max_lon)).compute()
     plt_mean = plt_data['CERES'].weighted(np.cos(np.deg2rad(plt_data['CERES'].lat))).mean().values
-    ceres_ann = ceres_ebaf_toa[var1].resample({'time': '1YE'}).map(time_weighted_mean).pipe(regrid).pipe(replace_x_y_nominal_lat_lon).sel(y=slice(min_lat, max_lat), x=slice(min_lon, max_lon)).compute()
+    ceres_ann = ceres_ebaf[var1].resample({'time': '1YE'}).map(time_weighted_mean).pipe(regrid).pipe(replace_x_y_nominal_lat_lon).sel(y=slice(min_lat, max_lat), x=slice(min_lon, max_lon)).compute()
     
     plt_data['ERA5/CERES - 1'] = ((era5_sl_mon_alltime['mon'].sel(time=slice('2001', '2014')).pipe(time_weighted_mean).pipe(regrid).pipe(replace_x_y_nominal_lat_lon).sel(y=slice(min_lat, max_lat), x=slice(min_lon, max_lon)) / plt_data['CERES'] - 1) * 100).compute()
     plt_rmse['ERA5/CERES - 1'] = np.sqrt(np.square(plt_data['ERA5/CERES - 1']).weighted(np.cos(np.deg2rad(plt_data['ERA5/CERES - 1'].lat))).mean()).values
@@ -670,13 +729,13 @@ stats.describe(plt_data[plt_colnames[3]].values, axis=None, nan_policy='omit')
 # region plot CERES and BARRA-C2 ann
 
 # import data
-ceres_ebaf_toa = xr.open_dataset('data/obs/CERES/CERES_EBAF-TOA_Ed4.2.1_Subset_200003-202411.nc')
-ceres_ebaf_toa = ceres_ebaf_toa.rename({
+ceres_ebaf = xr.open_dataset('data/obs/CERES/CERES_EBAF-TOA_Ed4.2.1_Subset_200003-202411.nc')
+ceres_ebaf = ceres_ebaf.rename({
     'toa_sw_all_mon': 'mtuwswrf',
     'toa_lw_all_mon': 'mtnlwrf',
     'solar_mon': 'mtdwswrf'})
-ceres_ebaf_toa['mtuwswrf'] *= (-1)
-ceres_ebaf_toa['mtnlwrf'] *= (-1)
+ceres_ebaf['mtuwswrf'] *= (-1)
+ceres_ebaf['mtnlwrf'] *= (-1)
 
 mpl.rc('font', family='Times New Roman', size=10)
 extent = [110.58, 157.34, -43.69, -7.01]
@@ -718,7 +777,7 @@ for var2 in ['rsut']:
             axs[irow, jcol] = regional_plot(
                 extent=extent, central_longitude=180, ax_org=axs[irow, jcol])
             
-            ceres_ann = ceres_ebaf_toa[var1].sel(time=slice(str(year), str(year))).pipe(time_weighted_mean).pipe(regrid).pipe(replace_x_y_nominal_lat_lon).sel(y=slice(min_lat, max_lat), x=slice(min_lon, max_lon))
+            ceres_ann = ceres_ebaf[var1].sel(time=slice(str(year), str(year))).pipe(time_weighted_mean).pipe(regrid).pipe(replace_x_y_nominal_lat_lon).sel(y=slice(min_lat, max_lat), x=slice(min_lon, max_lon))
             barra_c2_ann = barra_c2_mon_alltime['ann'].sel(time=slice(str(year), str(year))).squeeze()
             if ((irow==0) & (jcol==0)):
                 regridder = xe.Regridder(barra_c2_ann, ceres_ann, method='bilinear')
@@ -764,13 +823,13 @@ var2 = 'rsut'
 var1 = cmip6_era5_var[var2]
 
 # import data
-ceres_ebaf_toa = xr.open_dataset('data/obs/CERES/CERES_EBAF-TOA_Ed4.2.1_Subset_200003-202411.nc').sel(time=slice(str(year), str(year)))
-ceres_ebaf_toa = ceres_ebaf_toa.rename({
+ceres_ebaf = xr.open_dataset('data/obs/CERES/CERES_EBAF-TOA_Ed4.2.1_Subset_200003-202411.nc').sel(time=slice(str(year), str(year)))
+ceres_ebaf = ceres_ebaf.rename({
     'toa_sw_all_mon': 'mtuwswrf',
     'toa_lw_all_mon': 'mtnlwrf',
     'solar_mon': 'mtdwswrf'})
-ceres_ebaf_toa['mtuwswrf'] *= (-1)
-ceres_ebaf_toa['mtnlwrf'] *= (-1)
+ceres_ebaf['mtuwswrf'] *= (-1)
+ceres_ebaf['mtnlwrf'] *= (-1)
 
 with open(f'data/sim/um/barra_c2/barra_c2_mon_alltime_{var2}.pkl','rb') as f:
     barra_c2_mon_alltime = pickle.load(f)
@@ -794,7 +853,7 @@ for irow in range(nrow):
     for jcol in range(ncol):
         axs[irow, jcol] = regional_plot(extent=[min_lon, max_lon, min_lat, max_lat], central_longitude=180, ax_org=axs[irow, jcol])
         
-        ceres_mon = ceres_ebaf_toa[var1][irow*4+jcol].pipe(regrid).pipe(replace_x_y_nominal_lat_lon).sel(y=slice(min_lat, max_lat), x=slice(min_lon, max_lon)).compute()
+        ceres_mon = ceres_ebaf[var1][irow*4+jcol].pipe(regrid).pipe(replace_x_y_nominal_lat_lon).sel(y=slice(min_lat, max_lat), x=slice(min_lon, max_lon)).compute()
         barra_c2_mon = regrid(barra_c2_mon_alltime['mon'].sel(time=slice(str(year), str(year)))[irow*4+jcol], ds_out=ceres_mon)
         plt_data = (barra_c2_mon - ceres_mon).compute()
         plt_rmse = np.sqrt(np.square(plt_data).weighted(np.cos(np.deg2rad(plt_data.lat))).mean()).values
@@ -826,13 +885,13 @@ fig.savefig(f'figures/4_um/4.0_barra/4.0.0_whole region/4.0.0.1 ceres vs. barra_
 # region plot CERES and BARRA-C2 mm
 
 # import data
-ceres_ebaf_toa = xr.open_dataset('data/obs/CERES/CERES_EBAF-TOA_Ed4.2.1_Subset_200003-202411.nc')
-ceres_ebaf_toa = ceres_ebaf_toa.rename({
+ceres_ebaf = xr.open_dataset('data/obs/CERES/CERES_EBAF-TOA_Ed4.2.1_Subset_200003-202411.nc')
+ceres_ebaf = ceres_ebaf.rename({
     'toa_sw_all_mon': 'mtuwswrf',
     'toa_lw_all_mon': 'mtnlwrf',
     'solar_mon': 'mtdwswrf'})
-ceres_ebaf_toa['mtuwswrf'] *= (-1)
-ceres_ebaf_toa['mtnlwrf'] *= (-1)
+ceres_ebaf['mtuwswrf'] *= (-1)
+ceres_ebaf['mtnlwrf'] *= (-1)
 
 mpl.rc('font', family='Times New Roman', size=10)
 extent = [110.58, 157.34, -43.69, -7.01]
@@ -872,7 +931,7 @@ for var2 in ['rsut']:
             axs[irow, jcol] = regional_plot(
                 extent=extent, central_longitude=180, ax_org=axs[irow, jcol])
             
-            ceres_mon = ceres_ebaf_toa[var1][ceres_ebaf_toa[var1].time.dt.month==(irow*4+jcol+1)].sel(time=slice('2016', '2023')).pipe(regrid).pipe(replace_x_y_nominal_lat_lon).sel(y=slice(min_lat, max_lat), x=slice(min_lon, max_lon))
+            ceres_mon = ceres_ebaf[var1][ceres_ebaf[var1].time.dt.month==(irow*4+jcol+1)].sel(time=slice('2016', '2023')).pipe(regrid).pipe(replace_x_y_nominal_lat_lon).sel(y=slice(min_lat, max_lat), x=slice(min_lon, max_lon))
             ceres_mm = ceres_mon.mean(dim='time')
             barra_c2_mon = barra_c2_mon_alltime['mon'][barra_c2_mon_alltime['mon'].time.dt.month==(irow*4+jcol+1)].sel(time=slice('2016', '2023')).compute()
             if ((irow==0) & (jcol==0)):
