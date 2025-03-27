@@ -1,6 +1,6 @@
 
 
-# qsub -I -q express -l walltime=4:00:00,ncpus=1,mem=192GB,storage=gdata/v46+gdata/rt52+gdata/ob53
+# qsub -I -q express -l walltime=1:00:00,ncpus=1,mem=192GB,storage=gdata/v46+gdata/rt52+gdata/ob53
 
 
 # region import packages
@@ -13,6 +13,7 @@ dask.config.set({"array.slicing.split_large_chunks": True})
 # from dask.diagnostics import ProgressBar
 # pbar = ProgressBar()
 # pbar.register()
+import joblib
 
 # management
 import os
@@ -318,5 +319,166 @@ np.max(np.abs(era5_sl_mon_alltime['mtuwswrfcl']['am'].values - era5_sl_mon_allti
 '''
 # endregion
 
+
+# region get era5 hourly data
+
+
+var = 'lcc' # ['lcc', 'mcc', 'hcc', 'tcc', 'tp', '2t']
+print(f'#-------------------------------- {var}')
+odir = f'scratch/data/obs/era5/{var}'
+os.makedirs(odir, exist_ok=True)
+
+# year=2020; month=1
+def process_year_month(year, month, var, odir):
+    print(f'#---------------- {year} {month:02d}')
+    
+    ifile = glob.glob(f'/g/data/rt52/era5/single-levels/reanalysis/{var}/{year}/{var}_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}??.nc')[0]
+    if var == '2t': var='t2m'
+    if var == '10si': var='si10'
+    if var == '2d': var='d2m'
+    if var == '10u': var='u10'
+    if var == '10v': var='v10'
+    if var == '100u': var='u100'
+    if var == '100v': var='v100'
+    ofile = f'{odir}/{var}_hourly_{year}{month:02d}.nc'
+    ds = xr.open_dataset(ifile, chunks={}).rename({'latitude': 'lat', 'longitude': 'lon'})[var]
+    
+    if var in ['tp', 'e', 'cp', 'lsp', 'pev']:
+        ds = ds * 1000
+    elif var in ['msl']:
+        ds = ds / 100
+    elif var in ['sst', 't2m', 'd2m', 'skt']:
+        ds = ds - zerok
+    elif var in ['hcc', 'mcc', 'lcc', 'tcc']:
+        ds = ds * 100
+    elif var in ['z']:
+        ds = ds / 9.80665
+    elif var in ['mper']:
+        ds = ds * seconds_per_d
+    
+    if var in ['e', 'pev', 'mper']:
+        ds = ds * (-1)
+    
+    ds = ds.groupby('time.hour').mean().astype(np.float32).expand_dims(dim={'time': [ds.time[0].values]}).compute()
+    
+    if os.path.exists(ofile): os.remove(ofile)
+    ds.to_netcdf(ofile)
+    
+    del ds
+    return f'Finished processing {ofile}'
+
+
+joblib.Parallel(n_jobs=48)(joblib.delayed(process_year_month)(year, month, var, odir) for year in range(1979, 2024) for month in range(1, 13))
+
+
+
+
+'''
+#-------------------------------- check
+
+year=2023; month=12
+
+for var in ['lcc', 'mcc', 'hcc', 'tcc', 'tp', '2t']:
+    # var = 'lcc'
+    print(f'#-------------------------------- {var}')
+    odir = f'scratch/data/obs/era5/{var}'
+    
+    ifile = glob.glob(f'/g/data/rt52/era5/single-levels/reanalysis/{var}/{year}/{var}_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}??.nc')[0]
+    if var == '2t': var='t2m'
+    if var == '10si': var='si10'
+    if var == '2d': var='d2m'
+    if var == '10u': var='u10'
+    if var == '10v': var='v10'
+    if var == '100u': var='u100'
+    if var == '100v': var='v100'
+    ofile = f'{odir}/{var}_hourly_{year}{month:02d}.nc'
+    
+    ds = xr.open_dataset(ifile, chunks={}).rename({'latitude': 'lat', 'longitude': 'lon'})[var]
+    if var in ['tp', 'e', 'cp', 'lsp', 'pev']:
+        ds = ds * 1000
+    elif var in ['msl']:
+        ds = ds / 100
+    elif var in ['sst', 't2m', 'd2m', 'skt']:
+        ds = ds - zerok
+    elif var in ['hcc', 'mcc', 'lcc', 'tcc']:
+        ds = ds * 100
+    elif var in ['z']:
+        ds = ds / 9.80665
+    elif var in ['mper']:
+        ds = ds * seconds_per_d
+    
+    if var in ['e', 'pev', 'mper']:
+        ds = ds * (-1)
+    
+    ds = ds.groupby('time.hour').mean().astype(np.float32).expand_dims(dim={'time': [ds.time[0].values]}).compute()
+    
+    ds_out = xr.open_dataset(ofile)[var]
+    
+    print((ds.values == ds_out.values).all())
+
+'''
+# endregion
+
+
+# region get era5 alltime hourly data
+
+
+for var in ['2t']:
+    # var = 'lcc'
+    # ['lcc', 'mcc', 'hcc', 'tcc', 'tp', '2t']
+    print(f'#-------------------------------- {var}')
+    odir = f'scratch/data/obs/era5/{var}'
+    
+    if var == '2t': var='t2m'
+    if var == '10si': var='si10'
+    if var == '2d': var='d2m'
+    if var == '10u': var='u10'
+    if var == '10v': var='v10'
+    if var == '100u': var='u100'
+    if var == '100v': var='v100'
+    
+    fl = sorted(glob.glob(f'{odir}/{var}_hourly_*.nc'))
+    era5_hourly = xr.open_mfdataset(fl)[var].sel(time=slice('1979', '2023'))
+    era5_hourly_alltime = mon_sea_ann(
+        var_monthly=era5_hourly, lcopy=False, mm=True, sm=True, am=True)
+    
+    ofile = f'data/obs/era5/hourly/era5_hourly_alltime_{var}.pkl'
+    if os.path.exists(ofile): os.remove(ofile)
+    with open(ofile,'wb') as f:
+        pickle.dump(era5_hourly_alltime, f)
+    
+    del era5_hourly, era5_hourly_alltime
+
+
+
+
+'''
+#-------------------------------- check
+ifile = -1
+for var in ['2t']:
+    # var = 'lcc'
+    # ['lcc', 'mcc', 'hcc', 'tcc', 'tp', '2t']
+    print(f'#-------------------------------- {var}')
+    odir = f'scratch/data/obs/era5/{var}'
+    
+    if var == '2t': var='t2m'
+    if var == '10si': var='si10'
+    if var == '2d': var='d2m'
+    if var == '10u': var='u10'
+    if var == '10v': var='v10'
+    if var == '100u': var='u100'
+    if var == '100v': var='v100'
+    
+    fl = sorted(glob.glob(f'{odir}/{var}_hourly_*.nc'))
+    ds = xr.open_dataset(fl[ifile])
+    
+    with open(f'data/obs/era5/hourly/era5_hourly_alltime_{var}.pkl','rb') as f:
+        era5_hourly_alltime = pickle.load(f)
+    
+    print((era5_hourly_alltime['mon'][ifile] == ds[var].squeeze()).all().values)
+
+
+'''
+# endregion
 
 

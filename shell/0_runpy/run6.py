@@ -57,7 +57,7 @@ def process_year_month(year, month, var, odir):
     return f'Finished processing {ofile}'
 
 
-joblib.Parallel(n_jobs=48)(joblib.delayed(process_year_month)(year, month, var, odir) for year in range(1979, 2024) for month in range(1, 13))
+joblib.Parallel(n_jobs=12)(joblib.delayed(process_year_month)(year, month, var, odir) for year in range(1979, 2024) for month in range(1, 13))
 
 
 # endregion

@@ -21,7 +21,7 @@ from namelist import zerok, seconds_per_d
 # region get era5 hourly data
 
 
-var = 'mcc' # ['lcc', 'mcc', 'hcc', 'tcc', 'tp', '2t']
+var = '2t' # ['lcc', 'mcc', 'hcc', 'tcc', 'tp', '2t']
 print(f'#-------------------------------- {var}')
 odir = f'scratch/data/obs/era5/{var}'
 os.makedirs(odir, exist_ok=True)
