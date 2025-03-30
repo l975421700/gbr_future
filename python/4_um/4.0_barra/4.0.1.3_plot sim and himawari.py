@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -l walltime=5:00:00,ncpus=1,mem=192GB,jobfs=100MB,storage=gdata/v46+gdata/rt52+gdata/ob53+gdata/zv2+scratch/v46
+# qsub -I -q express -l walltime=5:00:00,ncpus=1,mem=192GB,jobfs=100MB,storage=gdata/v46+gdata/rt52+gdata/ob53+gdata/zv2+scratch/v46
 
 
 # region import packages
@@ -758,4 +758,138 @@ for ids in ['ERA5', 'BARRA-R2', 'BARRA-C2']:
 # endregion
 
 
+# region plot Himawari, ERA5, BARRA-R2, BARRA-C2, BARPA-C am
+
+years='2016'
+yeare='2021'
+
+with open('/scratch/v46/qg8515/data/obs/jaxa/clp/cltype_frequency_alltime.pkl', 'rb') as f:
+    cltype_frequency_alltime = pickle.load(f)
+
+mpl.rc('font', family='Times New Roman', size=8)
+plt_colnames = ['Himawari', 'ERA5 - Himawari', 'BARRA-R2 - Himawari', 'BARRA-C2 - Himawari', 'BARPA-C - Himawari']
+min_lon, max_lon, min_lat, max_lat = [110.58, 157.34, -43.69, -7.01]
+
+for var2 in ['cll']:
+    # var2='cll'
+    var1 = cmip6_era5_var[var2]
+    print(f'#-------------------------------- {var1} and {var2}')
+    
+    with open(f'data/obs/era5/mon/era5_sl_mon_alltime_{var1}.pkl', 'rb') as f:
+        era5_sl_mon_alltime = pickle.load(f)
+    with open(f'data/sim/um/barra_r2/barra_r2_mon_alltime_{var2}.pkl','rb') as f:
+        barra_r2_mon_alltime = pickle.load(f)
+    with open(f'data/sim/um/barra_c2/barra_c2_mon_alltime_{var2}.pkl','rb') as f:
+        barra_c2_mon_alltime = pickle.load(f)
+    with open(f'data/sim/um/barpa_c/barpa_c_mon_alltime_{var2}.pkl','rb') as f:
+        barpa_c_mon_alltime = pickle.load(f)
+    
+    plt_data = {}
+    plt_rmse = {}
+    
+    if var2=='cll':
+        himawari_ann = cltype_frequency_alltime['ann'].sel(types=['Cumulus', 'Stratocumulus', 'Stratus'])
+    elif var2=='clm':
+        himawari_ann = cltype_frequency_alltime['ann'].sel(types=['Altocumulus', 'Altostratus', 'Nimbostratus'])
+    elif var2=='clh':
+        himawari_ann = cltype_frequency_alltime['ann'].sel(types=['Cirrus', 'Cirrostratus', 'Deep convection'])
+    elif var2=='clt':
+        himawari_ann = cltype_frequency_alltime['ann'].sel(types=['Cumulus', 'Stratocumulus', 'Stratus', 'Altocumulus', 'Altostratus', 'Nimbostratus', 'Cirrus', 'Cirrostratus', 'Deep convection'])
+    himawari_ann = himawari_ann.sum(dim='types').sel(time=slice(years, yeare), lat=slice(max_lat, min_lat), lon=slice(min_lon, max_lon))
+    plt_data['Himawari'] = himawari_ann.mean(dim='time')
+    plt_mean = plt_data['Himawari'].weighted(np.cos(np.deg2rad(plt_data['Himawari'].lat))).mean().values
+    
+    era5_ann = regrid(era5_sl_mon_alltime['ann'].sel(time=slice(years, yeare)), ds_out=plt_data['Himawari'])
+    plt_data['ERA5 - Himawari'] = (era5_ann.mean(dim='time') - plt_data['Himawari']).compute()
+    plt_rmse['ERA5 - Himawari'] = np.sqrt(np.square(plt_data['ERA5 - Himawari']).weighted(np.cos(np.deg2rad(plt_data['ERA5 - Himawari'].lat))).mean()).values
+    ttest_fdr_res = ttest_fdr_control(himawari_ann, era5_ann)
+    plt_data['ERA5 - Himawari'] = plt_data['ERA5 - Himawari'].where(ttest_fdr_res, np.nan)
+    
+    barra_r2_ann = regrid(barra_r2_mon_alltime['ann'].sel(time=slice(years, yeare)), ds_out=plt_data['Himawari'])
+    plt_data['BARRA-R2 - Himawari'] = (barra_r2_ann.mean(dim='time') - plt_data['Himawari']).compute()
+    plt_rmse['BARRA-R2 - Himawari'] = np.sqrt(np.square(plt_data['BARRA-R2 - Himawari']).weighted(np.cos(np.deg2rad(plt_data['BARRA-R2 - Himawari'].lat))).mean()).values
+    ttest_fdr_res = ttest_fdr_control(himawari_ann, barra_r2_ann)
+    plt_data['BARRA-R2 - Himawari'] = plt_data['BARRA-R2 - Himawari'].where(ttest_fdr_res, np.nan)
+    
+    barra_c2_ann = regrid(barra_c2_mon_alltime['ann'].sel(time=slice(years, yeare)), ds_out=plt_data['Himawari'])
+    plt_data['BARRA-C2 - Himawari'] = (barra_c2_ann.mean(dim='time') - plt_data['Himawari']).compute()
+    plt_rmse['BARRA-C2 - Himawari'] = np.sqrt(np.square(plt_data['BARRA-C2 - Himawari']).weighted(np.cos(np.deg2rad(plt_data['BARRA-C2 - Himawari'].lat))).mean()).values
+    ttest_fdr_res = ttest_fdr_control(himawari_ann, barra_c2_ann)
+    plt_data['BARRA-C2 - Himawari'] = plt_data['BARRA-C2 - Himawari'].where(ttest_fdr_res, np.nan)
+    
+    barpa_c_ann = regrid(barpa_c_mon_alltime['ann'].sel(time=slice(years, yeare)), ds_out=plt_data['Himawari'])
+    plt_data['BARPA-C - Himawari'] = (barpa_c_ann.mean(dim='time') - plt_data['Himawari']).compute()
+    plt_rmse['BARPA-C - Himawari'] = np.sqrt(np.square(plt_data['BARPA-C - Himawari']).weighted(np.cos(np.deg2rad(plt_data['BARPA-C - Himawari'].lat))).mean()).values
+    ttest_fdr_res = ttest_fdr_control(himawari_ann, barpa_c_ann)
+    plt_data['BARPA-C - Himawari'] = plt_data['BARPA-C - Himawari'].where(ttest_fdr_res, np.nan)
+    
+    print(stats.describe(plt_data['Himawari'].values, axis=None, nan_policy='omit'))
+    print(stats.describe(np.concatenate([plt_data[colname].values for colname in plt_colnames[1:]]), axis=None, nan_policy='omit'))
+    
+    cbar_label1 = f'{years}-{yeare} ' + era5_varlabels[var1]
+    cbar_label2 = f'Difference in {years}-{yeare} ' + era5_varlabels[var1]
+    extend1 = 'neither'
+    extend2 = 'both'
+    
+    if var2 in ['clh', 'clm', 'cll', 'clt']:
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=0, cm_max=100, cm_interval1=10, cm_interval2=10, cmap='viridis_r',)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-30, cm_max=30, cm_interval1=5, cm_interval2=10, cmap='BrBG_r',)
+    
+    nrow=1
+    ncol=len(plt_colnames)
+    fm_bottom=1.5/(4*nrow+1.5)
+    
+    fig, axs = plt.subplots(
+        nrow, ncol, figsize=np.array([4.4*ncol, 4*nrow + 1.5]) / 2.54,
+        subplot_kw={'projection': ccrs.PlateCarree(central_longitude=180)},
+        gridspec_kw={'hspace': 0.01, 'wspace': 0.01},)
+    
+    for jcol in range(ncol):
+        axs[jcol] = regional_plot(extent=[min_lon, max_lon, min_lat, max_lat], central_longitude=180, ax_org=axs[jcol])
+        if jcol==0:
+            plt_text = f'({string.ascii_lowercase[jcol]}) {plt_colnames[jcol]}, Mean: {np.round(plt_mean, 1)}'
+        elif jcol==1:
+            plt_text = f'({string.ascii_lowercase[jcol]}) {plt_colnames[jcol]}, RMSE: {np.round(plt_rmse[plt_colnames[jcol]], 1)}'
+        else:
+            plt_text = f'({string.ascii_lowercase[jcol]}) {plt_colnames[jcol]}, {np.round(plt_rmse[plt_colnames[jcol]], 1)}'
+        axs[jcol].text(0, 1.02, plt_text, ha='left', va='bottom', transform=axs[jcol].transAxes, size=8)
+    
+    plt_mesh1 = axs[0].pcolormesh(
+            plt_data[plt_colnames[0]].lon,
+            plt_data[plt_colnames[0]].lat,
+            plt_data[plt_colnames[0]].values,
+            norm=pltnorm1, cmap=pltcmp1, transform=ccrs.PlateCarree(),zorder=1)
+    for jcol in range(ncol-1):
+        plt_mesh2 = axs[jcol+1].pcolormesh(
+            plt_data[plt_colnames[jcol+1]].lon,
+            plt_data[plt_colnames[jcol+1]].lat,
+            plt_data[plt_colnames[jcol+1]].values,
+            norm=pltnorm2, cmap=pltcmp2, transform=ccrs.PlateCarree(),zorder=1)
+    
+    cbar1 = fig.colorbar(
+        plt_mesh1, #cm.ScalarMappable(norm=pltnorm1, cmap=pltcmp1), #
+        format=remove_trailing_zero_pos,
+        orientation="horizontal", ticks=pltticks1, extend=extend1,
+        cax=fig.add_axes([0.05, fm_bottom-0.05, 0.4, 0.05]))
+    cbar1.ax.set_xlabel(cbar_label1)
+    cbar2 = fig.colorbar(
+        plt_mesh2, #cm.ScalarMappable(norm=pltnorm2, cmap=pltcmp2), #
+        format=remove_trailing_zero_pos,
+        orientation="horizontal", ticks=pltticks2, extend=extend2,
+        cax=fig.add_axes([0.55, fm_bottom-0.05, 0.4, 0.05]))
+    cbar2.ax.set_xlabel(cbar_label2)
+    
+    fig.subplots_adjust(left=0.005, right=0.995, bottom=fm_bottom, top=0.95)
+    fig.savefig(f'figures/4_um/4.0_barra/4.0.0_whole region/4.0.0.1 himawari vs. era5, barra_r2_c2, and barpa_c am {var1}.png')
+    
+    del era5_sl_mon_alltime, barra_r2_mon_alltime, barra_c2_mon_alltime
+
+
+
+
+'''
+'''
+# endregion
 

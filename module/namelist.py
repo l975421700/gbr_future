@@ -63,6 +63,7 @@ ds_color = {
     'ERA5': 'tab:blue',
     'BARRA-R2': 'tab:orange',
     'BARRA-C2': 'tab:green',
+    'BARPA-C': 'tab:purple',
 }
 
 # endregion
