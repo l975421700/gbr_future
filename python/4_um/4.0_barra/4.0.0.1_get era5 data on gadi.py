@@ -323,7 +323,7 @@ np.max(np.abs(era5_sl_mon_alltime['mtuwswrfcl']['am'].values - era5_sl_mon_allti
 # region get era5 hourly data
 
 
-var = 'lcc' # ['lcc', 'mcc', 'hcc', 'tcc', 'tp', '2t']
+var = 'lcc' # ['tcwv', 'tclw', 'tciw', 'lcc', 'mcc', 'hcc', 'tcc', 'tp', '2t']
 print(f'#-------------------------------- {var}')
 odir = f'scratch/data/obs/era5/{var}'
 os.makedirs(odir, exist_ok=True)

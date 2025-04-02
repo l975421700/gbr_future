@@ -118,7 +118,7 @@ month=args.month
 # year=1988; month=4
 print(f'#-------------------------------- {year} {month:02d}')
 
-for var in ['clh', 'clm', 'cll', 'clt', 'pr', 'tas']:
+for var in ['clivi', 'clwvi', 'prw']:
     # var = 'cll'
     print(f'#---------------- {var}')
     

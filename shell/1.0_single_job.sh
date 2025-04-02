@@ -1,20 +1,20 @@
 #PBS -N single_job
-#PBS -q hugemem
-#PBS -l walltime=01:00:00
-#PBS -l mem=1470GB
+#PBS -q megamem
+#PBS -l walltime=48:00:00
+#PBS -l mem=2990GB
 #PBS -l jobfs=100MB
-#PBS -l ncpus=12
+#PBS -l ncpus=1
 #PBS -j oe
 #PBS -l storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public
 #PBS -P v46
 #PBS -r y
 
 cd $HOME
-module load python3/3.12.1
-/apps/python3/3.12.1/bin/python3 ${HOME}/code/gbr_future/shell/0_runpy/run1.py
+# module load python3/3.12.1
+# /apps/python3/3.12.1/bin/python3 ${HOME}/code/gbr_future/shell/0_runpy/run3.py
 
-# source ${HOME}/miniconda3/bin/activate lowclouds
-# ${HOME}/miniconda3/envs/lowclouds/bin/python ${HOME}/code/gbr_future/shell/0_runpy/run1.py
+source ${HOME}/miniconda3/bin/activate lowclouds
+${HOME}/miniconda3/envs/lowclouds/bin/python ${HOME}/code/gbr_future/shell/0_runpy/run3.py
 
 # ${HOME}/code/gbr_future/shell/2.0_get_clean_jaxa.sh 2015 07
 

@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -l walltime=5:00:00,ncpus=1,mem=192GB,jobfs=100MB,storage=gdata/v46+scratch/v46
+# qsub -I -q normal -l walltime=3:00:00,ncpus=1,mem=12GB,jobfs=100MB,storage=gdata/v46+scratch/v46+gdata/rt52+gdata/ob53+gdata/zv2+gdata/ra22
 
 
 # region import packages
@@ -25,7 +25,7 @@ import glob
 # plot
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-from matplotlib.colors import BoundaryNorm
+from matplotlib.colors import BoundaryNorm, ListedColormap
 from matplotlib import cm
 import cartopy.crs as ccrs
 plt.rcParams['pcolor.shading'] = 'auto'
@@ -41,6 +41,8 @@ import matplotlib.patches as mpatches
 from matplotlib.lines import Line2D
 import cartopy.feature as cfeature
 from matplotlib.patches import Rectangle
+import matplotlib.ticker as mticker
+import matplotlib.animation as animation
 
 # management
 import os
@@ -209,8 +211,6 @@ for icltype in ['hcc', 'mcc', 'lcc', 'tcc']:
 # endregion
 
 
-
-
 # region plot the frequency
 
 opng = 'figures/3_satellites/3.0_hamawari/3.0.0_cltype_frequency_2016.png'
@@ -337,4 +337,91 @@ fig.subplots_adjust(left=0.01, right = 0.99, bottom = 0.12, top = 0.99)
 fig.savefig(opng)
 
 
+# endregion
+
+
+# region plot ISCCP classification
+
+ISCCP_types = {'Clear': 0,
+               'Cirrus': 1, 'Cirrostratus': 2, 'Deep convection': 3,
+               'Altocumulus': 4, 'Altostratus': 5, 'Nimbostratus':6,
+               'Cumulus':7, 'Stratocumulus': 8, 'Stratus': 9,
+               'Unknown':10}
+
+year, month, day, hour, minute = 2020, 7, 1, 0, 0
+
+ds_cltype = xr.open_dataset(f'/scratch/v46/qg8515/data/obs/jaxa/clp/{year}{month:02d}/{day:02d}/{hour:02d}/CLTYPE_{year}{month:02d}{day:02d}{hour:02d}{minute:02d}.nc').CLTYPE.squeeze()
+
+# plot ds_cltype
+
+opng = f'figures/3_satellites/3.0_hamawari/3.0.1_cltype/3.0.1.1 himawari ISCCP cltype {year}{month:02d}{day:02d}{hour:02d}{minute:02d}.png'
+extent = [-5499500., 5499500., -5499500., 5499500.]
+transform = ccrs.Geostationary(central_longitude=140.7, satellite_height=35785863.0)
+
+plt_text = f'{year}-{month:02d}-{day:02d} {hour:02d}:{minute:02d} UTC\nISCCP Cloud Types Himawari 8/9'
+
+fig, ax = plt.subplots(figsize=np.array([7+2.5, 7+1])/2.54, subplot_kw={'projection': transform})
+
+coastline = cfeature.NaturalEarthFeature(
+    'physical', 'coastline', '10m', edgecolor='yellow',
+    facecolor='none', lw=0.1)
+ax.add_feature(coastline, zorder=2, alpha=0.75)
+borders = cfeature.NaturalEarthFeature(
+    'cultural', 'admin_0_boundary_lines_land', '10m',
+    edgecolor='yellow', facecolor='none', lw=0.1)
+ax.add_feature(borders, zorder=2, alpha=0.75)
+gl = ax.gridlines(
+    crs=ccrs.PlateCarree(), lw=0.1, zorder=2, alpha=0.35,
+    color='yellow', linestyle='--',)
+gl.xlocator = mticker.FixedLocator(np.arange(0, 360 + 1e-4, 10))
+gl.ylocator = mticker.FixedLocator(np.arange(-90, 90 + 1e-4, 10))
+plt.text(0.5, -0.03, plt_text, transform=ax.transAxes, fontsize=8,
+         ha='center', va='top', rotation='horizontal', linespacing=1.5)
+
+colors = {
+    'Clear': (1, 1, 1, 0),
+    'Cirrus': plt.cm.colors.to_rgba('pink'),
+    'Cirrostratus': plt.cm.colors.to_rgba('tab:pink'),
+    'Deep convection': plt.cm.colors.to_rgba('tab:red'),
+    'Altocumulus': plt.cm.colors.to_rgba('tab:brown'),
+    'Altostratus': plt.cm.colors.to_rgba('tab:gray'),
+    'Nimbostratus': plt.cm.colors.to_rgba('lightgray'),
+    'Cumulus': plt.cm.colors.to_rgba('tab:blue'),
+    'Stratocumulus': plt.cm.colors.to_rgba('deepskyblue'),
+    'Stratus': plt.cm.colors.to_rgba('cyan'),
+    'Unknown': (0, 0, 0, 1),
+}
+pltcmp = ListedColormap([colors[itype] for itype in ISCCP_types])
+pltlevel = np.arange(len(ISCCP_types) + 1) - 0.5
+pltticks = np.arange(len(ISCCP_types))
+pltnorm = BoundaryNorm(pltlevel, len(ISCCP_types))
+
+plt_mesh = ax.pcolormesh(
+    ds_cltype.longitude, ds_cltype.latitude, ds_cltype,
+    norm=pltnorm,
+    cmap=pltcmp, transform=ccrs.PlateCarree())
+ax.imshow(np.ones((100,100,3)),extent=extent,transform=transform,zorder=0)
+
+cbar = fig.colorbar(
+    plt_mesh,
+    format=remove_trailing_zero_pos,
+    orientation="vertical", ticks=pltticks, extend='neither',
+    cax=fig.add_axes([7.05/(7+2.5), 0.5/(7+1), 0.02, 0.9]))
+cbar.ax.minorticks_off()
+cbar.ax.set_yticklabels(list(colors.keys()), fontsize=8)
+cbar.ax.tick_params(length=2, width=0.5)
+
+fig.subplots_adjust(left=0.01, right=1-2.5/(7+2.5), bottom=1/(7+1), top=0.99)
+fig.savefig(opng)
+plt.close()
+
+
+
+
+'''
+colors = plt.get_cmap('viridis', len(ISCCP_types))
+pltcmp = {key: colors(i) for i, key in enumerate(ISCCP_types.keys())}
+bounds = np.arange(len(ISCCP_types) + 1) - 0.5
+pltnorm = plt.Normalize(vmin=0, vmax=len(ISCCP_types) - 1)
+'''
 # endregion

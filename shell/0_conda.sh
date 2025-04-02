@@ -29,6 +29,7 @@ mamba install geopandas -y
 mamba install rioxarray -y
 mamba install mscorefonts -y
 mamba install statsmodels -y
+mamba install ffmpeg -y
 
 
 #-------------------------------- Other packages

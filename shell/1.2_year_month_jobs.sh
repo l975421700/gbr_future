@@ -3,10 +3,10 @@ for year in $(seq 1979 2023); do
         # month=$(printf '%02d' $month)
         echo $year $month
         qsub -v year=$year,month=$month <<EOF
-#PBS -N qjob_${year}_${month}
+#PBS -N qjob_${year}_$(printf '%02d' $month)
 #PBS -q express
-#PBS -l walltime=00:30:00
-#PBS -l mem=30GB
+#PBS -l walltime=2:00:00
+#PBS -l mem=192GB
 #PBS -l jobfs=100MB
 #PBS -l ncpus=1
 #PBS -j oe
@@ -15,11 +15,16 @@ for year in $(seq 1979 2023); do
 #PBS -r y
 
 cd ${HOME}
-# source ${HOME}/miniconda3/bin/activate lowclouds
-# python ${HOME}/code/gbr_future/shell/0_runpy/run4.py -y $year -m $month
+source ${HOME}/miniconda3/bin/activate lowclouds
+python ${HOME}/code/gbr_future/shell/0_runpy/run7.py -y $year -m $month
 
-module load python3/3.12.1
-/apps/python3/3.12.1/bin/python3 ${HOME}/code/gbr_future/shell/0_runpy/run7.py -y $year -m $month
+# module load python3/3.12.1
+# from IPython import start_ipython; start_ipython()
+# /apps/python3/3.12.1/bin/python3 ${HOME}/code/gbr_future/shell/0_runpy/run1.py -y $year -m $month
+
+# module use /g/data/hh5/public/modules
+# module load conda/analysis3 # Python 3.10.14, no pickle
+
 
 # ${HOME}/code/gbr_future/shell/2.0_get_clean_jaxa.sh $year $month
 

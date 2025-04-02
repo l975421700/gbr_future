@@ -10,19 +10,30 @@ dask.config.set({"array.slicing.split_large_chunks": True})
 from dask.diagnostics import ProgressBar
 pbar = ProgressBar()
 pbar.register()
+from cdo import Cdo
+cdo=Cdo()
+import tempfile
+import joblib
 import argparse
 
 # management
 import os
 import sys  # print(sys.path)
 sys.path.append(os.getcwd() + '/code/gbr_future/module')
+import glob
+import pickle
+import datetime
+from calculations import (
+    mon_sea_ann,
+    )
 
-from namelist import zerok, seconds_per_d
+from namelist import cmip6_units, zerok, seconds_per_d
 
 # endregion
 
 
 # region get BARRA-R2 hourly data
+# 1hour
 
 parser=argparse.ArgumentParser()
 parser.add_argument('-y', '--year', type=int, required=True,)
@@ -31,10 +42,10 @@ args = parser.parse_args()
 
 year=args.year
 month=args.month
-# year=2024; month=1
+# year=1988; month=4
 print(f'#-------------------------------- {year} {month:02d}')
 
-for var in ['clh', 'clm', 'cll', 'clt', 'pr', 'tas']:
+for var in ['clivi', 'clwvi', 'prw']:
     # var = 'cll'
     print(f'#---------------- {var}')
     
@@ -64,10 +75,10 @@ for var in ['clh', 'clm', 'cll', 'clt', 'pr', 'tas']:
 
 '''
 #-------------------------------- check
-var = 'cll' # ['clh', 'clm', 'cll', 'clt', 'pr', 'tas']
+var = 'tas' # ['clh', 'clm', 'cll', 'clt', 'pr', 'tas']
 year = 2020
 month = 1
-ds1 = xr.open_dataset(f'scratch/data/sim/um/barra_r2/{var}/{var}_hourly_{year}{month:02d}.nc', chunks={})
+ds1 = xr.open_dataset(f'scratch/data/sim/um/barra_r2/{var}/{var}_hourly_{year}{month:02d}.nc', chunks={})[var]
 ds2 = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/{var}/latest/{var}_AUS-11_ERA5_historical_hres_BOM_BARRA-R2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc', chunks={})[var]
 if var in ['pr', 'evspsbl', 'evspsblpot']:
     ds2 = ds2 * seconds_per_d
@@ -80,8 +91,8 @@ elif var in ['psl']:
 elif var in ['huss']:
     ds2 = ds2 * 1000
 ds2 = ds2.groupby('time.hour').mean().astype(np.float32).compute()
-print((ds1[var].squeeze() == ds2).all().values)
-
+print((ds1.squeeze() == ds2).all().values)
+del ds1, ds2
 
 
 #-------------------------------- original method
@@ -122,4 +133,3 @@ joblib.Parallel(n_jobs=12)(joblib.delayed(process_year_month)(year, month, var, 
 
 '''
 # endregion
-

@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -l walltime=1:00:00,ncpus=1,mem=192GB,storage=gdata/v46+gdata/rt52+gdata/ob53+gdata/zv2+gdata/ra22
+# qsub -I -q express -l walltime=4:00:00,ncpus=1,mem=10GB,storage=gdata/v46+gdata/rt52+gdata/ob53+gdata/zv2+gdata/ra22
 
 
 # region import packages
@@ -53,9 +53,9 @@ from mapplot import (
 
 start_time = time.perf_counter()
 
-year, month, day, hour, minute = 2020, 7, 1, 8, 0
-# ioption='true_color'
-ioption='night_microphysics'
+year, month, day, hour, minute = 2020, 4, 1, 14, 0
+ioption='true_color'
+# ioption='night_microphysics'
 
 dfolder = Path('/g/data/ra22/satellite-products/arc/obs/himawari-ahi/fldk/latest')
 # dfolder = Path('/g/data/ra22/satellite-products/nrt/obs/himawari-ahi/fldk/latest')
@@ -148,7 +148,7 @@ end_time = time.perf_counter()
 print(f"Execution time: {end_time - start_time:.6f} seconds")
 
 
-del channels, rgb
+# del channels, rgb
 
 
 '''
@@ -196,7 +196,7 @@ Thresholds: https://user.eumetsat.int/resources/case-studies/night-time-fog-over
 
 start_time = time.perf_counter()
 
-year, month, day, hour, minute = 2020, 7, 1, 23, 0
+year, month, day, hour, minute = 2020, 4, 1, 14, 0
 dfolder = Path('/g/data/ra22/satellite-products/arc/obs/himawari-ahi/fldk/latest')
 # dfolder = Path('/g/data/ra22/satellite-products/nrt/obs/himawari-ahi/fldk/latest')
 
@@ -251,11 +251,11 @@ rgb2 = np.clip(rgb2, 0, 1, out=rgb2)
 rgb2 = np.kron(rgb2, np.ones((2, 2, 1)))
 
 luminance = 0.2126 * rgb1[..., 0] + 0.7152 * rgb1[..., 1] + 0.0722 * rgb1[..., 2]
-rgb = np.where((luminance > 0.05)[..., None], rgb1, rgb2)
+rgb = np.where((luminance > 0.15)[..., None], rgb1, rgb2)
 
 
 end_time = time.perf_counter()
-print(f"Execution time: {end_time - start_time:.6f} seconds")
+print(f"Execution time: {end_time - start_time:.1f} seconds")
 start_time = time.perf_counter()
 
 
@@ -285,9 +285,10 @@ fig.savefig(opng, transparent=True)
 plt.close()
 
 end_time = time.perf_counter()
-print(f"Execution time: {end_time - start_time:.6f} seconds")
+print(f"Execution time: {end_time - start_time:.1f} seconds")
 
-del channels, rgb1, rgb2, rgb
+
+# del channels, rgb1, rgb2, rgb
 
 
 '''
@@ -425,7 +426,7 @@ def update_frames(itime):
         rgb2 = np.kron(rgb2, np.ones((2, 2, 1)))
         
         luminance = 0.2126 * rgb1[..., 0] + 0.7152 * rgb1[..., 1] + 0.0722 * rgb1[..., 2]
-        rgb = np.where((luminance > 0.05)[..., None], rgb1, rgb2)
+        rgb = np.where((luminance > 0.15)[..., None], rgb1, rgb2)
     
     plt_im = ax.imshow(
         rgb, extent=extent, transform=transform,
