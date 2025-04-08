@@ -266,10 +266,12 @@ print((cltype_hourly_count[0, :, 0] == cltype_hourly_count[0, :, 1:].sum(axis=1)
 
 
 # region get alltime hourly count of each cloud type
+# Memory Used: 221.51GB, Walltime Used: 04:01:46
 
 
+min_lon, max_lon, min_lat, max_lat = [110.58, 157.34, -43.69, -7.01]
 fl = sorted(glob.glob(f'/scratch/v46/qg8515/data/obs/jaxa/clp/??????/cltype_hourly_count_??????.nc'))
-cltype_hourly_count = xr.open_mfdataset(fl, parallel=True).cltype_hourly_count
+cltype_hourly_count = xr.open_mfdataset(fl, parallel=True).cltype_hourly_count.sel(lon=slice(min_lon, max_lon), lat=slice(max_lat, min_lat))
 cltype_hourly_count_alltime = mon_sea_ann(
     var_monthly=cltype_hourly_count, lcopy=False, mm=True, sm=True, am=True)
 

@@ -1,5 +1,5 @@
 
-# qsub -I -q normal -l walltime=4:00:00,ncpus=1,mem=192GB,storage=gdata/v46+gdata/rr1
+# qsub -I -q express -l walltime=2:00:00,ncpus=1,mem=192GB,storage=gdata/v46+gdata/rr1
 
 # region import packages
 
@@ -33,7 +33,7 @@ mpl.rc('font', family='Times New Roman', size=10)
 mpl.rcParams['axes.linewidth'] = 0.2
 plt.rcParams.update({"mathtext.fontset": "stix"})
 import matplotlib.animation as animation
-import seaborn as sns
+# import seaborn as sns
 from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
 from matplotlib.ticker import AutoMinorLocator
 import geopandas as gpd
@@ -42,6 +42,8 @@ from matplotlib.lines import Line2D
 import cartopy.feature as cfeature
 from matplotlib.colors import LinearSegmentedColormap, TwoSlopeNorm
 from matplotlib.patches import Rectangle
+from PIL import Image
+Image.MAX_IMAGE_PIXELS = None
 
 # management
 import os
@@ -60,7 +62,7 @@ from mapplot import (
     )
 
 from namelist import (
-    month,
+    month_jan,
     monthini,
     seasons,
     seconds_per_d,
@@ -311,4 +313,19 @@ fig.savefig(opng)
 '''
 # endregion
 
+
+# region plot the Blue Marble
+
+month=6
+# ifile = f'data/others/Blue Marble Next Generation w: Topography and Bathymetry/world.topo.bathy.2004{month:02d}.3x21600x10800.jpg'
+ifile = f'data/others/Blue Marble Next Generation w: Topography and Bathymetry/world.topo.bathy.2004{month:02d}.3x5400x2700.jpg'
+img = Image.open(ifile)
+
+opng = 'figures/test.png'
+fig, ax = globe_plot(figsize=np.array([12, 8]) / 2.54, fm_bottom=0.13)
+ax.imshow(img, extent=[-180, 180, -90, 90], transform=ccrs.PlateCarree())
+fig.savefig(opng)
+
+
+# endregion
 

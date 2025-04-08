@@ -30,7 +30,8 @@ mamba install rioxarray -y
 mamba install mscorefonts -y
 mamba install statsmodels -y
 mamba install ffmpeg -y
-
+mamba install h5netcdf -y
+mamba install pyhdf -y
 
 #-------------------------------- Other packages
 # mamba install seaborn -y
@@ -51,7 +52,6 @@ mamba install ffmpeg -y
 # mamba install intake-xarray -y
 # mamba install dask-gateway -y
 # mamba install xarrayutils -y
-# mamba install pyhdf -y
 # mamba install cfgrib -y
 # mamba install geopy -y
 # mamba install ipykernel -y

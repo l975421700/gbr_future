@@ -36,7 +36,9 @@ nci_ds = {
     'era5': '/g/data/rt52/era5/',
     'BARRA-C2': '/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/',
     'ISCCP': '/g/data/ct11/access-nri/replicas/esmvaltool/obsdata-v2/Tier1/ISCCP',
-    'AGCD': '',
+    'AGCD': '/g/data/ct11/access-nri/replicas/esmvaltool/obsdata-v2/Tier2/AGCD',
+    'CALIOP': '/g/data/ct11/access-nri/replicas/esmvaltool/obsdata-v2/Tier1/CALIOP',
+    'ESACCI-CLOUD': '/g/data/ct11/access-nri/replicas/esmvaltool/obsdata-v2/Tier2/ESACCI-CLOUD',
 }
 
 # endregion

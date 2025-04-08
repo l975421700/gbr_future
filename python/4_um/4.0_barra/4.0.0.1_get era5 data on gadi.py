@@ -321,7 +321,7 @@ np.max(np.abs(era5_sl_mon_alltime['mtuwswrfcl']['am'].values - era5_sl_mon_allti
 
 
 # region get era5 hourly data
-
+# Memory Used: 165.03GB; Walltime Used: 00:10:35
 
 var = 'lcc' # ['tcwv', 'tclw', 'tciw', 'lcc', 'mcc', 'hcc', 'tcc', 'tp', '2t']
 print(f'#-------------------------------- {var}')

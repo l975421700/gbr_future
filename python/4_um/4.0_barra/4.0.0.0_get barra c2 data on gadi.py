@@ -338,7 +338,7 @@ del barra_c2_mon_alltime['rsntcl'], barra_c2_mon_alltime['rsutcl']
 
 # region get BARRA-C2 hourly data
 # qsub -I -q normal -l walltime=00:30:00,ncpus=48,mem=192GB,storage=gdata/v46+gdata/ob53+scratch/v46+gdata/rr1+gdata/rt52+gdata/oi10+gdata/hh5+gdata/fs38
-
+# Memory Used: 161.84GB; Walltime Used: 00:16:55
 
 var = 'cll' # ['clivi', 'clwvi', 'prw', 'clh', 'clm', 'cll', 'clt', 'pr', 'tas']
 print(f'#-------------------------------- {var}')

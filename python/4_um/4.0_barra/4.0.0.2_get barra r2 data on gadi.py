@@ -106,7 +106,7 @@ for var in ['clivi', 'clwvi', 'prw']:
 
 
 # region get BARRA-R2 hourly data
-# 1hour
+# Memory Used: 2.78GB; Walltime Used: 00:07:57; NCPUs Used: 1
 
 parser=argparse.ArgumentParser()
 parser.add_argument('-y', '--year', type=int, required=True,)

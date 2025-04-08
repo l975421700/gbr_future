@@ -481,14 +481,11 @@ def find_ilat_ilon(slat, slon, lat, lon):
     
     import numpy as np
     
-    # scale longitude to be between [0, 360]
-    if (slon < 0):
-        slon += 360
-    
+    if (slon < 0): slon += 360
     lon[lon < 0] += 360
     
-    ilon = np.where(abs(slon - lon) == np.min(abs(slon - lon)))[0][0]
-    ilat = np.where(abs(slat - lat) == np.min(abs(slat - lat)))[0][0]
+    ilon = np.argmin(np.abs(slon - lon))
+    ilat = np.argmin(np.abs(slat - lat))
     
     return([ilat, ilon])
 
