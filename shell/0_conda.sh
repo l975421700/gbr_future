@@ -1,4 +1,5 @@
 
+# https://www.anaconda.com/docs/getting-started/miniconda/install
 # source miniconda3/bin/activate
 # conda create --name lowclouds -y
 # source miniconda3/bin/activate lowclouds
@@ -32,21 +33,21 @@ mamba install statsmodels -y
 mamba install ffmpeg -y
 mamba install h5netcdf -y
 mamba install pyhdf -y
+mamba install seaborn -y
+mamba install fortls -y
+mamba install cdsapi -y
+mamba install mpl-scatter-density -y
+mamba install pingouin -y
+mamba install windrose -y
+mamba install pycircstat -y
+mamba install haversine -y
 
 #-------------------------------- Other packages
-# mamba install seaborn -y
-# mamba install fortls -y
-# mamba install cdsapi -y
-# mamba install mpl-scatter-density -y
-# mamba install pingouin -y
-# mamba install windrose -y
-# mamba install pycircstat -y
 # mamba install numba -y
 # pip install cdo
 # mamba install xskillscore -y
 # mamba install rasterio -y
 # mamba install line_profiler -y
-# mamba install haversine -y
 # mamba install nose -y
 # mamba install intake-esm -y
 # mamba install intake-xarray -y

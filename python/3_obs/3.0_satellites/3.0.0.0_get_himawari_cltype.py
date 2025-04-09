@@ -288,7 +288,7 @@ with open(ofile, 'wb') as f:
 with open('/scratch/v46/qg8515/data/obs/jaxa/clp/cltype_hourly_count_alltime.pkl', 'rb') as f:
     cltype_hourly_count_alltime = pickle.load(f)
 fl = sorted(glob.glob(f'/scratch/v46/qg8515/data/obs/jaxa/clp/??????/cltype_hourly_count_??????.nc'))
-ifile = -1
+ifile = 10
 ds = xr.open_dataset(fl[ifile]).cltype_hourly_count
 print((cltype_hourly_count_alltime['mon'][ifile] == ds).all().values)
 

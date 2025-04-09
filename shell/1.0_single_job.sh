@@ -1,9 +1,9 @@
 #PBS -N single_job
-#PBS -q normal
-#PBS -l walltime=10:00:00
-#PBS -l mem=192GB
+#PBS -q hugemem
+#PBS -l walltime=48:00:00
+#PBS -l mem=520GB
 #PBS -l jobfs=100MB
-#PBS -l ncpus=15
+#PBS -l ncpus=1
 #PBS -j oe
 #PBS -l storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public
 #PBS -P v46

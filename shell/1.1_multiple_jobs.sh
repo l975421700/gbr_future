@@ -1,9 +1,9 @@
-for idx in $(seq 2006 2020); do
+for idx in $(seq 2 4); do
     qsub -v idx=$idx <<EOF
 #PBS -N qjob$idx
 #PBS -q express
-#PBS -l walltime=02:00:00
-#PBS -l mem=24GB
+#PBS -l walltime=10:00:00
+#PBS -l mem=192GB
 #PBS -l jobfs=100MB
 #PBS -l ncpus=1
 #PBS -j oe
@@ -14,7 +14,8 @@ for idx in $(seq 2006 2020); do
 cd ${HOME}
 
 source ${HOME}/miniconda3/bin/activate lowclouds
-python ${HOME}/code/gbr_future/shell/0_runpy/run1.py -y $idx
+python ${HOME}/code/gbr_future/shell/0_runpy/run${idx}.py
+# python ${HOME}/code/gbr_future/shell/0_runpy/run1.py -y $idx
 
 # module load python3/3.12.1
 # /apps/python3/3.12.1/bin/python3 ${HOME}/code/gbr_future/shell/0_runpy/run${idx}.py

@@ -2,42 +2,89 @@
 
 # region import packages
 
+# data analysis
+import numpy as np
 import xarray as xr
-import glob
-import os
-import pickle
+import dask
+dask.config.set({"array.slicing.split_large_chunks": True})
+# from dask.diagnostics import ProgressBar
+# pbar = ProgressBar()
+# pbar.register()
+import joblib
 
+# management
+import os
 import sys  # print(sys.path)
-sys.path.append('/home/563/qg8515/code/gbr_future/module')
-from calculations import mon_sea_ann
+sys.path.append(os.getcwd() + '/code/gbr_future/module')
+import glob
+import pickle
+import datetime
+
+from calculations import (
+    mon_sea_ann,
+    )
+
+from namelist import cmip6_units, zerok, seconds_per_d
 
 # endregion
 
 
-# region get alltime hourly count of each cloud type
+# region get era5 alltime hourly data
 
-min_lon, max_lon, min_lat, max_lat = [110.58, 157.34, -43.69, -7.01]
-fl = sorted(glob.glob(f'/scratch/v46/qg8515/data/obs/jaxa/clp/??????/cltype_hourly_count_??????.nc'))
-cltype_hourly_count = xr.open_mfdataset(fl, parallel=True).cltype_hourly_count.sel(lon=slice(min_lon, max_lon), lat=slice(max_lat, min_lat))
-cltype_hourly_count_alltime = mon_sea_ann(
-    var_monthly=cltype_hourly_count, lcopy=False, mm=True, sm=True, am=True)
 
-ofile='/scratch/v46/qg8515/data/obs/jaxa/clp/cltype_hourly_count_alltime.pkl'
-if os.path.exists(ofile): os.remove(ofile)
-with open(ofile, 'wb') as f:
-    pickle.dump(cltype_hourly_count_alltime, f)
+for var in ['tcwv', 'tclw', 'tciw']:
+    # var = 'lcc'
+    # ['lcc', 'mcc', 'hcc', 'tcc', 'tp', '2t']
+    print(f'#-------------------------------- {var}')
+    odir = f'scratch/data/obs/era5/{var}'
+    
+    if var == '2t': var='t2m'
+    if var == '10si': var='si10'
+    if var == '2d': var='d2m'
+    if var == '10u': var='u10'
+    if var == '10v': var='v10'
+    if var == '100u': var='u100'
+    if var == '100v': var='v100'
+    
+    fl = sorted(glob.glob(f'{odir}/{var}_hourly_*.nc'))
+    era5_hourly = xr.open_mfdataset(fl)[var].sel(time=slice('1979', '2023'))
+    era5_hourly_alltime = mon_sea_ann(
+        var_monthly=era5_hourly, lcopy=False, mm=True, sm=True, am=True)
+    
+    ofile = f'data/obs/era5/hourly/era5_hourly_alltime_{var}.pkl'
+    if os.path.exists(ofile): os.remove(ofile)
+    with open(ofile,'wb') as f:
+        pickle.dump(era5_hourly_alltime, f)
+    
+    del era5_hourly, era5_hourly_alltime
 
 
 
 
 '''
 #-------------------------------- check
-with open('/scratch/v46/qg8515/data/obs/jaxa/clp/cltype_hourly_count_alltime.pkl', 'rb') as f:
-    cltype_hourly_count_alltime = pickle.load(f)
-fl = sorted(glob.glob(f'/scratch/v46/qg8515/data/obs/jaxa/clp/??????/cltype_hourly_count_??????.nc'))
 ifile = -1
-ds = xr.open_dataset(fl[ifile]).cltype_hourly_count
-print((cltype_hourly_count_alltime['mon'][ifile] == ds).all().values)
+for var in ['2t']:
+    # var = 'lcc'
+    # ['lcc', 'mcc', 'hcc', 'tcc', 'tp', '2t']
+    print(f'#-------------------------------- {var}')
+    odir = f'scratch/data/obs/era5/{var}'
+    
+    if var == '2t': var='t2m'
+    if var == '10si': var='si10'
+    if var == '2d': var='d2m'
+    if var == '10u': var='u10'
+    if var == '10v': var='v10'
+    if var == '100u': var='u100'
+    if var == '100v': var='v100'
+    
+    fl = sorted(glob.glob(f'{odir}/{var}_hourly_*.nc'))
+    ds = xr.open_dataset(fl[ifile])
+    
+    with open(f'data/obs/era5/hourly/era5_hourly_alltime_{var}.pkl','rb') as f:
+        era5_hourly_alltime = pickle.load(f)
+    
+    print((era5_hourly_alltime['mon'][ifile] == ds[var].squeeze()).all().values)
 
 
 '''

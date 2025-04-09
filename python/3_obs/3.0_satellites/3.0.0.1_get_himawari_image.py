@@ -16,6 +16,7 @@ pbar = ProgressBar()
 pbar.register()
 from skimage.measure import block_reduce
 from scipy import stats
+import geopandas as gpd
 
 # plot
 import matplotlib as mpl
@@ -29,6 +30,7 @@ mpl.rc('font', family='Times New Roman', size=10)
 import cartopy.feature as cfeature
 import matplotlib.ticker as mticker
 import matplotlib.animation as animation
+from matplotlib.patches import Rectangle
 
 # management
 import os
@@ -461,7 +463,7 @@ print(time_series[-1].hour)
 
 geolocation_all = pd.read_pickle(f'scratch/data/obs/CloudSat_CALIPSO/2B-CLDCLASS-LIDAR.P1_R05/geolocation_all.pkl')
 
-year, month, day, hour, minute = 2020, 7, 1, 5, 30
+year, month, day, hour, minute = 2020, 6, 1, 0, 20
 dfolder = Path('/g/data/ra22/satellite-products/arc/obs/himawari-ahi/fldk/latest')
 # dfolder = Path('/g/data/ra22/satellite-products/nrt/obs/himawari-ahi/fldk/latest')
 
@@ -531,6 +533,19 @@ ax.imshow(rgb, extent=extent, transform=transform,
 ax.scatter(geolocation_subset.lon, geolocation_subset.lat, s=1, c='tab:orange',
            lw=0, transform=ccrs.PlateCarree())
 
+min_lon, max_lon, min_lat, max_lat = [110.58, 157.34, -43.69, -7.01]
+top_edge = [(lon, max_lat) for lon in np.linspace(min_lon, max_lon, 100)]
+right_edge = [(max_lon, lat) for lat in np.linspace(max_lat, min_lat, 100)]
+bottom_edge = [(lon, min_lat) for lon in np.linspace(max_lon, min_lon, 100)]
+left_edge = [(min_lon, lat) for lat in np.linspace(min_lat, max_lat, 100)]
+rectangle_coords = top_edge + right_edge + bottom_edge + left_edge + [top_edge[0]]
+lons, lats = zip(*rectangle_coords)
+ax.plot(lons, lats, color='red', lw=0.5, transform=ccrs.PlateCarree())
+
+gbr_shp = gpd.read_file('data/others/Great_Barrier_Reef_Marine_Park_Boundary/Great_Barrier_Reef_Marine_Park_Boundary.shp')
+gbr_shp.plot(ax=ax, edgecolor='tab:blue', facecolor='none', lw=0.8, zorder=2,
+             transform=ccrs.PlateCarree())
+
 coastline = cfeature.NaturalEarthFeature(
     'physical', 'coastline', '10m', edgecolor='yellow',
     facecolor='none', lw=0.1)
@@ -542,7 +557,7 @@ ax.add_feature(borders, zorder=2, alpha=0.75)
 gl = ax.gridlines(
     crs=ccrs.PlateCarree(), lw=0.1, zorder=2, alpha=0.35,
     color='yellow', linestyle='--',)
-gl.xlocator = mticker.FixedLocator(np.arange(0, 360 + 1e-4, 10))
+gl.xlocator = mticker.FixedLocator(np.arange(-180, 180 + 1e-4, 10))
 gl.ylocator = mticker.FixedLocator(np.arange(-90, 90 + 1e-4, 10))
 plt.text(0.5, -0.03, plt_text, transform=ax.transAxes, fontsize=8,
          ha='center', va='top', rotation='horizontal', linespacing=1.5)
@@ -568,7 +583,7 @@ args = parser.parse_args()
 
 year=args.year
 month=args.month
-# year=2020; month=6
+# year=2022; month=1
 
 last_day = calendar.monthrange(year, month)[1]
 time_series = pd.date_range(start=f'{year}-{month:02d}-01 00:00',
@@ -607,8 +622,20 @@ ax.add_feature(borders, zorder=2, alpha=0.75)
 gl = ax.gridlines(
     crs=ccrs.PlateCarree(), lw=0.1, zorder=2, alpha=0.35,
     color='yellow', linestyle='--',)
-gl.xlocator = mticker.FixedLocator(np.arange(0, 360 + 1e-4, 10))
+gl.xlocator = mticker.FixedLocator(np.arange(-180, 180 + 1e-4, 10))
 gl.ylocator = mticker.FixedLocator(np.arange(-90, 90 + 1e-4, 10))
+min_lon, max_lon, min_lat, max_lat = [110.58, 157.34, -43.69, -7.01]
+top_edge = [(lon, max_lat) for lon in np.linspace(min_lon, max_lon, 100)]
+right_edge = [(max_lon, lat) for lat in np.linspace(max_lat, min_lat, 100)]
+bottom_edge = [(lon, min_lat) for lon in np.linspace(max_lon, min_lon, 100)]
+left_edge = [(min_lon, lat) for lat in np.linspace(min_lat, max_lat, 100)]
+rectangle_coords = top_edge + right_edge + bottom_edge + left_edge + [top_edge[0]]
+lons, lats = zip(*rectangle_coords)
+ax.plot(lons, lats, color='red', lw=0.5, transform=ccrs.PlateCarree())
+
+gbr_shp = gpd.read_file('data/others/Great_Barrier_Reef_Marine_Park_Boundary/Great_Barrier_Reef_Marine_Park_Boundary.shp')
+gbr_shp.plot(ax=ax, edgecolor='tab:blue', facecolor='none', lw=0.8, zorder=2,
+             transform=ccrs.PlateCarree())
 
 plt_objs = []
 def update_frames(itime):
@@ -703,7 +730,7 @@ def update_frames(itime):
 fig.subplots_adjust(left=0.01, right=0.99, bottom=1/(7+1), top=0.99)
 
 ani = animation.FuncAnimation(
-    fig, update_frames, frames=len(time_series[:6]), interval=500, blit=False)
+    fig, update_frames, frames=len(time_series[:3]), interval=500, blit=False)
 if os.path.exists(omp4): os.remove(omp4)
 ani.save(omp4, progress_callback=lambda iframe, n: print(f'Frame {iframe}/{n}'))
 

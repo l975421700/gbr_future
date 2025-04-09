@@ -378,7 +378,7 @@ joblib.Parallel(n_jobs=48)(joblib.delayed(process_year_month)(year, month, var, 
 
 year=2023; month=12
 
-for var in ['lcc', 'mcc', 'hcc', 'tcc', 'tp', '2t']:
+for var in ['tcwv', 'tclw', 'tciw']:
     # var = 'lcc'
     print(f'#-------------------------------- {var}')
     odir = f'scratch/data/obs/era5/{var}'
@@ -423,7 +423,7 @@ for var in ['lcc', 'mcc', 'hcc', 'tcc', 'tp', '2t']:
 # region get era5 alltime hourly data
 
 
-for var in ['2t']:
+for var in ['tcwv', 'tclw', 'tciw']:
     # var = 'lcc'
     # ['lcc', 'mcc', 'hcc', 'tcc', 'tp', '2t']
     print(f'#-------------------------------- {var}')

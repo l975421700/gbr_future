@@ -1,6 +1,6 @@
 
 
-# qsub -I -q express -l walltime=4:00:00,ncpus=1,mem=20GB,jobfs=20GB,storage=gdata/v46+gdata/ob53+scratch/v46+gdata/rr1+gdata/rt52+gdata/oi10+gdata/hh5+gdata/fs38
+# qsub -I -q express -l walltime=1:00:00,ncpus=1,mem=192GB,jobfs=20GB,storage=gdata/v46+gdata/ob53+scratch/v46+gdata/rr1+gdata/rt52+gdata/oi10+gdata/hh5+gdata/fs38
 
 
 # region import packages
@@ -377,7 +377,7 @@ joblib.Parallel(n_jobs=48)(joblib.delayed(process_year_month)(year, month, var, 
 
 '''
 #-------------------------------- check
-var = 'pr'
+var = 'clwvi'
 year = 2020
 month = 1
 
@@ -489,8 +489,9 @@ client.close()
 # region get BARRA-C2 alltime hourly data
 
 
-for var in ['cll', 'clh', 'clm', 'clt', 'pr', 'tas']:
+for var in ['clivi', 'clwvi', 'prw']:
     # var = 'cll'
+    # ['cll', 'clh', 'clm', 'clt', 'pr', 'tas']
     print(f'#-------------------------------- {var}')
     
     fl = sorted(glob.glob(f'scratch/data/sim/um/barra_c2/{var}/{var}_hourly_*.nc'))
