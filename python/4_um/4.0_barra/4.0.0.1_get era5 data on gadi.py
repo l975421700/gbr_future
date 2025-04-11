@@ -454,8 +454,8 @@ for var in ['tcwv', 'tclw', 'tciw']:
 
 '''
 #-------------------------------- check
-ifile = -1
-for var in ['2t']:
+ifile = 10
+for var in ['tcwv', 'tclw', 'tciw']:
     # var = 'lcc'
     # ['lcc', 'mcc', 'hcc', 'tcc', 'tp', '2t']
     print(f'#-------------------------------- {var}')
@@ -476,6 +476,7 @@ for var in ['2t']:
         era5_hourly_alltime = pickle.load(f)
     
     print((era5_hourly_alltime['mon'][ifile] == ds[var].squeeze()).all().values)
+    del era5_hourly_alltime
 
 
 '''

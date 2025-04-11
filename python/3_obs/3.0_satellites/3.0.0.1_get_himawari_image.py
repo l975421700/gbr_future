@@ -463,7 +463,7 @@ print(time_series[-1].hour)
 
 geolocation_all = pd.read_pickle(f'scratch/data/obs/CloudSat_CALIPSO/2B-CLDCLASS-LIDAR.P1_R05/geolocation_all.pkl')
 
-year, month, day, hour, minute = 2020, 6, 1, 0, 20
+year, month, day, hour, minute = 2020, 6, 1, 0, 0
 dfolder = Path('/g/data/ra22/satellite-products/arc/obs/himawari-ahi/fldk/latest')
 # dfolder = Path('/g/data/ra22/satellite-products/nrt/obs/himawari-ahi/fldk/latest')
 

@@ -231,15 +231,16 @@ for var in ['clivi', 'clwvi', 'prw']:
 
 '''
 #-------------------------------- check
-var = 'clt' # ['cll', 'clh', 'clm', 'clt', 'pr', 'tas']
+var = 'prw' # ['clivi', 'clwvi', 'prw', 'cll', 'clh', 'clm', 'clt', 'pr', 'tas']
 with open(f'data/sim/um/barra_r2/barra_r2_hourly_alltime_{var}.pkl','rb') as f:
     barra_r2_hourly_alltime = pickle.load(f)
 
 fl = sorted(glob.glob(f'scratch/data/sim/um/barra_r2/{var}/{var}_hourly_*.nc'))
-ifile = -1
+ifile = 3
 ds = xr.open_dataset(fl[ifile])[var]
 
 print((barra_r2_hourly_alltime['mon'][ifile] == ds.squeeze()).all().values)
+del barra_r2_hourly_alltime
 '''
 # endregion
 

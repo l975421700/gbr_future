@@ -155,6 +155,97 @@ for var in ['clh', 'clm', 'clt', 'pr', 'tas']:
 # endregion
 
 
+# region plot hourly dm am sim and obs
+
+extent = [110.58, 157.34, -43.69, -7.01]
+min_lon, max_lon, min_lat, max_lat = extent
+
+dss = ['ERA5', 'BARRA-R2', 'BARRA-C2'] # , 'BARPA-C'
+ds_hourly_alltime = {}
+ds_ann = {}
+ds_ann_dm = {}
+ds_dm_am = {}
+ds_dm_astd = {}
+for ids in dss:
+    ds_ann[ids] = {}
+    ds_ann_dm[ids] = {}
+    ds_dm_am[ids] = {}
+    ds_dm_astd[ids] = {}
+
+for var2 in ['clivi', 'clwvi', 'prw']:
+    # var2 = 'clivi'
+    var1 = cmip6_era5_var[var2]
+    print(f'#-------------------------------- {var1} and {var2}')
+    
+    with open(f'data/obs/era5/hourly/era5_hourly_alltime_{var1}.pkl', 'rb') as f:
+        ds_hourly_alltime['ERA5'] = pickle.load(f)
+    with open(f'data/sim/um/barra_r2/barra_r2_hourly_alltime_{var2}.pkl','rb') as f:
+        ds_hourly_alltime['BARRA-R2'] = pickle.load(f)
+    with open(f'data/sim/um/barra_c2/barra_c2_hourly_alltime_{var2}.pkl','rb') as f:
+        ds_hourly_alltime['BARRA-C2'] = pickle.load(f)
+    # with open(f'data/sim/um/barpa_c/barpa_c_hourly_alltime_{var2}.pkl','rb') as f:
+    #     ds_hourly_alltime['BARPA-C'] = pickle.load(f)
+    
+    for ids in dss:
+        # ids = 'BARPA-C'
+        if ids == 'ERA5':
+            ds_ann[ids] = ds_hourly_alltime[ids]['ann'].sel(time=slice('2016', '2021'), lon=slice(min_lon, max_lon), lat=slice(max_lat, min_lat))
+        else:
+            ds_ann[ids] = ds_hourly_alltime[ids]['ann'].sel(time=slice('2016', '2021'), lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat))
+        ds_ann_dm[ids] = ds_ann[ids].weighted(np.cos(np.deg2rad(ds_ann[ids].lat))).mean(dim=['lon', 'lat'])
+        ds_dm_am[ids] = ds_ann_dm[ids].mean(dim='time')
+        ds_dm_astd[ids] = ds_ann_dm[ids].std(dim='time', ddof=1)
+    
+    opng = f'figures/4_um/4.0_barra/4.0.1_domain average/4.0.1.0 dm am hourly {var2} ERA5, BARRA-R2, C2.png' # 'clivi', 'clwvi', 'prw'
+    fig, ax = plt.subplots(1, 1, figsize=np.array([8.8, 8]) / 2.54)
+    
+    for ids in dss:
+        ax.plot(range(0, 24, 1), ds_dm_am[ids],
+                '.-', lw=0.75, markersize=6, label=ids, color=ds_color[ids])
+        ax.errorbar(range(0, 24, 1), ds_dm_am[ids], yerr=ds_dm_astd[ids],
+                    fmt='none', capsize=4, color=ds_color[ids],lw=0.5,alpha=0.7)
+    
+    ax.legend(ncol=1, frameon=True, loc='upper center', handletextpad=0.5)
+    
+    ax.set_xticks(np.arange(0, 24, 6))
+    ax.set_ylabel(f'Area-weighted mean {era5_varlabels[var1]}', size=8)
+    ax.set_xlabel('UTC', size=9)
+    if var2=='cll':
+        ax.set_ylim(16, 34)
+    elif var2=='clwvi':
+        ax.set_ylim(0, 0.08)
+    elif var2=='clivi':
+        ax.set_ylim(0, 0.13)
+    ax.yaxis.set_major_formatter(remove_trailing_zero_pos)
+    ax.grid(True, which='both', linewidth=0.5, color='gray',
+            alpha=0.5, linestyle='--')
+    fig.subplots_adjust(left=0.16, right=0.99, bottom=0.13, top=0.98)
+    fig.savefig(opng)
+    
+    del ds_hourly_alltime['ERA5'], ds_hourly_alltime['BARRA-R2'], ds_hourly_alltime['BARRA-C2']
+
+
+
+
+'''
+    fl = sorted(glob.glob(f'scratch/data/sim/um/barra_c2/{var}/{var}_hourly_*.nc'))[-96:]
+    barra_c2_hourly = xr.open_mfdataset(fl)[var].sel(lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat))
+    
+    barra_c2_hourly_dm = barra_c2_hourly.weighted(np.cos(np.deg2rad(barra_c2_hourly.lat))).mean(dim=['lon', 'lat'])
+    
+    barra_c2_hourly_dm_ann = barra_c2_hourly_dm.groupby('time.year').map(time_weighted_mean).compute()
+    barra_c2_hourly_dm_am = barra_c2_hourly_dm_ann.mean(dim='year')
+    barra_c2_hourly_dm_astd = barra_c2_hourly_dm_ann.std(dim='year', ddof=1)
+    
+    print(np.max(np.abs(ds_dm_am - barra_c2_hourly_dm_am)))
+    print(np.max(np.abs(ds_dm_astd - barra_c2_hourly_dm_astd)))
+
+'''
+# endregion
+
+
+
+
 # region plot hourly am
 
 mpl.rc('font', family='Times New Roman', size=10)
@@ -229,91 +320,5 @@ for ids in ['BARRA-C2']:
 
 
 # endregion
-
-
-# region plot hourly dm am sim and obs
-
-extent = [110.58, 157.34, -43.69, -7.01]
-min_lon, max_lon, min_lat, max_lat = extent
-
-dss = ['ERA5', 'BARRA-R2', 'BARRA-C2'] # , 'BARPA-C'
-ds_hourly_alltime = {}
-ds_ann = {}
-ds_ann_dm = {}
-ds_dm_am = {}
-ds_dm_astd = {}
-for ids in dss:
-    ds_ann[ids] = {}
-    ds_ann_dm[ids] = {}
-    ds_dm_am[ids] = {}
-    ds_dm_astd[ids] = {}
-
-for var2 in ['clh', 'clm', 'clt']:
-    # var = 'cll'
-    var1 = cmip6_era5_var[var2]
-    print(f'#-------------------------------- {var1} and {var2}')
-    
-    with open(f'data/obs/era5/hourly/era5_hourly_alltime_{var1}.pkl', 'rb') as f:
-        ds_hourly_alltime['ERA5'] = pickle.load(f)
-    with open(f'data/sim/um/barra_r2/barra_r2_hourly_alltime_{var2}.pkl','rb') as f:
-        ds_hourly_alltime['BARRA-R2'] = pickle.load(f)
-    with open(f'data/sim/um/barra_c2/barra_c2_hourly_alltime_{var2}.pkl','rb') as f:
-        ds_hourly_alltime['BARRA-C2'] = pickle.load(f)
-    # with open(f'data/sim/um/barpa_c/barpa_c_hourly_alltime_{var2}.pkl','rb') as f:
-    #     ds_hourly_alltime['BARPA-C'] = pickle.load(f)
-    
-    for ids in dss:
-        # ids = 'BARPA-C'
-        if ids == 'ERA5':
-            ds_ann[ids] = ds_hourly_alltime[ids]['ann'].sel(time=slice('2016', '2021'), lon=slice(min_lon, max_lon), lat=slice(max_lat, min_lat))
-        else:
-            ds_ann[ids] = ds_hourly_alltime[ids]['ann'].sel(time=slice('2016', '2021'), lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat))
-        ds_ann_dm[ids] = ds_ann[ids].weighted(np.cos(np.deg2rad(ds_ann[ids].lat))).mean(dim=['lon', 'lat'])
-        ds_dm_am[ids] = ds_ann_dm[ids].mean(dim='time')
-        ds_dm_astd[ids] = ds_ann_dm[ids].std(dim='time', ddof=1)
-    
-    opng = f'figures/4_um/4.0_barra/4.0.1_domain average/4.0.1.0 dm am hourly {var2} ERA5, BARRA-R2, C2, BARPA-C.png'
-    fig, ax = plt.subplots(1, 1, figsize=np.array([8.8, 8]) / 2.54)
-    
-    for ids in dss:
-        ax.plot(range(0, 24, 1), ds_dm_am[ids],
-                '.-', lw=0.75, markersize=6, label=ids, color=ds_color[ids])
-        ax.errorbar(range(0, 24, 1), ds_dm_am[ids], yerr=ds_dm_astd[ids],
-                    fmt='none', capsize=4, color=ds_color[ids],lw=0.5,alpha=0.7)
-    
-    ax.legend(ncol=1, frameon=True, loc='upper center', handletextpad=0.5)
-    
-    ax.set_xticks(np.arange(0, 24, 6))
-    ax.set_ylabel(f'Area-weighted mean {era5_varlabels[var1]}', size=9)
-    ax.set_xlabel('UTC', size=9)
-    if var2=='cll':
-        ax.set_ylim(16, 34)
-    ax.yaxis.set_major_formatter(remove_trailing_zero_pos)
-    ax.grid(True, which='both', linewidth=0.5, color='gray',
-            alpha=0.5, linestyle='--')
-    fig.subplots_adjust(left=0.16, right=0.99, bottom=0.13, top=0.98)
-    fig.savefig(opng)
-    
-    del ds_hourly_alltime['ERA5'], ds_hourly_alltime['BARRA-R2'], ds_hourly_alltime['BARRA-C2']
-
-
-
-
-'''
-    fl = sorted(glob.glob(f'scratch/data/sim/um/barra_c2/{var}/{var}_hourly_*.nc'))[-96:]
-    barra_c2_hourly = xr.open_mfdataset(fl)[var].sel(lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat))
-    
-    barra_c2_hourly_dm = barra_c2_hourly.weighted(np.cos(np.deg2rad(barra_c2_hourly.lat))).mean(dim=['lon', 'lat'])
-    
-    barra_c2_hourly_dm_ann = barra_c2_hourly_dm.groupby('time.year').map(time_weighted_mean).compute()
-    barra_c2_hourly_dm_am = barra_c2_hourly_dm_ann.mean(dim='year')
-    barra_c2_hourly_dm_astd = barra_c2_hourly_dm_ann.std(dim='year', ddof=1)
-    
-    print(np.max(np.abs(ds_dm_am - barra_c2_hourly_dm_am)))
-    print(np.max(np.abs(ds_dm_astd - barra_c2_hourly_dm_astd)))
-
-'''
-# endregion
-
 
 

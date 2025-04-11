@@ -1,5 +1,5 @@
-for year in $(seq 2020 2021); do
-    for month in $(seq 1 12); do
+for year in $(seq 2020 2020); do
+    for month in $(seq 6 7); do
         # month=$(printf '%02d' $month)
         echo $year $month
         qsub -v year=$year,month=$month <<EOF
@@ -16,7 +16,7 @@ for year in $(seq 2020 2021); do
 
 cd ${HOME}
 source ${HOME}/miniconda3/bin/activate lowclouds
-python ${HOME}/code/gbr_future/shell/0_runpy/run1.py -y $year -m $month
+python ${HOME}/code/gbr_future/shell/0_runpy/run4.py -y $year -m $month
 
 # module load python3/3.12.1
 # from IPython import start_ipython; start_ipython()

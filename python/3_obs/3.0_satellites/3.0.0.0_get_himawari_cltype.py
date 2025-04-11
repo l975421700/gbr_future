@@ -1,6 +1,6 @@
 
 
-# qsub -I -q express -l walltime=4:00:00,ncpus=1,mem=192GB,jobfs=100MB,storage=gdata/v46+scratch/v46+gdata/hh5
+# qsub -I -q hugemem -l walltime=4:00:00,ncpus=1,mem=520GB,jobfs=100MB,storage=gdata/v46+scratch/v46+gdata/hh5
 
 
 # region get command line options
@@ -293,11 +293,24 @@ ds = xr.open_dataset(fl[ifile]).cltype_hourly_count
 print((cltype_hourly_count_alltime['mon'][ifile] == ds).all().values)
 
 
+#-------------------------------- check 2
+with open('/scratch/v46/qg8515/data/obs/jaxa/clp/cltype_hourly_count_alltime.pkl', 'rb') as f:
+    cltype_hourly_count_alltime = pickle.load(f)
+with open('/scratch/v46/qg8515/data/obs/jaxa/clp/cltype_count_alltime.pkl', 'rb') as f:
+    cltype_count_alltime = pickle.load(f)
+
+ialltime='mon'
+itype = 'Stratocumulus'
+itime=-1
+cltype_count_alltime[ialltime][itime].loc[{'types': itype}]
+cltype_hourly_count_alltime[ialltime][itime].loc[{'types': itype}].sum(dim='hour')
+
 '''
 # endregion
 
 
 # region get alltime hourly frequency of each cloud type
+# Memory Used: 220.64GB; Walltime Used: 11:06:50
 
 with open('/scratch/v46/qg8515/data/obs/jaxa/clp/cltype_hourly_count_alltime.pkl', 'rb') as f:
     cltype_hourly_count_alltime = pickle.load(f)
@@ -328,10 +341,14 @@ with open('/scratch/v46/qg8515/data/obs/jaxa/clp/cltype_hourly_count_alltime.pkl
 with open('/scratch/v46/qg8515/data/obs/jaxa/clp/cltype_hourly_frequency_alltime.pkl', 'rb') as f:
     cltype_hourly_frequency_alltime = pickle.load(f)
 
-ialltime = 'mon'
+ialltime = 'ann'
 itype = 'Stratocumulus'
+itime=-1
+ihour=-1
 
-print((cltype_hourly_frequency_alltime[ialltime].loc[{'types': itype}] == (cltype_hourly_count_alltime[ialltime].loc[{'types': itype}] / cltype_hourly_count_alltime[ialltime].loc[{'types': 'finite'}] * 100).compute().astype(np.float32)).all().values)
+data1 = cltype_hourly_frequency_alltime[ialltime].loc[{'types': itype}][itime, ihour].values
+data2 = (cltype_hourly_count_alltime[ialltime].loc[{'types': itype}][itime, ihour] / cltype_hourly_count_alltime[ialltime].loc[{'types': 'finite'}][itime, ihour] * 100).compute().astype(np.float32).values
+print((data1[np.isfinite(data1)] == data2[np.isfinite(data2)]).all())
 
 
 #-------------------------------- check 2
@@ -339,10 +356,15 @@ with open('/scratch/v46/qg8515/data/obs/jaxa/clp/cltype_frequency_alltime.pkl', 
     cltype_frequency_alltime = pickle.load(f)
 with open('/scratch/v46/qg8515/data/obs/jaxa/clp/cltype_hourly_frequency_alltime.pkl', 'rb') as f:
     cltype_hourly_frequency_alltime = pickle.load(f)
+min_lon, max_lon, min_lat, max_lat = [110.58, 157.34, -43.69, -7.01]
 
-ialltime = 'mon'
+ialltime = 'am'
 itype = 'Stratocumulus'
-print(np.max(np.abs(cltype_frequency_alltime[ialltime].loc[{'types': itype}] - cltype_hourly_frequency_alltime[ialltime].loc[{'types': itype}].mean(axis='hour'))))
+itime=-1
+
+data1 = cltype_frequency_alltime[ialltime].loc[{'types': itype}][itime].sel(lon=slice(min_lon, max_lon), lat=slice(max_lat, min_lat)).values
+data2 = cltype_hourly_frequency_alltime[ialltime].loc[{'types': itype}][itime].mean(dim='hour', skipna=True).values
+print(np.max(np.abs(data1[np.isfinite(data2) & np.isfinite(data1)] - data2[np.isfinite(data2) & np.isfinite(data1)])))
 
 '''
 # endregion

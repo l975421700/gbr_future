@@ -1,6 +1,6 @@
 
 
-# qsub -I -q express -l walltime=1:00:00,ncpus=1,mem=192GB,jobfs=20GB,storage=gdata/v46+gdata/ob53+scratch/v46+gdata/rr1+gdata/rt52+gdata/oi10+gdata/hh5+gdata/fs38
+# qsub -I -q express -l walltime=4:00:00,ncpus=1,mem=192GB,jobfs=20GB,storage=gdata/v46+gdata/ob53+scratch/v46+gdata/rr1+gdata/rt52+gdata/oi10+gdata/hh5+gdata/fs38
 
 
 # region import packages
@@ -510,7 +510,7 @@ for var in ['clivi', 'clwvi', 'prw']:
 
 '''
 #-------------------------------- check
-var = 'tas'
+var = 'prw'
 with open(f'data/sim/um/barra_c2/barra_c2_hourly_alltime_{var}.pkl','rb') as f:
     barra_c2_hourly_alltime = pickle.load(f)
 
@@ -519,6 +519,8 @@ ifile = -1
 ds = xr.open_dataset(fl[ifile])
 
 print((barra_c2_hourly_alltime['mon'][ifile] == ds[var].squeeze()).all().values)
+
+
 '''
 # endregion
 
