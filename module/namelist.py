@@ -104,6 +104,7 @@ era5_varlabels = {
     'mcc': r'middle cloud cover [$\%$]',
     'lcc': r'low cloud cover [$\%$]',
     'tcc': r'total cloud cover [$\%$]',
+    'clear': r'clear sky [$\%$]',
     't2m': r'2 m temperature [$°C$]',
     'msnlwrf': r'surface net LW radiation [$W \; m^{-2}$]',
     'msnswrf': r'surface net SW radiation [$W \; m^{-2}$]',

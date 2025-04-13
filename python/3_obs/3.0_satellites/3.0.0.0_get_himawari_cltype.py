@@ -1,6 +1,6 @@
 
 
-# qsub -I -q hugemem -l walltime=4:00:00,ncpus=1,mem=520GB,jobfs=100MB,storage=gdata/v46+scratch/v46+gdata/hh5
+# qsub -I -q express -l walltime=4:00:00,ncpus=1,mem=192GB,jobfs=100MB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22
 
 
 # region get command line options
@@ -155,9 +155,24 @@ with open(ofile, 'wb') as f:
 # Memory Used: 526.97GB, Walltime Used: 02:33:21
 
 #-------------------------------- check
+with open('/scratch/v46/qg8515/data/obs/jaxa/clp/cltype_count_alltime.pkl', 'rb') as f:
+    cltype_count_alltime = pickle.load(f)
 
+ifile = -1
+itype = 'Stratocumulus'
+ilat = 100
+ilon = 100
 
+fl = sorted(glob.glob('/scratch/v46/qg8515/data/obs/jaxa/clp/??????/??/cltype_count_????????.nc'))
+ds = xr.open_dataset(fl[ifile])
 
+print((ds.cltype_count.loc[{'types': itype}][0].values == cltype_count_alltime['daily'][ifile].loc[{'types': itype}].values).all())
+
+print((cltype_count_alltime['mon'].loc[{'types': itype}][0, ilat, ilon] == cltype_count_alltime['daily'].loc[{'types': itype}][:28, ilat, ilon].resample({'time': '1ME'}).sum()).all().values)
+
+print((cltype_count_alltime['sea'].loc[{'types': itype}][:, ilat, ilon] == cltype_count_alltime['mon'].loc[{'types': itype}][:, ilat, ilon].resample({'time': 'QE-FEB'}).sum()[1:-1]).all().values)
+
+print((cltype_count_alltime['ann'].loc[{'types': itype}][:, ilat, ilon] == cltype_count_alltime['mon'].loc[{'types': itype}][:, ilat, ilon].resample({'time': '1YE'}).sum()[1:].compute()).all().values)
 
 '''
 # endregion
@@ -193,6 +208,14 @@ with open('/scratch/v46/qg8515/data/obs/jaxa/clp/cltype_frequency_alltime.pkl', 
 with open('/scratch/v46/qg8515/data/obs/jaxa/clp/cltype_count_alltime.pkl', 'rb') as f:
     cltype_count_alltime = pickle.load(f)
 
+ialltime = 'mon'
+itype = 'Stratocumulus'
+ilat = 100
+ilon = 100
+
+data1 = cltype_frequency_alltime[ialltime].loc[{'types': itype}][:, ilat, ilon]
+data2 = (cltype_count_alltime[ialltime].loc[{'types': itype}][:, ilat, ilon] / cltype_count_alltime[ialltime].loc[{'types': 'finite'}][:, ilat, ilon] * 100).compute().astype(np.float32)
+print((data1[np.isfinite(data1)] == data2[np.isfinite(data2)]).all().values)
 
 '''
 # endregion
@@ -207,7 +230,7 @@ ISCCP_types = {'Clear': 0,
                'Cumulus':7, 'Stratocumulus': 8, 'Stratus': 9,
                'Unknown':10}
 
-# year=2015; month=7
+# year=2020; month=6
 print(f'#-------------------------------- {year} {month}')
 
 ymfolder = f'/scratch/v46/qg8515/data/obs/jaxa/clp/{year}{month:02d}'
@@ -252,7 +275,7 @@ ISCCP_types = {'Clear': 0,
                'Altocumulus': 4, 'Altostratus': 5, 'Nimbostratus':6,
                'Cumulus':7, 'Stratocumulus': 8, 'Stratus': 9,
                'Unknown':10}
-year=2024; month=12; itype='Cumulus'
+year=2020; month=6; itype='Cumulus'
 ymfolder = f'/scratch/v46/qg8515/data/obs/jaxa/clp/{year}{month:02d}'
 fl = sorted(glob.glob(f'{ymfolder}/??/??/CLTYPE_{year}{month:02d}??????.nc'))
 ds = xr.open_mfdataset(fl, parallel=True).CLTYPE
@@ -299,11 +322,29 @@ with open('/scratch/v46/qg8515/data/obs/jaxa/clp/cltype_hourly_count_alltime.pkl
 with open('/scratch/v46/qg8515/data/obs/jaxa/clp/cltype_count_alltime.pkl', 'rb') as f:
     cltype_count_alltime = pickle.load(f)
 
+min_lon, max_lon, min_lat, max_lat = [110.58, 157.34, -43.69, -7.01]
 ialltime='mon'
 itype = 'Stratocumulus'
+itime=2
+print((cltype_count_alltime[ialltime][itime].loc[{'types': itype}].sel(lon=slice(min_lon, max_lon), lat=slice(max_lat, min_lat)) == cltype_hourly_count_alltime[ialltime][itime].loc[{'types': itype}].sum(dim='hour')).all().values)
+
+
+#-------------------------------- check 3
+with open('/scratch/v46/qg8515/data/obs/jaxa/clp/cltype_hourly_count_alltime.pkl', 'rb') as f:
+    cltype_hourly_count_alltime = pickle.load(f)
+
 itime=-1
-cltype_count_alltime[ialltime][itime].loc[{'types': itype}]
-cltype_hourly_count_alltime[ialltime][itime].loc[{'types': itype}].sum(dim='hour')
+ihour=3
+ilat = 100
+ilon = 100
+
+for ialltime in cltype_hourly_count_alltime.keys():
+    # ialltime='ann'
+    print(f'#-------------------------------- {ialltime}')
+    
+    print(cltype_hourly_count_alltime[ialltime][itime, ihour, 0, ilat, ilon].values == cltype_hourly_count_alltime[ialltime][itime, ihour, 1:, ilat, ilon].sum(dim='types').values)
+    print((cltype_hourly_count_alltime[ialltime][itime, ihour, 0, ilat, ilon].values - cltype_hourly_count_alltime[ialltime][itime, ihour, 1:, ilat, ilon].sum(dim='types').values) / cltype_hourly_count_alltime[ialltime][itime, ihour, 0, ilat, ilon].values)
+
 
 '''
 # endregion
@@ -336,19 +377,35 @@ with open(ofile, 'wb') as f:
 
 '''
 #-------------------------------- check 1
+# hourly frequency has problem, to be fixed
+
 with open('/scratch/v46/qg8515/data/obs/jaxa/clp/cltype_hourly_count_alltime.pkl', 'rb') as f:
     cltype_hourly_count_alltime = pickle.load(f)
 with open('/scratch/v46/qg8515/data/obs/jaxa/clp/cltype_hourly_frequency_alltime.pkl', 'rb') as f:
     cltype_hourly_frequency_alltime = pickle.load(f)
 
-ialltime = 'ann'
+for ialltime in list(cltype_hourly_count_alltime.keys()):
+    print(ialltime)
+    print(cltype_hourly_count_alltime['am'].loc[{'types': 'Unknown'}].sum().values)
+
+
+ialltime = 'am'
 itype = 'Stratocumulus'
 itime=-1
-ihour=-1
+ihour=3
 
 data1 = cltype_hourly_frequency_alltime[ialltime].loc[{'types': itype}][itime, ihour].values
 data2 = (cltype_hourly_count_alltime[ialltime].loc[{'types': itype}][itime, ihour] / cltype_hourly_count_alltime[ialltime].loc[{'types': 'finite'}][itime, ihour] * 100).compute().astype(np.float32).values
 print((data1[np.isfinite(data1)] == data2[np.isfinite(data2)]).all())
+
+ialltime='am'
+itype = 'Stratocumulus'
+itime = -1
+ihour = 3
+ilat = 100
+ilon = 100
+
+print(cltype_hourly_frequency_alltime[ialltime].loc[{'types': itype}][itime, ihour, ilat, ilon].values == (cltype_hourly_count_alltime[ialltime].loc[{'types': itype}][itime, ihour, ilat, ilon] / cltype_hourly_count_alltime[ialltime].loc[{'types': 'finite'}][itime, ihour, ilat, ilon] * 100).compute().astype(np.float32).values)
 
 
 #-------------------------------- check 2
@@ -365,6 +422,68 @@ itime=-1
 data1 = cltype_frequency_alltime[ialltime].loc[{'types': itype}][itime].sel(lon=slice(min_lon, max_lon), lat=slice(max_lat, min_lat)).values
 data2 = cltype_hourly_frequency_alltime[ialltime].loc[{'types': itype}][itime].mean(dim='hour', skipna=True).values
 print(np.max(np.abs(data1[np.isfinite(data2) & np.isfinite(data1)] - data2[np.isfinite(data2) & np.isfinite(data1)])))
+
+
+#-------------------------------- check 3
+with open('/scratch/v46/qg8515/data/obs/jaxa/clp/cltype_hourly_frequency_alltime.pkl', 'rb') as f:
+    cltype_hourly_frequency_alltime = pickle.load(f)
+with open('/scratch/v46/qg8515/data/obs/jaxa/clp/cltype_hourly_count_alltime.pkl', 'rb') as f:
+    cltype_hourly_count_alltime = pickle.load(f)
+
+for ialltime in list(cltype_hourly_frequency_alltime.keys())[1:]:
+    # ialltime='ann'
+    print(f'#-------------------------------- {ialltime}')
+    itime = -1
+    ihour = 3
+    ilat = 100
+    ilon = 100
+    print(cltype_hourly_frequency_alltime[ialltime][itime, ihour, :, ilat, ilon].values)
+    print(cltype_hourly_frequency_alltime[ialltime][itime, ihour, :, ilat, ilon].values.sum())
+
+
+for ialltime in list(cltype_hourly_frequency_alltime.keys())[1:]:
+    # ialltime='am'
+    print(f'#-------------------------------- {ialltime}')
+    itime = -1
+    ihour = 3
+    data = cltype_hourly_frequency_alltime[ialltime][itime, ihour, :].sum(dim='types').values
+    print(np.min(data))
+    print(np.max(data))
+    print(np.mean(data))
+
+
+# check nan values there
+ialltime = 'ann'
+itime = -1
+ihour = 3
+itypes, ilats, ilons = np.where(np.isnan(cltype_hourly_frequency_alltime[ialltime][itime, ihour]))
+# when you sum it up, nan disappears
+print(np.isnan(cltype_hourly_frequency_alltime[ialltime][itime, ihour].sum(dim='types', skipna=False)).sum())
+for itype, ilat, ilon in zip(itypes, ilats, ilons):
+    print(cltype_hourly_frequency_alltime[ialltime][itime, ihour, itype, ilat, ilon].values)
+
+
+# check zero values there
+ialltime = 'ann'
+itime = -1
+ihour = 3
+ilats, ilons = np.where(cltype_hourly_frequency_alltime[ialltime][itime, ihour, :].sum(dim='types') == 0)
+
+for ilat, ilon in zip(ilats, ilons):
+    print(np.max(cltype_hourly_count_alltime[ialltime][itime, ihour, :, ilat, ilon]).values)
+
+cltype_hourly_frequency_alltime[ialltime][itime, ihour, :].sum(dim='types')[ilats[0], ilons[0]]
+cltype_hourly_count_alltime[ialltime][itime, ihour, :, ilats[0], ilons[0]]
+
+
+# check how many nan is there
+itime = -1
+ihour = 3
+for ialltime in list(cltype_hourly_frequency_alltime.keys())[1:]:
+    # ialltime='am'
+    print(f'#-------------------------------- {ialltime}')
+    print((np.isnan(cltype_hourly_frequency_alltime[ialltime][itime, ihour])).sum().values)
+
 
 '''
 # endregion

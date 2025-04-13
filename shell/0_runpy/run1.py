@@ -2,6 +2,7 @@
 
 # region import packages
 
+# data analysis
 import numpy as np
 import xarray as xr
 import dask
@@ -9,66 +10,64 @@ dask.config.set({"array.slicing.split_large_chunks": True})
 from dask.diagnostics import ProgressBar
 pbar = ProgressBar()
 pbar.register()
-import pandas as pd
-import glob
-from datetime import datetime
+import joblib
+
+# management
 import os
-import calendar
-import pickle
-
 import sys  # print(sys.path)
-sys.path.append('/home/563/qg8515/code/gbr_future/module')
-from calculations import mon_sea_ann
+sys.path.append(os.getcwd() + '/code/gbr_future/module')
+import glob
+import pickle
+import datetime
+# import psutil
+# process = psutil.Process()
+# print(process.memory_info().rss / 2**30)
+
+from calculations import (
+    mon_sea_ann,
+    )
+
+from namelist import zerok, seconds_per_d
 
 # endregion
 
 
-# region get alltime hourly frequency of each cloud type
+# region get BARRA-C2 alltime hourly data
 
-with open('/scratch/v46/qg8515/data/obs/jaxa/clp/cltype_hourly_count_alltime.pkl', 'rb') as f:
-    cltype_hourly_count_alltime = pickle.load(f)
 
-cltype_hourly_frequency_alltime = {}
-for ialltime in ['mon', 'sea', 'ann', 'mm', 'sm', 'am']:
-    # ialltime = 'mon'
-    print(f'#-------------------------------- {ialltime}')
+for var in ['rsdt', 'rsut', 'rlut']:
+    # var = 'cll'
+    # ['clivi', 'clwvi', 'prw', 'cll', 'clh', 'clm', 'clt', 'pr', 'tas']
+    print(f'#-------------------------------- {var}')
     
-    cltype_hourly_frequency_alltime[ialltime] = xr.zeros_like(cltype_hourly_count_alltime[ialltime][:, :, 1:]).rename('cltype_hourly_frequency')
+    fl = sorted(glob.glob(f'scratch/data/sim/um/barra_c2/{var}/{var}_hourly_*.nc'))
+    barra_c2_hourly = xr.open_mfdataset(fl)[var].sel(time=slice('1979', '2023'))
+    barra_c2_hourly_alltime = mon_sea_ann(
+        var_monthly=barra_c2_hourly, lcopy=False, mm=True, sm=True, am=True)
     
-    for itype in cltype_hourly_frequency_alltime[ialltime].types.values:
-        # itype='Stratocumulus'
-        print(f'#---------------- {itype}')
-        cltype_hourly_frequency_alltime[ialltime].loc[{'types': itype}][:] = (cltype_hourly_count_alltime[ialltime].loc[{'types': itype}] / cltype_hourly_count_alltime[ialltime].loc[{'types': 'finite'}] * 100).compute().astype(np.float32)
-
-ofile='/scratch/v46/qg8515/data/obs/jaxa/clp/cltype_hourly_frequency_alltime.pkl'
-if os.path.exists(ofile): os.remove(ofile)
-with open(ofile, 'wb') as f:
-    pickle.dump(cltype_hourly_frequency_alltime, f)
+    ofile = f'data/sim/um/barra_c2/barra_c2_hourly_alltime_{var}.pkl'
+    if os.path.exists(ofile): os.remove(ofile)
+    with open(ofile,'wb') as f:
+        pickle.dump(barra_c2_hourly_alltime, f)
+    
+    del barra_c2_hourly, barra_c2_hourly_alltime
 
 
 
 '''
-#-------------------------------- check 1
-with open('/scratch/v46/qg8515/data/obs/jaxa/clp/cltype_hourly_count_alltime.pkl', 'rb') as f:
-    cltype_hourly_count_alltime = pickle.load(f)
-with open('/scratch/v46/qg8515/data/obs/jaxa/clp/cltype_hourly_frequency_alltime.pkl', 'rb') as f:
-    cltype_hourly_frequency_alltime = pickle.load(f)
+#-------------------------------- check
+var = 'prw'
+with open(f'data/sim/um/barra_c2/barra_c2_hourly_alltime_{var}.pkl','rb') as f:
+    barra_c2_hourly_alltime = pickle.load(f)
 
-ialltime = 'mon'
-itype = 'Stratocumulus'
+fl = sorted(glob.glob(f'scratch/data/sim/um/barra_c2/{var}/{var}_hourly_*.nc'))
+ifile = -1
+ds = xr.open_dataset(fl[ifile])
 
-print((cltype_hourly_frequency_alltime[ialltime].loc[{'types': itype}] == (cltype_hourly_count_alltime[ialltime].loc[{'types': itype}] / cltype_hourly_count_alltime[ialltime].loc[{'types': 'finite'}] * 100).compute().astype(np.float32)).all().values)
+print((barra_c2_hourly_alltime['mon'][ifile] == ds[var].squeeze()).all().values)
 
-
-#-------------------------------- check 2
-with open('/scratch/v46/qg8515/data/obs/jaxa/clp/cltype_frequency_alltime.pkl', 'rb') as f:
-    cltype_frequency_alltime = pickle.load(f)
-with open('/scratch/v46/qg8515/data/obs/jaxa/clp/cltype_hourly_frequency_alltime.pkl', 'rb') as f:
-    cltype_hourly_frequency_alltime = pickle.load(f)
-
-ialltime = 'mon'
-itype = 'Stratocumulus'
-print(np.max(np.abs(cltype_frequency_alltime[ialltime].loc[{'types': itype}] - cltype_hourly_frequency_alltime[ialltime].loc[{'types': itype}].mean(axis='hour'))))
 
 '''
 # endregion
+
+

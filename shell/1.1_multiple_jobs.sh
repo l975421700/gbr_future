@@ -1,4 +1,4 @@
-for idx in $(seq 2 4); do
+for idx in $(seq 1 3); do
     qsub -v idx=$idx <<EOF
 #PBS -N qjob$idx
 #PBS -q express

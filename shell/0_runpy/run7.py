@@ -33,7 +33,7 @@ from namelist import cmip6_units, zerok, seconds_per_d
 
 
 # region get BARRA-R2 hourly data
-# 1hour
+# Memory Used: 2.78GB; Walltime Used: 00:07:57; NCPUs Used: 1
 
 parser=argparse.ArgumentParser()
 parser.add_argument('-y', '--year', type=int, required=True,)
@@ -45,7 +45,7 @@ month=args.month
 # year=1988; month=4
 print(f'#-------------------------------- {year} {month:02d}')
 
-for var in ['clivi', 'clwvi', 'prw']:
+for var in ['rsdt', 'rsut', 'rlut']:
     # var = 'cll'
     print(f'#---------------- {var}')
     
@@ -75,7 +75,7 @@ for var in ['clivi', 'clwvi', 'prw']:
 
 '''
 #-------------------------------- check
-var = 'tas' # ['clh', 'clm', 'cll', 'clt', 'pr', 'tas']
+var = 'prw' # ['clivi', 'clwvi', 'prw', 'clh', 'clm', 'cll', 'clt', 'pr', 'tas']
 year = 2020
 month = 1
 ds1 = xr.open_dataset(f'scratch/data/sim/um/barra_r2/{var}/{var}_hourly_{year}{month:02d}.nc', chunks={})[var]
@@ -133,3 +133,4 @@ joblib.Parallel(n_jobs=12)(joblib.delayed(process_year_month)(year, month, var, 
 
 '''
 # endregion
+

@@ -118,7 +118,7 @@ month=args.month
 # year=1988; month=4
 print(f'#-------------------------------- {year} {month:02d}')
 
-for var in ['clivi', 'clwvi', 'prw']:
+for var in ['rsdt', 'rsut', 'rlut']:
     # var = 'cll'
     print(f'#---------------- {var}')
     
@@ -148,7 +148,7 @@ for var in ['clivi', 'clwvi', 'prw']:
 
 '''
 #-------------------------------- check
-var = 'prw' # ['clivi', 'clwvi', 'prw', 'clh', 'clm', 'cll', 'clt', 'pr', 'tas']
+var = 'rlut' # ['rsdt', 'rsut', 'rlut', 'clivi', 'clwvi', 'prw', 'clh', 'clm', 'cll', 'clt', 'pr', 'tas']
 year = 2020
 month = 1
 ds1 = xr.open_dataset(f'scratch/data/sim/um/barra_r2/{var}/{var}_hourly_{year}{month:02d}.nc', chunks={})[var]
@@ -211,7 +211,7 @@ joblib.Parallel(n_jobs=12)(joblib.delayed(process_year_month)(year, month, var, 
 # region get BARRA-R2 alltime hourly data
 
 
-for var in ['clivi', 'clwvi', 'prw']:
+for var in ['rsdt', 'rsut', 'rlut']:
     # var = 'cll'
     print(f'#-------------------------------- {var}')
     

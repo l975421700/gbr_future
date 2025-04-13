@@ -172,8 +172,8 @@ for ids in dss:
     ds_dm_am[ids] = {}
     ds_dm_astd[ids] = {}
 
-for var2 in ['clivi', 'clwvi', 'prw']:
-    # var2 = 'clivi'
+for var2 in ['rsdt', 'clivi', 'clwvi', 'prw', 'cll', 'clh', 'clm', 'clt', 'pr']:
+    # var2 = 'rsdt'
     var1 = cmip6_era5_var[var2]
     print(f'#-------------------------------- {var1} and {var2}')
     
@@ -196,12 +196,15 @@ for var2 in ['clivi', 'clwvi', 'prw']:
         ds_dm_am[ids] = ds_ann_dm[ids].mean(dim='time')
         ds_dm_astd[ids] = ds_ann_dm[ids].std(dim='time', ddof=1)
     
+    ds_dm_am['ERA5'] = ds_dm_am['ERA5'].roll(hour=-1)
+    ds_dm_astd['ERA5'] = ds_dm_astd['ERA5'].roll(hour=-1)
+    
     opng = f'figures/4_um/4.0_barra/4.0.1_domain average/4.0.1.0 dm am hourly {var2} ERA5, BARRA-R2, C2.png' # 'clivi', 'clwvi', 'prw'
     fig, ax = plt.subplots(1, 1, figsize=np.array([8.8, 8]) / 2.54)
     
     for ids in dss:
         ax.plot(range(0, 24, 1), ds_dm_am[ids],
-                '.-', lw=0.75, markersize=6, label=ids, color=ds_color[ids])
+                '.-', lw=0.75, markersize=6, label=ids, color=ds_color[ids],alpha=0.5)
         ax.errorbar(range(0, 24, 1), ds_dm_am[ids], yerr=ds_dm_astd[ids],
                     fmt='none', capsize=4, color=ds_color[ids],lw=0.5,alpha=0.7)
     
@@ -219,7 +222,7 @@ for var2 in ['clivi', 'clwvi', 'prw']:
     ax.yaxis.set_major_formatter(remove_trailing_zero_pos)
     ax.grid(True, which='both', linewidth=0.5, color='gray',
             alpha=0.5, linestyle='--')
-    fig.subplots_adjust(left=0.16, right=0.99, bottom=0.13, top=0.98)
+    fig.subplots_adjust(left=0.17, right=0.99, bottom=0.13, top=0.98)
     fig.savefig(opng)
     
     del ds_hourly_alltime['ERA5'], ds_hourly_alltime['BARRA-R2'], ds_hourly_alltime['BARRA-C2']

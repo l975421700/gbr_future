@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -l walltime=3:00:00,ncpus=1,mem=12GB,jobfs=100MB,storage=gdata/v46+scratch/v46+gdata/rt52+gdata/ob53+gdata/zv2+gdata/ra22
+# qsub -I -q express -l walltime=4:00:00,ncpus=1,mem=192GB,jobfs=100MB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22
 
 
 # region import packages
@@ -72,6 +72,8 @@ from namelist import (
     zerok,
     panel_labels,
     era5_varlabels,
+    ds_color,
+    cmip6_era5_var,
     )
 
 from component_plot import (
@@ -84,6 +86,7 @@ from component_plot import (
 )
 
 from calculations import (
+    time_weighted_mean,
     mon_sea_ann,
     cdo_regrid,)
 
@@ -425,3 +428,136 @@ bounds = np.arange(len(ISCCP_types) + 1) - 0.5
 pltnorm = plt.Normalize(vmin=0, vmax=len(ISCCP_types) - 1)
 '''
 # endregion
+
+
+# region animate ISCCP classification
+
+
+# endregion
+
+
+# region plot daily cycle of observed counts
+
+with open('data/obs/era5/hourly/era5_hourly_alltime_mtdwswrf.pkl', 'rb') as f:
+    era5_hourly_alltime = pickle.load(f)
+
+min_lon, max_lon, min_lat, max_lat = [110.58, 157.34, -43.69, -7.01]
+era5_mtdwswrf_ann = era5_hourly_alltime['ann'].sel(time=slice('2016', '2023'), lon=slice(min_lon, max_lon), lat=slice(max_lat, min_lat))
+era5_mtdwswrf_ann = era5_mtdwswrf_ann.weighted(np.cos(np.deg2rad(era5_mtdwswrf_ann.lat))).mean(dim=['lon', 'lat'])
+era5_mtdwswrf_am = era5_mtdwswrf_ann.mean(dim='time').roll(hour=-1)
+era5_mtdwswrf_astd = era5_mtdwswrf_ann.std(dim='time', ddof=1).roll(hour=-1)
+
+
+with open('/scratch/v46/qg8515/data/obs/jaxa/clp/cltype_hourly_count_alltime.pkl', 'rb') as f:
+    cltype_hourly_count_alltime = pickle.load(f)
+
+daily_cycle_count_ann = cltype_hourly_count_alltime['ann'].sel(time=slice('2016', '2023')).loc[{'types': 'finite'}].weighted(np.cos(np.deg2rad(cltype_hourly_count_alltime['mon'].lat))).mean(dim=['lon', 'lat']) * 12 / 365 / 6 * 100
+# daily_cycle_count_ann = cltype_hourly_count_alltime['ann'].sel(time=slice('2016', '2023')).loc[{'types': 'finite'}].mean(dim=['lon', 'lat']) * 12 / 365 / 6 * 100
+daily_cycle_count_am = daily_cycle_count_ann.mean(dim='time')
+daily_cycle_count_astd = daily_cycle_count_ann.std(dim='time', ddof=1)
+
+opng = f'figures/3_satellites/3.0_hamawari/3.0.1_dm average count of hourly observations.png'
+
+fig, ax = plt.subplots(1, 1, figsize=np.array([8.8, 8]) / 2.54)
+ax.plot(range(0, 24, 1), daily_cycle_count_am, '.-', lw=0.75, markersize=6,
+        c=ds_color['Himawari'])
+ax.errorbar(range(0, 24, 1), daily_cycle_count_am,
+            yerr=daily_cycle_count_astd, fmt='none',
+            capsize=4, color=ds_color['Himawari'],lw=0.5, alpha=0.7)
+
+ax.set_xticks(np.arange(0, 24, 6))
+ax.set_xlabel('UTC', size=9)
+ax.set_ylim(0, 100)
+ax.set_yticks(np.arange(0, 100+1e-4, 20))
+ax.yaxis.set_major_formatter(remove_trailing_zero_pos)
+ax.set_ylabel(r'Percentage of potential Himawari observations [$\%$]', size=8)
+
+
+ax2 = ax.twinx()
+ax2.plot(range(0, 24, 1), era5_mtdwswrf_am, '.-', lw=0.75, markersize=6,
+        c='tab:blue')
+ax2.errorbar(range(0, 24, 1), era5_mtdwswrf_am,
+             yerr=era5_mtdwswrf_astd, fmt='none',
+             capsize=4, color='tab:blue', lw=0.5, alpha=0.7)
+ax2.set_ylim(0, 1250)
+ax2.set_yticks(np.arange(0, 1250+1e-4, 250))
+ax2.set_yticklabels(np.arange(0, 1250+1e-4, 250), c='tab:blue')
+ax2.yaxis.set_major_formatter(remove_trailing_zero_pos)
+ax2.set_ylabel(r'ERA5 mean TOA downward SW radiation [$W \; m^{-2}$]', size=8, c='tab:blue')
+
+
+ax.grid(True, which='both', linewidth=0.5, color='gray',
+        alpha=0.5, linestyle='--')
+fig.subplots_adjust(left=0.16, right=0.84, bottom=0.13, top=0.98)
+fig.savefig(opng)
+
+
+
+'''
+(daily_cycle_count - cltype_hourly_count_alltime['ann'].sel(time=slice('2016', '2023')).loc[{'types': 'finite'}].mean(dim='time').mean(dim=['lon', 'lat']).values) / daily_cycle_count
+'''
+# endregion
+
+
+# region plot daily cycle of low/middle/high/total cloud frequency
+# double check with a clear mind later
+
+with open('/scratch/v46/qg8515/data/obs/jaxa/clp/cltype_hourly_frequency_alltime.pkl', 'rb') as f:
+    cltype_hourly_frequency_alltime = pickle.load(f)
+
+cltypes = {
+    'hcc': ['Cirrus', 'Cirrostratus', 'Deep convection'],
+    'mcc': ['Altocumulus', 'Altostratus', 'Nimbostratus'],
+    'lcc': ['Cumulus', 'Stratocumulus', 'Stratus'],
+    'tcc': ['Cirrus', 'Cirrostratus', 'Deep convection', 'Altocumulus', 'Altostratus', 'Nimbostratus', 'Cumulus', 'Stratocumulus', 'Stratus'],
+    'clear': ['Clear'],
+    'unknown': ['Unknown']
+    }
+
+years = '2016'
+yeare = '2021'
+
+for icltype2 in ['cll', 'clm', 'clh', 'clt', 'clear']:
+    # icltype2='cll'
+    # ['cll', 'clm', 'clh', 'clt']
+    try:
+        icltype = cmip6_era5_var[icltype2]
+    except KeyError:
+        icltype = icltype2
+    print(f'#-------------------------------- {icltype} {icltype2}')
+    print(cltypes[icltype])
+    
+    cltype_hourly_ann = cltype_hourly_frequency_alltime['ann'].sel(time=slice(years, yeare), types=cltypes[icltype]).sum(dim='types', skipna=False).weighted(np.cos(np.deg2rad(cltype_hourly_frequency_alltime['ann'].lat))).mean(dim=['lon', 'lat'], skipna=True)
+    cltype_hourly_ann[:, 7:23] = np.nan
+    # cltype_hourly_ann = cltype_hourly_frequency_alltime['ann'].sel(time=slice(years, yeare), types=cltypes[icltype]).sum(dim='types').weighted(np.cos(np.deg2rad(cltype_hourly_frequency_alltime['ann'].lat))).mean(dim=['lon', 'lat'])
+    cltype_hourly_am = cltype_hourly_ann.mean(dim='time')
+    cltype_hourly_astd = cltype_hourly_ann.std(dim='time', ddof=1)
+    
+    opng = f'figures/3_satellites/3.0_hamawari/3.0.1_cltype/3.0.1.2_himawari dm hourly {icltype2}.png'
+    
+    fig, ax = plt.subplots(1, 1, figsize=np.array([8.8, 8]) / 2.54)
+    ax.plot(range(0, 24, 1), cltype_hourly_am, '.-', lw=0.75, markersize=6,
+            c=ds_color['Himawari'])
+    ax.errorbar(range(0, 24, 1), cltype_hourly_am,
+                yerr=cltype_hourly_astd, fmt='none',
+                capsize=4, color=ds_color['Himawari'],lw=0.5, alpha=0.7)
+    
+    ax.set_xticks(np.arange(0, 24, 6))
+    ax.set_xlabel('UTC', size=9)
+    # ax.set_ylim(0, 40)
+    # ax.set_yticks(np.arange(0, 40+1e-4, 5))
+    ax.yaxis.set_major_formatter(remove_trailing_zero_pos)
+    ax.set_ylabel(f'Himawari {era5_varlabels[icltype]}', size=8)
+    
+    ax.grid(True, which='both', linewidth=0.5, color='gray',
+            alpha=0.5, linestyle='--')
+    fig.subplots_adjust(left=0.16, right=0.99, bottom=0.13, top=0.98)
+    fig.savefig(opng)
+
+
+
+'''
+(np.isnan(cltype_hourly_frequency_alltime['mon'][0, :, 0])).sum().values
+'''
+# endregion
+

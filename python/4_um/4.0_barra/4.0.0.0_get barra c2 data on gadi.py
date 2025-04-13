@@ -1,6 +1,6 @@
 
 
-# qsub -I -q express -l walltime=4:00:00,ncpus=1,mem=192GB,jobfs=20GB,storage=gdata/v46+gdata/ob53+scratch/v46+gdata/rr1+gdata/rt52+gdata/oi10+gdata/hh5+gdata/fs38
+# qsub -I -q normal -l walltime=4:00:00,ncpus=1,mem=192GB,jobfs=100MB,storage=gdata/v46+gdata/ob53+scratch/v46+gdata/rr1+gdata/rt52+gdata/oi10+gdata/hh5+gdata/fs38
 
 
 # region import packages
@@ -340,7 +340,7 @@ del barra_c2_mon_alltime['rsntcl'], barra_c2_mon_alltime['rsutcl']
 # qsub -I -q normal -l walltime=00:30:00,ncpus=48,mem=192GB,storage=gdata/v46+gdata/ob53+scratch/v46+gdata/rr1+gdata/rt52+gdata/oi10+gdata/hh5+gdata/fs38
 # Memory Used: 161.84GB; Walltime Used: 00:16:55
 
-var = 'cll' # ['clivi', 'clwvi', 'prw', 'clh', 'clm', 'cll', 'clt', 'pr', 'tas']
+var = 'cll' # ['rsdt', 'rsut', 'rlut', 'clivi', 'clwvi', 'prw', 'clh', 'clm', 'cll', 'clt', 'pr', 'tas']
 print(f'#-------------------------------- {var}')
 odir = f'scratch/data/sim/um/barra_c2/{var}'
 os.makedirs(odir, exist_ok=True)
@@ -377,7 +377,7 @@ joblib.Parallel(n_jobs=48)(joblib.delayed(process_year_month)(year, month, var, 
 
 '''
 #-------------------------------- check
-var = 'clwvi'
+var = 'rlut'
 year = 2020
 month = 1
 
@@ -489,9 +489,9 @@ client.close()
 # region get BARRA-C2 alltime hourly data
 
 
-for var in ['clivi', 'clwvi', 'prw']:
+for var in ['rsdt', 'rsut', 'rlut']:
     # var = 'cll'
-    # ['cll', 'clh', 'clm', 'clt', 'pr', 'tas']
+    # ['clivi', 'clwvi', 'prw', 'cll', 'clh', 'clm', 'clt', 'pr', 'tas']
     print(f'#-------------------------------- {var}')
     
     fl = sorted(glob.glob(f'scratch/data/sim/um/barra_c2/{var}/{var}_hourly_*.nc'))

@@ -5,7 +5,7 @@
 #PBS -l jobfs=100MB
 #PBS -l ncpus=1
 #PBS -j oe
-#PBS -l storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public
+#PBS -l storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22
 #PBS -P v46
 #PBS -r y
 

@@ -1,12 +1,12 @@
-for year in $(seq 2020 2020); do
-    for month in $(seq 6 7); do
+for year in $(seq 1979 2023); do
+    for month in $(seq 1 12); do
         # month=$(printf '%02d' $month)
         echo $year $month
         qsub -v year=$year,month=$month <<EOF
 #PBS -N qjob_${year}_$(printf '%02d' $month)
 #PBS -q express
-#PBS -l walltime=10:00:00
-#PBS -l mem=192GB
+#PBS -l walltime=01:00:00
+#PBS -l mem=20GB
 #PBS -l jobfs=100MB
 #PBS -l ncpus=1
 #PBS -j oe
@@ -16,7 +16,7 @@ for year in $(seq 2020 2020); do
 
 cd ${HOME}
 source ${HOME}/miniconda3/bin/activate lowclouds
-python ${HOME}/code/gbr_future/shell/0_runpy/run4.py -y $year -m $month
+python ${HOME}/code/gbr_future/shell/0_runpy/run7.py -y $year -m $month
 
 # module load python3/3.12.1
 # from IPython import start_ipython; start_ipython()

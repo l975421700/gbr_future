@@ -1,6 +1,6 @@
 
 
-# qsub -I -q express -l walltime=1:00:00,ncpus=1,mem=192GB,storage=gdata/v46+gdata/rt52+gdata/ob53
+# qsub -I -q normal -l walltime=1:00:00,ncpus=1,mem=192GB,storage=gdata/v46+gdata/ob53+scratch/v46+gdata/rr1+gdata/rt52+gdata/oi10+gdata/hh5+gdata/fs38
 
 
 # region import packages
@@ -323,7 +323,7 @@ np.max(np.abs(era5_sl_mon_alltime['mtuwswrfcl']['am'].values - era5_sl_mon_allti
 # region get era5 hourly data
 # Memory Used: 165.03GB; Walltime Used: 00:10:35
 
-var = 'lcc' # ['tcwv', 'tclw', 'tciw', 'lcc', 'mcc', 'hcc', 'tcc', 'tp', '2t']
+var = 'lcc' # ['mtnswrf', 'mtdwswrf', 'mtnlwrf', 'tcwv', 'tclw', 'tciw', 'lcc', 'mcc', 'hcc', 'tcc', 'tp', '2t']
 print(f'#-------------------------------- {var}')
 odir = f'scratch/data/obs/era5/{var}'
 os.makedirs(odir, exist_ok=True)
@@ -376,9 +376,9 @@ joblib.Parallel(n_jobs=48)(joblib.delayed(process_year_month)(year, month, var, 
 '''
 #-------------------------------- check
 
-year=2023; month=12
+year=2020; month=6
 
-for var in ['tcwv', 'tclw', 'tciw']:
+for var in ['mtnswrf', 'mtdwswrf', 'mtnlwrf']:
     # var = 'lcc'
     print(f'#-------------------------------- {var}')
     odir = f'scratch/data/obs/era5/{var}'
@@ -423,9 +423,9 @@ for var in ['tcwv', 'tclw', 'tciw']:
 # region get era5 alltime hourly data
 
 
-for var in ['tcwv', 'tclw', 'tciw']:
+for var in ['mtnswrf', 'mtdwswrf', 'mtnlwrf']:
     # var = 'lcc'
-    # ['lcc', 'mcc', 'hcc', 'tcc', 'tp', '2t']
+    # ['tcwv', 'tclw', 'tciw', 'lcc', 'mcc', 'hcc', 'tcc', 'tp', '2t']
     print(f'#-------------------------------- {var}')
     odir = f'scratch/data/obs/era5/{var}'
     
