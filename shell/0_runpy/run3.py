@@ -1,5 +1,8 @@
 
 
+# qsub -I -q express -l walltime=4:00:00,ncpus=1,mem=192GB,jobfs=100MB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/py18
+
+
 # region import packages
 
 # data analysis
@@ -10,11 +13,7 @@ dask.config.set({"array.slicing.split_large_chunks": True})
 from dask.diagnostics import ProgressBar
 pbar = ProgressBar()
 pbar.register()
-from cdo import Cdo
-cdo=Cdo()
-import tempfile
 import joblib
-import argparse
 
 # management
 import os
@@ -23,47 +22,52 @@ sys.path.append(os.getcwd() + '/code/gbr_future/module')
 import glob
 import pickle
 import datetime
+# import psutil
+# process = psutil.Process()
+# print(process.memory_info().rss / 2**30)
+
 from calculations import (
     mon_sea_ann,
     )
 
-from namelist import cmip6_units, zerok, seconds_per_d
+from namelist import zerok, seconds_per_d
 
 # endregion
 
 
-# region get BARRA-R2 alltime hourly data
+# region get BARPA-R mon data
 
-
-for var in ['rsdt', 'rsut', 'rlut']:
-    # var = 'cll'
-    print(f'#-------------------------------- {var}')
+for var in ['cll']:
+    # var = 'pr'
+    # ['pr', 'clh', 'clm', 'cll', 'clt', 'evspsbl', 'hfls', 'hfss', 'psl', 'rlds', 'rldscs', 'rlus', 'rluscs', 'rlut', 'rlutcs', 'rsds', 'rsdscs', 'rsdt', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'sfcWind', 'tas', 'ts', 'evspsblpot', 'hurs', 'huss', 'uas', 'vas', 'clivi', 'clwvi']
+    print(var)
     
-    fl = sorted(glob.glob(f'scratch/data/sim/um/barra_r2/{var}/{var}_hourly_*.nc'))
-    barra_r2_hourly = xr.open_mfdataset(fl)[var].sel(time=slice('1979', '2023'))
-    barra_r2_hourly_alltime = mon_sea_ann(
-        var_monthly=barra_r2_hourly, lcopy=False, mm=True, sm=True, am=True)
+    fl = sorted(glob.glob(f'/g/data/py18/BARPA/output/CMIP6/DD/AUS-15/BOM/ERA5/evaluation/r1i1p1f1/BARPA-R/v1-r1/mon/{var}/latest/*'))
     
-    ofile = f'data/sim/um/barra_r2/barra_r2_hourly_alltime_{var}.pkl'
+    barpa_r_mon = xr.open_mfdataset(fl)[var].sel(time=slice('1979', '2020'))
+    if var in ['pr', 'evspsbl', 'evspsblpot']:
+        barpa_r_mon = barpa_r_mon * seconds_per_d
+    elif var in ['tas', 'ts']:
+        barpa_r_mon = barpa_r_mon - zerok
+    elif var in ['rlus', 'rluscs', 'rlut', 'rlutcs', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'hfls', 'hfss']:
+        barpa_r_mon = barpa_r_mon * (-1)
+    elif var in ['psl']:
+        barpa_r_mon = barpa_r_mon / 100
+    elif var in ['huss']:
+        barpa_r_mon = barpa_r_mon * 1000
+    
+    barpa_r_mon_alltime = mon_sea_ann(
+        var_monthly=barpa_r_mon, lcopy=False, mm=True, sm=True, am=True,)
+    
+    ofile = f'data/sim/um/barpa_r/barpa_r_mon_alltime_{var}.pkl'
     if os.path.exists(ofile): os.remove(ofile)
     with open(ofile,'wb') as f:
-        pickle.dump(barra_r2_hourly_alltime, f)
+        pickle.dump(barpa_r_mon_alltime, f)
     
-    del barra_r2_hourly, barra_r2_hourly_alltime
+    del barpa_r_mon, barpa_r_mon_alltime
 
 
 
-'''
-#-------------------------------- check
-var = 'prw' # ['clivi', 'clwvi', 'prw', 'cll', 'clh', 'clm', 'clt', 'pr', 'tas']
-with open(f'data/sim/um/barra_r2/barra_r2_hourly_alltime_{var}.pkl','rb') as f:
-    barra_r2_hourly_alltime = pickle.load(f)
-
-fl = sorted(glob.glob(f'scratch/data/sim/um/barra_r2/{var}/{var}_hourly_*.nc'))
-ifile = 3
-ds = xr.open_dataset(fl[ifile])[var]
-
-print((barra_r2_hourly_alltime['mon'][ifile] == ds.squeeze()).all().values)
-del barra_r2_hourly_alltime
-'''
 # endregion
+
+

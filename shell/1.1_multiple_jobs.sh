@@ -1,4 +1,4 @@
-for idx in $(seq 1 3); do
+for idx in $(seq 1 12); do
     qsub -v idx=$idx <<EOF
 #PBS -N qjob$idx
 #PBS -q express
@@ -7,7 +7,7 @@ for idx in $(seq 1 3); do
 #PBS -l jobfs=100MB
 #PBS -l ncpus=1
 #PBS -j oe
-#PBS -l storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+gdata/zv2+gdata/ra22
+#PBS -l storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+gdata/zv2+gdata/ra22+gdata/py18
 #PBS -P v46
 #PBS -r y
 

@@ -36,8 +36,9 @@ from namelist import zerok, seconds_per_d
 
 
 # region get BARPA-R mon data
+# Memory Used: 2.91GB; Walltime Used: 00:00:41
 
-for var in ['rsus', 'rsuscs', 'rsutcs', 'sfcWind', 'tas', 'ts', 'evspsblpot', 'hurs', 'huss', 'uas', 'vas']:
+for var in ['prw']:
     # var = 'pr'
     # ['pr', 'clh', 'clm', 'cll', 'clt', 'evspsbl', 'hfls', 'hfss', 'psl', 'rlds', 'rldscs', 'rlus', 'rluscs', 'rlut', 'rlutcs', 'rsds', 'rsdscs', 'rsdt', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'sfcWind', 'tas', 'ts', 'evspsblpot', 'hurs', 'huss', 'uas', 'vas', 'clivi', 'clwvi']
     print(var)

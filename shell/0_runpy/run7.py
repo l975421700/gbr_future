@@ -1,5 +1,8 @@
 
 
+# qsub -I -q express -l walltime=4:00:00,ncpus=1,mem=192GB,jobfs=100MB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/py18
+
+
 # region import packages
 
 # data analysis
@@ -10,11 +13,7 @@ dask.config.set({"array.slicing.split_large_chunks": True})
 from dask.diagnostics import ProgressBar
 pbar = ProgressBar()
 pbar.register()
-from cdo import Cdo
-cdo=Cdo()
-import tempfile
 import joblib
-import argparse
 
 # management
 import os
@@ -23,114 +22,52 @@ sys.path.append(os.getcwd() + '/code/gbr_future/module')
 import glob
 import pickle
 import datetime
+# import psutil
+# process = psutil.Process()
+# print(process.memory_info().rss / 2**30)
+
 from calculations import (
     mon_sea_ann,
     )
 
-from namelist import cmip6_units, zerok, seconds_per_d
+from namelist import zerok, seconds_per_d
 
 # endregion
 
 
-# region get BARRA-R2 hourly data
-# Memory Used: 2.78GB; Walltime Used: 00:07:57; NCPUs Used: 1
+# region get BARPA-R mon data
 
-parser=argparse.ArgumentParser()
-parser.add_argument('-y', '--year', type=int, required=True,)
-parser.add_argument('-m', '--month', type=int, required=True,)
-args = parser.parse_args()
-
-year=args.year
-month=args.month
-# year=1988; month=4
-print(f'#-------------------------------- {year} {month:02d}')
-
-for var in ['rsdt', 'rsut', 'rlut']:
-    # var = 'cll'
-    print(f'#---------------- {var}')
+for var in ['rsdt']:
+    # var = 'pr'
+    # ['pr', 'clh', 'clm', 'cll', 'clt', 'evspsbl', 'hfls', 'hfss', 'psl', 'rlds', 'rldscs', 'rlus', 'rluscs', 'rlut', 'rlutcs', 'rsds', 'rsdscs', 'rsdt', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'sfcWind', 'tas', 'ts', 'evspsblpot', 'hurs', 'huss', 'uas', 'vas', 'clivi', 'clwvi']
+    print(var)
     
-    odir = f'scratch/data/sim/um/barra_r2/{var}'
-    os.makedirs(odir, exist_ok=True)
+    fl = sorted(glob.glob(f'/g/data/py18/BARPA/output/CMIP6/DD/AUS-15/BOM/ERA5/evaluation/r1i1p1f1/BARPA-R/v1-r1/mon/{var}/latest/*'))
     
-    ifile = f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/{var}/latest/{var}_AUS-11_ERA5_historical_hres_BOM_BARRA-R2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc'
-    
-    ds = xr.open_dataset(ifile)[var]
+    barpa_r_mon = xr.open_mfdataset(fl)[var].sel(time=slice('1979', '2020'))
     if var in ['pr', 'evspsbl', 'evspsblpot']:
-        ds = ds * seconds_per_d
+        barpa_r_mon = barpa_r_mon * seconds_per_d
     elif var in ['tas', 'ts']:
-        ds = ds - zerok
+        barpa_r_mon = barpa_r_mon - zerok
     elif var in ['rlus', 'rluscs', 'rlut', 'rlutcs', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'hfls', 'hfss']:
-        ds = ds * (-1)
+        barpa_r_mon = barpa_r_mon * (-1)
     elif var in ['psl']:
-        ds = ds / 100
+        barpa_r_mon = barpa_r_mon / 100
     elif var in ['huss']:
-        ds = ds * 1000
-    ds = ds.groupby('time.hour').mean().astype(np.float32).expand_dims(dim={'time': [ds.time[0].values]}).compute()
+        barpa_r_mon = barpa_r_mon * 1000
     
-    ofile = f'{odir}/{var}_hourly_{year}{month:02d}.nc'
+    barpa_r_mon_alltime = mon_sea_ann(
+        var_monthly=barpa_r_mon, lcopy=False, mm=True, sm=True, am=True,)
+    
+    ofile = f'data/sim/um/barpa_r/barpa_r_mon_alltime_{var}.pkl'
     if os.path.exists(ofile): os.remove(ofile)
-    ds.to_netcdf(ofile)
-    del ds
-
-
-'''
-#-------------------------------- check
-var = 'prw' # ['clivi', 'clwvi', 'prw', 'clh', 'clm', 'cll', 'clt', 'pr', 'tas']
-year = 2020
-month = 1
-ds1 = xr.open_dataset(f'scratch/data/sim/um/barra_r2/{var}/{var}_hourly_{year}{month:02d}.nc', chunks={})[var]
-ds2 = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/{var}/latest/{var}_AUS-11_ERA5_historical_hres_BOM_BARRA-R2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc', chunks={})[var]
-if var in ['pr', 'evspsbl', 'evspsblpot']:
-    ds2 = ds2 * seconds_per_d
-elif var in ['tas', 'ts']:
-    ds2 = ds2 - zerok
-elif var in ['rlus', 'rluscs', 'rlut', 'rlutcs', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'hfls', 'hfss']:
-    ds2 = ds2 * (-1)
-elif var in ['psl']:
-    ds2 = ds2 / 100
-elif var in ['huss']:
-    ds2 = ds2 * 1000
-ds2 = ds2.groupby('time.hour').mean().astype(np.float32).compute()
-print((ds1.squeeze() == ds2).all().values)
-del ds1, ds2
-
-
-#-------------------------------- original method
-# qsub -I -q megamem -l walltime=01:00:00,ncpus=48,mem=1470GB,storage=gdata/v46+gdata/ob53+scratch/v46+gdata/rr1+gdata/rt52+gdata/oi10+gdata/hh5+gdata/fs38
-
-var = 'cll' # ['clh', 'clm', 'cll', 'clt', 'pr', 'tas']
-print(f'#-------------------------------- {var}')
-odir = f'scratch/data/sim/um/barra_r2/{var}'
-os.makedirs(odir, exist_ok=True)
-
-def process_year_month(year, month, var, odir):
-    print(f'#---------------- {year} {month:02d}')
+    with open(ofile,'wb') as f:
+        pickle.dump(barpa_r_mon_alltime, f)
     
-    ifile = f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/{var}/latest/{var}_AUS-11_ERA5_historical_hres_BOM_BARRA-R2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc'
-    ofile = f'{odir}/{var}_hourly_{year}{month:02d}.nc'
-    
-    ds = xr.open_dataset(ifile)[var]
-    if var in ['pr', 'evspsbl', 'evspsblpot']:
-        ds = ds * seconds_per_d
-    elif var in ['tas', 'ts']:
-        ds = ds - zerok
-    elif var in ['rlus', 'rluscs', 'rlut', 'rlutcs', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'hfls', 'hfss']:
-        ds = ds * (-1)
-    elif var in ['psl']:
-        ds = ds / 100
-    elif var in ['huss']:
-        ds = ds * 1000
-    ds = ds.groupby('time.hour').mean().astype(np.float32).expand_dims(dim={'time': [ds.time[0].values]}).compute()
-    
-    if os.path.exists(ofile): os.remove(ofile)
-    ds.to_netcdf(ofile)
-    
-    del ds
-    return f'Finished processing {ofile}'
+    del barpa_r_mon, barpa_r_mon_alltime
 
 
-joblib.Parallel(n_jobs=12)(joblib.delayed(process_year_month)(year, month, var, odir) for year in range(2023, 2024) for month in range(1, 13))
 
-'''
 # endregion
+
 
