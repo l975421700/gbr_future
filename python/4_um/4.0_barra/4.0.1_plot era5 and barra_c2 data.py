@@ -1,6 +1,6 @@
 
 
-# qsub -I -q express -l walltime=2:00:00,ncpus=1,mem=192GB,storage=gdata/v46+gdata/rt52+gdata/ob53
+# qsub -I -q normal -l walltime=4:00:00,ncpus=1,mem=60GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22
 
 
 # region import packages
@@ -100,9 +100,9 @@ from statistics0 import (
 era5_gridarea = xr.open_dataset('data/obs/era5/era5_gridarea.nc').cell_area
 
 era5_sl_mon_alltime = {}
-for var in ['tclw', 'tciw', 'tcwv']:
+for var in ['toa_albedo', 'toa_albedocs', 'toa_albedocl']:
     # var = 'sst'
-    # 'tp', 'msl', 'sst', 'hcc', 'mcc', 'lcc', 'tcc', 't2m', 'msnlwrf', 'msnswrf', 'mtdwswrf', 'mtnlwrf', 'mtnswrf', 'msdwlwrf', 'msdwswrf', 'msdwlwrfcs', 'msdwswrfcs', 'msnlwrfcs', 'msnswrfcs', 'mtnlwrfcs', 'mtnswrfcs', 'cbh', 'tciw', 'tclw', 'e', 'z', 'mslhf', 'msshf', 'tcw', 'tcwv', 'tcsw', 'tcrw', 'tcslw', 'si10', 'd2m', 'cp', 'lsp', 'deg0l', 'mper', 'pev', 'skt', 'u10', 'v10', 'u100', 'v100',    'msuwlwrf',  'msuwswrf',  'msuwlwrfcs',  'msuwswrfcs',  'msnlwrfcl', 'msnswrfcl', 'msdwlwrfcl', 'msdwswrfcl', 'msuwlwrfcl', 'msuwswrfcl',  'mtuwswrf',  'mtuwswrfcs',  'mtnlwrfcl', 'mtnswrfcl', 'mtuwswrfcl'
+    # 'msnrf', 'tp', 'msl', 'sst', 'hcc', 'mcc', 'lcc', 'tcc', 't2m', 'msnlwrf', 'msnswrf', 'mtdwswrf', 'mtnlwrf', 'mtnswrf', 'msdwlwrf', 'msdwswrf', 'msdwlwrfcs', 'msdwswrfcs', 'msnlwrfcs', 'msnswrfcs', 'mtnlwrfcs', 'mtnswrfcs', 'cbh', 'tciw', 'tclw', 'e', 'z', 'mslhf', 'msshf', 'tcw', 'tcwv', 'tcsw', 'tcrw', 'tcslw', 'si10', 'd2m', 'cp', 'lsp', 'deg0l', 'mper', 'pev', 'skt', 'u10', 'v10', 'u100', 'v100',    'msuwlwrf',  'msuwswrf',  'msuwlwrfcs',  'msuwswrfcs',  'msnlwrfcl', 'msnswrfcl', 'msdwlwrfcl', 'msdwswrfcl', 'msuwlwrfcl', 'msuwswrfcl',  'mtuwswrf',  'mtuwswrfcs',  'mtnlwrfcl', 'mtnswrfcl', 'mtuwswrfcl'
     print(f'#-------------------------------- {var}')
     with open(f'data/obs/era5/mon/era5_sl_mon_alltime_{var}.pkl', 'rb') as f:
         era5_sl_mon_alltime[var] = pickle.load(f)
@@ -118,7 +118,7 @@ for var in ['tclw', 'tciw', 'tcwv']:
     
     if var in ['tp', 'tciw', 'tclw', 'z', 'tcw', 'tcwv', 'tcsw', 'tcrw', 'tcslw', 'cp', 'lsp']:
         extend = 'max'
-    elif var in ['hcc', 'mcc', 'lcc', 'tcc']:
+    elif var in ['hcc', 'mcc', 'lcc', 'tcc', 'toa_albedo', 'toa_albedocs', 'toa_albedocl']:
         extend = 'neither'
     else:
         extend = 'both'
@@ -250,6 +250,12 @@ for var in ['tclw', 'tciw', 'tcwv']:
     elif var in ['mtnswrfcl', 'mtuwswrfcl']:
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
             cm_min=-150, cm_max=60, cm_interval1=10, cm_interval2=20, cmap='BrBG', asymmetric=True,)
+    elif var in ['toa_albedo', 'toa_albedocs', 'toa_albedocl']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=0, cm_max=1, cm_interval1=0.1, cm_interval2=0.1, cmap='viridis')
+    elif var in ['msnrf']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-160, cm_max=160, cm_interval1=20, cm_interval2=40, cmap='BrBG')
     else:
         print(f'Warning unspecified colorbar for {var}')
     
@@ -276,6 +282,44 @@ for var in ['tclw', 'tciw', 'tcwv']:
 
 '''
 '''
+# endregion
+
+
+# region plot global era5 derived am data
+
+
+
+surface_radiation = {}
+for var2 in ['rsus', 'rlus', 'rsds', 'rlds', 'hfls', 'hfss']:
+    # var2='rsus'
+    var1 = cmip6_era5_var[var2]
+    print(f'#-------------------------------- {var1} and {var2}')
+    
+    with open(f'data/obs/era5/mon/era5_sl_mon_alltime_{var1}.pkl', 'rb') as f:
+        surface_radiation[var2] = pickle.load(f)['am'].squeeze()
+
+
+plt_data = sum(surface_radiation[var] for var in surface_radiation.keys())
+plt_mean = plt_data.weighted(np.cos(np.deg2rad(plt_data.lat))).mean().values
+cbar_label = r'ERA5 annual mean (1979-2023) surface radiation excess [$W \; m^{-2}$]' + '\nglobal mean: ' + str(np.round(plt_mean, 2))
+extend = 'both'
+pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+    cm_min=-160, cm_max=160, cm_interval1=20, cm_interval2=40, cmap='BrBG',)
+opng = f'figures/5_era5/5.0_global/5.0.0 global era5 annual mean surface radiation excess.png'
+
+
+fig, ax = globe_plot(figsize=np.array([12, 8]) / 2.54, fm_bottom=0.13)
+plt_mesh = ax.pcolormesh(
+    plt_data.lon, plt_data.lat, plt_data.values,
+    norm=pltnorm, cmap=pltcmp, transform=ccrs.PlateCarree(), zorder=1)
+cbar = fig.colorbar(
+    plt_mesh, ax=ax, aspect=40, format=remove_trailing_zero_pos,
+    orientation="horizontal", shrink=0.8, ticks=pltticks, extend=extend,
+    pad=0.02, fraction=0.13)
+cbar.ax.set_xlabel(cbar_label, ha='center', linespacing=1.3, labelpad=4)
+fig.savefig(opng)
+
+
 # endregion
 
 

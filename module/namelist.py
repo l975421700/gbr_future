@@ -158,6 +158,10 @@ era5_varlabels = {
     'mtnlwrfcl': r'CRE on TOA net LW radiation [$W \; m^{-2}$]',
     'mtnswrfcl': r'CRE on TOA net SW radiation [$W \; m^{-2}$]',
     'mtuwswrfcl': r'CRE on TOA upward SW radiation [$W \; m^{-2}$]',
+    'toa_albedo': r'TOA albedo [$-$]',
+    'toa_albedocs': r'clear-sky TOA albedo [$-$]',
+    'toa_albedocl': r'CRE on TOA albedo [$-$]',
+    'msnrf': r'surface net radiation [$W \; m^{-2}$]',
 }
 
 cmip6_era5_var = {
@@ -186,6 +190,7 @@ cmip6_era5_var = {
     'sfcWind': 'si10',
     'tas': 't2m',
     'tos': 'sst',
+    'sst': 'sst',
     'ts': 'skt',
     'evspsblpot': 'pev',
     # 'hurs',
@@ -210,6 +215,7 @@ cmip6_era5_var = {
     'clwvi': 'tclw',
     'clivi': 'tciw',
     'prw': 'tcwv',
+    'rns': 'msnrf',
 }
 # tcw = tcwv + tcsw + tcrw + tclw + tciw
 # 'cbh', 'tcw', 'tcsw', 'tcrw', 'tcslw', 'z', 'd2m', 'cp', 'lsp', 'deg0l', 'u100', 'v100'

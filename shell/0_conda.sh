@@ -41,6 +41,9 @@ mamba install pingouin -y
 mamba install windrose -y
 mamba install pycircstat -y
 mamba install haversine -y
+mamba install zarr -y
+mamba install cfgrib -y
+
 
 #-------------------------------- Other packages
 # mamba install numba -y
@@ -53,7 +56,6 @@ mamba install haversine -y
 # mamba install intake-xarray -y
 # mamba install dask-gateway -y
 # mamba install xarrayutils -y
-# mamba install cfgrib -y
 # mamba install geopy -y
 # mamba install ipykernel -y
 # mamba install ipywidgets -y

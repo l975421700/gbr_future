@@ -320,6 +320,76 @@ np.max(np.abs(era5_sl_mon_alltime['mtuwswrfcl']['am'].values - era5_sl_mon_allti
 # endregion
 
 
+# region derive era5 sl mon data 2
+
+for var1, vars in zip(['toa_albedo', 'toa_albedocs', 'toa_albedocl'], [['mtuwswrf', 'mtdwswrf'], ['mtuwswrfcs', 'mtdwswrf'], ['mtuwswrfcl', 'mtdwswrf']]):
+    # var1='toa_albedo'; vars=['mtuwswrf', 'mtdwswrf']
+    # ['msnrf'], [['msdwlwrf', 'msdwswrf', 'msuwlwrf', 'msuwswrf', 'mslhf', 'msshf']]
+    print(f'#-------------------------------- Derive {var1} from {vars}')
+    
+    era5_sl_mon_alltime = {}
+    for var2 in vars:
+        print(f'#---------------- {var2}')
+        with open(f'data/obs/era5/mon/era5_sl_mon_alltime_{var2}.pkl','rb') as f:
+            era5_sl_mon_alltime[var2] = pickle.load(f)
+    
+    if var1 in ['msnrf']:
+        era5_sl_mon = sum(era5_sl_mon_alltime[var2]['mon'] for var2 in vars).rename(var1).compute()
+        era5_sl_mon_alltime[var1] = mon_sea_ann(
+            var_monthly=era5_sl_mon, lcopy=True, mm=True, sm=True, am=True)
+    elif var1 in ['toa_albedo', 'toa_albedocs', 'toa_albedocl']:
+        era5_sl_mon_alltime[var1] = {}
+        for ialltime in era5_sl_mon_alltime[vars[0]].keys():
+            print(f'#-------- {ialltime}')
+            era5_sl_mon_alltime[var1][ialltime] = (era5_sl_mon_alltime[vars[0]][ialltime] / era5_sl_mon_alltime[vars[1]][ialltime] * (-1)).compute()
+    
+    ofile = f'data/obs/era5/mon/era5_sl_mon_alltime_{var1}.pkl'
+    if os.path.exists(ofile): os.remove(ofile)
+    with open(ofile,'wb') as f:
+        pickle.dump(era5_sl_mon_alltime[var1], f)
+    del era5_sl_mon_alltime
+
+
+'''
+#-------------------------------- check ['toa_albedo', 'toa_albedocs', 'toa_albedocl']
+ilat = 100
+ilon = 100
+for var1, vars in zip(['toa_albedo', 'toa_albedocs', 'toa_albedocl'], [['mtuwswrf', 'mtdwswrf'], ['mtuwswrfcs', 'mtdwswrf'], ['mtuwswrfcl', 'mtdwswrf']]):
+    # var1='toa_albedo'; vars=['mtuwswrf', 'mtdwswrf']
+    # ['msnrf'], [['msdwlwrf', 'msdwswrf', 'msuwlwrf', 'msuwswrf', 'mslhf', 'msshf']]
+    print(f'#-------------------------------- {var1} {vars}')
+    
+    era5_sl_mon_alltime = {}
+    for var2 in [var1] + vars:
+        print(f'#---------------- {var2}')
+        with open(f'data/obs/era5/mon/era5_sl_mon_alltime_{var2}.pkl','rb') as f:
+            era5_sl_mon_alltime[var2] = pickle.load(f)
+    
+    for ialltime in era5_sl_mon_alltime[var1].keys():
+        print(f'#-------- {ialltime}')
+        data1 = era5_sl_mon_alltime[var1][ialltime][:, ilat, ilon].values
+        data2 = (era5_sl_mon_alltime[vars[0]][ialltime][:, ilat, ilon] / era5_sl_mon_alltime[vars[1]][ialltime][:, ilat, ilon] * (-1)).compute().values
+        print((data1[np.isfinite(data1)] == data2[np.isfinite(data2)]).all())
+
+
+
+
+#-------------------------------- check msnrf
+era5_sl_mon_alltime = {}
+for var2 in ['msnrf', 'msdwlwrf', 'msdwswrf', 'msuwlwrf', 'msuwswrf', 'mslhf', 'msshf']:
+    print(f'#---------------- {var2}')
+    with open(f'data/obs/era5/mon/era5_sl_mon_alltime_{var2}.pkl','rb') as f:
+        era5_sl_mon_alltime[var2] = pickle.load(f)
+
+itime=-1
+data1 = era5_sl_mon_alltime['msnrf']['mon'][itime].values
+data2 = sum(era5_sl_mon_alltime[var]['mon'][itime] for var in ['msdwlwrf', 'msdwswrf', 'msuwlwrf', 'msuwswrf', 'mslhf', 'msshf']).values.astype('float32')
+print((data1 == data2).all())
+
+'''
+# endregion
+
+
 # region get era5 hourly data
 # Memory Used: 165.03GB; Walltime Used: 00:10:35
 

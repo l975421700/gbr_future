@@ -105,6 +105,79 @@ for var in ['clivi', 'clwvi', 'prw']:
 # endregion
 
 
+# region derive BARRA-R2 mon data 2
+
+for var1, vars in zip(['toa_albedo', 'toa_albedocs'], [['rsut', 'rsdt'], ['rsutcs', 'rsdt']]):
+    # var1 = 'toa_albedo'; vars = ['rsut', 'rsdt']
+    # ['toa_albedo', 'toa_albedocs'], [['rsut', 'rsdt'], ['rsutcs', 'rsdt']]
+    # ['rns'], [['rsus', 'rlus', 'rsds', 'rlds', 'hfls', 'hfss']]
+    print(f'#-------------------------------- Derive {var1} from {vars}')
+    
+    barra_r2_mon_alltime = {}
+    for var2 in vars:
+        print(f'#---------------- {var2}')
+        with open(f'data/sim/um/barra_r2/barra_r2_mon_alltime_{var2}.pkl','rb') as f:
+            barra_r2_mon_alltime[var2] = pickle.load(f)
+    
+    if var1 in ['rns']:
+        barra_r2_mon = sum(barra_r2_mon_alltime[var2]['mon'] for var2 in vars).rename(var1).compute()
+        barra_r2_mon_alltime[var1] = mon_sea_ann(
+            var_monthly=barra_r2_mon, lcopy=True, mm=True, sm=True, am=True)
+    elif var1 in ['toa_albedo', 'toa_albedocs', 'toa_albedocl']:
+        barra_r2_mon_alltime[var1] = {}
+        for ialltime in barra_r2_mon_alltime[vars[0]].keys():
+            print(f'#-------- {ialltime}')
+            barra_r2_mon_alltime[var1][ialltime] = (barra_r2_mon_alltime[vars[0]][ialltime] / barra_r2_mon_alltime[vars[1]][ialltime] * (-1)).compute()
+    
+    ofile = f'data/sim/um/barra_r2/barra_r2_mon_alltime_{var1}.pkl'
+    if os.path.exists(ofile): os.remove(ofile)
+    with open(ofile,'wb') as f:
+        pickle.dump(barra_r2_mon_alltime[var1], f)
+    
+    del barra_r2_mon_alltime
+
+
+
+'''
+#-------------------------------- check ['toa_albedo', 'toa_albedocs']
+ilat = 100
+ilon = 100
+for var1, vars in zip(['toa_albedo', 'toa_albedocs'], [['rsut', 'rsdt'], ['rsutcs', 'rsdt']]):
+    # var1 = 'toa_albedo'; vars = ['rsut', 'rsdt']
+    # ['rns'], [['rsus', 'rlus', 'rsds', 'rlds', 'hfls', 'hfss']]
+    print(f'#-------------------------------- {var1} {vars}')
+    
+    barra_r2_mon_alltime = {}
+    for var2 in [var1] + vars:
+        print(f'#---------------- {var2}')
+        with open(f'data/sim/um/barra_r2/barra_r2_mon_alltime_{var2}.pkl','rb') as f:
+            barra_r2_mon_alltime[var2] = pickle.load(f)
+    
+    for ialltime in list(barra_r2_mon_alltime[var1].keys()):
+        print(f'#-------- {ialltime}')
+        data1 = barra_r2_mon_alltime[var1][ialltime][:, ilat, ilon].values
+        data2 = barra_r2_mon_alltime[vars[0]][ialltime][:, ilat, ilon].values / barra_r2_mon_alltime[vars[1]][ialltime][:, ilat, ilon].values * (-1)
+        print((data1==data2).all())
+
+
+
+
+#-------------------------------- check ['rns']
+barra_r2_mon_alltime = {}
+for var in ['rns', 'rsus', 'rlus', 'rsds', 'rlds', 'hfls', 'hfss']:
+    print(f'#-------- {var}')
+    with open(f'data/sim/um/barra_r2/barra_r2_mon_alltime_{var}.pkl','rb') as f:
+        barra_r2_mon_alltime[var] = pickle.load(f)
+
+itime = -20
+data1 = barra_r2_mon_alltime['rns']['mon'][itime]
+data2 = sum(barra_r2_mon_alltime[var]['mon'][itime] for var in ['rsus', 'rlus', 'rsds', 'rlds', 'hfls', 'hfss']).compute().astype('float32')
+print((data1 == data2).all().values)
+
+'''
+# endregion
+
+
 # region get BARRA-R2 hourly data
 # Memory Used: 2.78GB; Walltime Used: 00:07:57; NCPUs Used: 1
 
