@@ -225,6 +225,12 @@ cmip6_era5_var = {
     'prw': 'tcwv',
     'rns': 'msnrf',
     'hus': 'q',
+    'ta': 't',
+    'ua': 'u',
+    'va': 'v',
+    'wap': 'w',
+    'zg': 'z',
+    # 'wa',
 }
 # tcw = tcwv + tcsw + tcrw + tclw + tciw
 # 'cbh', 'tcw', 'tcsw', 'tcrw', 'tcslw', 'z', 'd2m', 'cp', 'lsp', 'deg0l', 'u100', 'v100'

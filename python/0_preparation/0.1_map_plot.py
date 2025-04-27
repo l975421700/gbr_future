@@ -298,8 +298,8 @@ rec_m = ax.add_patch(Rectangle(
 # Plot Cross section
 CS_A1 = [min_lon, min_lat]
 CS_A2 = [max_lon, max_lat]
-CS_A3 = [min_lon, max_lat]
-CS_A4 = [max_lon, min_lat]
+CS_A3 = [max_lon, min_lat]
+CS_A4 = [min_lon, max_lat]
 
 ax.plot([CS_A1[0], CS_A2[0]], [CS_A1[1], CS_A2[1]], 'o-',
         color='tab:orange', lw=1, ms=4, transform=ccrs.PlateCarree())
@@ -307,8 +307,8 @@ ax.plot([CS_A3[0], CS_A4[0]], [CS_A3[1], CS_A4[1]], 'o-',
         color='tab:orange', lw=1, ms=4, transform=ccrs.PlateCarree())
 ax.text(CS_A1[0]+1, CS_A1[1]+1, 'A1', ha='left', va='bottom')
 ax.text(CS_A2[0]-1, CS_A2[1]-1, 'A2', ha='right', va='top')
-ax.text(CS_A3[0]+1, CS_A3[1]-1, 'A3', ha='left', va='top')
-ax.text(CS_A4[0]-1, CS_A4[1]+1, 'A4', ha='right', va='bottom')
+ax.text(CS_A3[0]-1, CS_A3[1]+1, 'A3', ha='right', va='bottom')
+ax.text(CS_A4[0]+1, CS_A4[1]-1, 'A4', ha='left', va='top')
 
 opng='figures/0_gbr/0.1_study region/0.0_Australia1.png'
 

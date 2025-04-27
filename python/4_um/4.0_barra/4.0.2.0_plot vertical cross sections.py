@@ -111,15 +111,16 @@ from metplot import get_cross_section
 
 
 # region plot cross sections in ERA5, BARRA-R2/C2 through A1-A2 and A3-A4
+# mem=96GB
 
 min_lon, max_lon, min_lat, max_lat = [110.58, 157.34, -43.69, -7.01]
 CS_A1 = [min_lon, min_lat]
 CS_A2 = [max_lon, max_lat]
-CS_A3 = [min_lon, max_lat]
-CS_A4 = [max_lon, min_lat]
+CS_A3 = [max_lon, min_lat]
+CS_A4 = [min_lon, max_lat]
 
-start_point, end_point = 'A1', 'A2'
-# start_point, end_point = 'A3', 'A4'
+# start_point, end_point = 'A1', 'A2'
+start_point, end_point = 'A3', 'A4'
 
 if start_point == 'A1':
     start_position = CS_A1
@@ -134,8 +135,8 @@ elif end_point == 'A4':
 years = '1979'
 yeare = '2023'
 
-for var2 in ['hus']:
-    # var2='hus'
+for var2 in ['ta', 'ua', 'va', 'zg']:
+    # var2='wap'
     # ['hus', 'ta', 'ua', 'va', 'wa', 'wap', 'zg']
     var1 = cmip6_era5_var[var2]
     print(f'#-------------------------------- {var1} in ERA5 vs. {var2} in BARRA-R2/C2')
@@ -149,81 +150,144 @@ for var2 in ['hus']:
     
     era5_ann = get_cross_section(era5_pl_mon_alltime['ann'], start_position[::-1], end_position[::-1], steps=200).sel(y=slice(200, 1000), time=slice(years, yeare))
     era5_am = era5_ann.mean(dim='time')
-    # era5_am = get_cross_section(era5_pl_mon_alltime['am'], start_position[::-1], end_position[::-1], steps=200).squeeze().sel(y=slice(200, 1000))
+    
+    # barra_r2_ann = get_cross_section(barra_r2_pl_mon_alltime['ann'], start_position[::-1], end_position[::-1], steps=200).sel(y=slice(200, 1000), time=slice(years, yeare))
+    # barra_r2_am = barra_r2_ann.mean(dim='time')
     
     barra_c2_ann = get_cross_section(barra_c2_pl_mon_alltime['ann'], start_position[::-1], end_position[::-1], steps=200).sel(y=slice(200, 1000), time=slice(years, yeare))
     barra_c2_am = barra_c2_ann.mean(dim='time')
-    # barra_c2_am = get_cross_section(barra_c2_pl_mon_alltime['am'], start_position[::-1], end_position[::-1], steps=200).squeeze().sel(y=slice(200, 1000))
-    
-    # print((barra_c2_am.y == era5_am.sel(y=barra_c2_am.y).y).all().values)
     
     
     if var1 == 'q':
-        pltlevel = np.array([0, 0.05, 0.1, 0.2, 0.5, 1, 2, 3, 4, 6, 8, 10, 12, 14])
-        pltticks = np.array([0, 0.05, 0.1, 0.2, 0.5, 1, 2, 3, 4, 6, 8, 10, 12, 14])
+        pltlevel = np.array([0, 0.1, 0.2, 0.5, 1, 2, 4, 8, 12, 16, 20])
+        pltticks = np.array([0, 0.1, 0.2, 0.5, 1, 2, 4, 8, 12, 16, 20])
         pltnorm = BoundaryNorm(pltlevel, ncolors=len(pltlevel)-1, clip=True)
         pltcmp = plt.get_cmap('viridis_r', len(pltlevel)-1)
         extend = 'max'
-        pltlevel2 = np.array([-2, -1, -0.5, -0.2, -0.1, -0.05, 0, 0.05, 0.1, 0.2, 0.5, 1, 2])
-        pltticks2 = np.array([-2, -1, -0.5, -0.2, -0.1, -0.05, 0, 0.05, 0.1, 0.2, 0.5, 1, 2])
+        pltlevel2 = np.array([-1.5, -1, -0.5, -0.2, -0.1, 0, 0.1, 0.2, 0.5, 1, 1.5])
+        pltticks2 = np.array([-1.5, -1, -0.5, -0.2, -0.1, 0, 0.1, 0.2, 0.5, 1, 1.5])
         pltnorm2 = BoundaryNorm(pltlevel2, ncolors=len(pltlevel2)-1, clip=True)
         pltcmp2 = plt.get_cmap('BrBG', len(pltlevel2)-1)
         extend2 = 'both'
+    elif var1 == 't':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-48, cm_max=32, cm_interval1=4, cm_interval2=8, cmap='PuOr', asymmetric=True)
+        extend = 'both'
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-5, cm_max=5, cm_interval1=0.5, cm_interval2=1, cmap='BrBG', asymmetric=True)
+        extend2 = 'both'
+    elif var1 == 'w':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-0.1, cm_max=0.1, cm_interval1=0.01, cm_interval2=0.02, cmap='PuOr')
+        extend = 'both'
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-0.05, cm_max=0.05, cm_interval1=0.01, cm_interval2=0.01, cmap='BrBG')
+        extend2 = 'both'
+    elif var1 == 'u':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-8, cm_max=32, cm_interval1=2, cm_interval2=4, cmap='PuOr', asymmetric=True)
+        extend = 'both'
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-2, cm_max=2, cm_interval1=0.5, cm_interval2=0.5, cmap='BrBG')
+        extend2 = 'both'
+    elif var1 == 'v':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-5, cm_max=5, cm_interval1=1, cm_interval2=2, cmap='PuOr')
+        extend = 'both'
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-2, cm_max=2, cm_interval1=0.5, cm_interval2=0.5, cmap='BrBG')
+        extend2 = 'both'
+    elif var1 == 'z':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=0, cm_max=12000, cm_interval1=500, cm_interval2=2000, cmap='viridis_r')
+        extend = 'both'
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-1000, cm_max=1000, cm_interval1=200, cm_interval2=400, cmap='BrBG')
+        extend2 = 'both'
     
     
-    # plot framework
-    nrow = 1
-    ncol = 3
-    fm_bottom = 3 / (5*nrow+3)
-    fig, axs = plt.subplots(nrow, ncol, figsize=np.array([6.6*ncol, 5*nrow+3]) / 2.54, sharey=True, gridspec_kw={'hspace': 0.01, 'wspace': 0.05})
-    
-    plt_mode = 'diff' #'org' #
-    if plt_mode == 'diff':
-        plt_colnames = ['ERA5', 'BARRA-R2 - ERA5', 'BARRA-C2 - ERA5']
-    elif plt_mode == 'org':
-        plt_colnames = ['ERA5', 'BARRA-R2', 'BARRA-C2']
-    
-    
-    plt_mesh = axs[0].pcolormesh(
-        era5_am.x, era5_am.y, era5_am.values,
-        norm=pltnorm, cmap=pltcmp)
-    
-    if plt_mode == 'org':
-        axs[2].pcolormesh(
-            barra_c2_am.x, barra_c2_am.y, barra_c2_am.values,
-            norm=pltnorm, cmap=pltcmp)
-    elif plt_mode == 'diff':
-        axs[2].pcolormesh(
-            barra_c2_am.x, barra_c2_am.y, barra_c2_am - era5_am.sel(y=barra_c2_am.y),
-            norm=pltnorm2, cmap=pltcmp2)
-    
-    for jcol in range(ncol):
-        axs[jcol].invert_yaxis()
-        axs[jcol].set_ylim(1000, 200)
-        axs[jcol].set_yticks(np.arange(1000, 200 - 1e-4, -200))
+    for plt_mode in ['org', 'diff']:
+        # plt_mode = 'diff' #'org' #
+        print(f'#---------------- {plt_mode}')
+        if plt_mode == 'diff':
+            plt_colnames = ['ERA5', 'BARRA-R2 - ERA5', 'BARRA-C2 - ERA5']
+        elif plt_mode == 'org':
+            plt_colnames = ['ERA5', 'BARRA-R2', 'BARRA-C2']
         
-        axs[jcol].set_xlim(0, era5_am.x[-1])
-        axs[jcol].set_xticks(
-            np.arange(0, era5_am.x[-1] + 1e-4, 1000),
-            labels=(np.arange(0,era5_am.x[-1]+1e-4,1000)/1000).astype(int))
         
-        axs[jcol].grid(True, lw=0.5, c='gray', alpha=0.5, linestyle='--',)
+        # plot framework
+        nrow = 1
+        ncol = 3
+        fm_bottom = 3 / (5*nrow+3)
         
-        axs[jcol].text(0.5, 1.02, f'({string.ascii_lowercase[jcol]}) {plt_colnames[jcol]}', ha='center', va='bottom', transform=axs[jcol].transAxes)
+        fig, axs = plt.subplots(nrow, ncol, figsize=np.array([6.6*ncol, 5*nrow+3]) / 2.54, sharey=True, gridspec_kw={'hspace': 0.01, 'wspace': 0.05})
+        
+        plt_mesh = axs[0].pcolormesh(era5_am.x, era5_am.y, era5_am, norm=pltnorm, cmap=pltcmp)
+        
+        if plt_mode == 'org':
+            # axs[1].pcolormesh(
+            #     barra_r2_am.x, barra_r2_am.y, barra_r2_am.values,
+            #     norm=pltnorm, cmap=pltcmp)
+            axs[2].pcolormesh(
+                barra_c2_am.x, barra_c2_am.y, barra_c2_am.values,
+                norm=pltnorm, cmap=pltcmp)
+        elif plt_mode == 'diff':
+            # plt_data = barra_r2_am - era5_am.sel(y=barra_r2_am.y)
+            # ttest_fdr_res = ttest_fdr_control(barra_r2_ann, era5_ann.sel(y=barra_r2_am.y))
+            # plt_data = plt_data.where(ttest_fdr_res, np.nan)
+            # axs[1].pcolormesh(
+            #     plt_data.x, plt_data.y, plt_data, norm=pltnorm2, cmap=pltcmp2)
+            
+            plt_data = barra_c2_am - era5_am.sel(y=barra_c2_am.y)
+            ttest_fdr_res = ttest_fdr_control(barra_c2_ann, era5_ann.sel(y=barra_c2_am.y))
+            plt_data = plt_data.where(ttest_fdr_res, np.nan)
+            plt_mesh2 = axs[2].pcolormesh(
+                plt_data.x, plt_data.y, plt_data, norm=pltnorm2, cmap=pltcmp2)
+        
+        for jcol in range(ncol):
+            axs[jcol].invert_yaxis()
+            axs[jcol].set_ylim(1000, 200)
+            axs[jcol].set_yticks(np.arange(1000, 200 - 1e-4, -200))
+            
+            axs[jcol].set_xlim(0, era5_am.x[-1])
+            axs[jcol].set_xticks(
+                np.arange(0, era5_am.x[-1] + 1e-4, 1000),
+                labels=(np.arange(0,era5_am.x[-1]+1e-4,1000)/1000).astype(int))
+            
+            axs[jcol].grid(True, lw=0.5, c='gray', alpha=0.5, linestyle='--',)
+            
+            axs[jcol].text(0.5, 1.02, f'({string.ascii_lowercase[jcol]}) {plt_colnames[jcol]}', ha='center', va='bottom', transform=axs[jcol].transAxes)
+        
+        axs[0].set_ylabel(r'Pressure [$hPa$]')
+        axs[1].set_xlabel(f'Distance from {start_point} to {end_point} ' + r'[$10^3 \; km$]')
+        
+        if plt_mode == 'org':
+            cbar = fig.colorbar(
+                plt_mesh, #cm.ScalarMappable(norm=pltnorm1, cmap=pltcmp1), #
+                format=remove_trailing_zero_pos,
+                orientation="horizontal", ticks=pltticks, extend=extend,
+                cax=fig.add_axes([0.25, fm_bottom-0.2, 0.5, 0.04]))
+            cbar.ax.set_xlabel(f'{years}-{yeare} {era5_varlabels[var1]}')
+        elif plt_mode == 'diff':
+            cbar = fig.colorbar(
+                plt_mesh, #cm.ScalarMappable(norm=pltnorm1, cmap=pltcmp1), #
+                format=remove_trailing_zero_pos,
+                orientation="horizontal", ticks=pltticks, extend=extend,
+                cax=fig.add_axes([0.05, fm_bottom-0.2, 0.4, 0.04]))
+            cbar.ax.set_xlabel(f'{years}-{yeare} {era5_varlabels[var1]}')
+            cbar2 = fig.colorbar(
+                plt_mesh2, #cm.ScalarMappable(norm=pltnorm1, cmap=pltcmp1), #
+                format=remove_trailing_zero_pos,
+                orientation="horizontal", ticks=pltticks2, extend=extend2,
+                cax=fig.add_axes([0.55, fm_bottom-0.2, 0.4, 0.04]))
+            cbar2.ax.set_xlabel(f'Difference in {years}-{yeare} {era5_varlabels[var1]}')
+        
+        fig.subplots_adjust(left=0.08, right=0.99, bottom=fm_bottom, top=0.92)
+        fig.savefig(f'figures/4_um/4.0_barra/4.0.4_verticals/4.0.4.0 cross_section {start_point}_{end_point} barra_r2_c2 vs. era5 am {years}_{yeare} {var1} {plt_mode}.png')
     
-    axs[0].set_ylabel(r'Pressure [$hPa$]')
-    axs[1].set_xlabel(f'Distance from {start_point} to {end_point} ' + r'[$10^3 \; km$]')
-    
-    if plt_mode == 'org':
-        cbar = fig.colorbar(
-            plt_mesh, #cm.ScalarMappable(norm=pltnorm1, cmap=pltcmp1), #
-            format=remove_trailing_zero_pos,
-            orientation="horizontal", ticks=pltticks, extend=extend,
-            cax=fig.add_axes([0.25, fm_bottom-0.2, 0.5, 0.04]))
-        cbar.ax.set_xlabel(f'{years}-{yeare} {era5_varlabels[var1]}')
-    
-    fig.subplots_adjust(left=0.08, right=0.99, bottom=fm_bottom, top=0.92)
-    fig.savefig(f'figures/4_um/4.0_barra/4.0.4_verticals/4.0.4.0 cross_section {start_point}_{end_point} barra_r2_c2 vs. era5 am {years}_{yeare} {var1} {plt_mode}.png')
+    del era5_pl_mon_alltime, barra_c2_pl_mon_alltime
+    # del barra_r2_pl_mon_alltime
+
 
 
 
@@ -248,6 +312,17 @@ for var2 in ['hus']:
     data3 = get_cross_section(barra_c2_pl_mon_alltime['ann'], start_position[::-1], end_position[::-1])
     data4 = cross_section(barra_c2_pl_mon_alltime['ann'].squeeze().to_dataset().metpy.parse_cf()[var2], start_position[::-1], end_position[::-1], steps=len(data3.x))
     print((data3.squeeze().values[np.isfinite(data3.squeeze().values)] == data4.values[np.isfinite(data4.values)]).all())
+
+
+    # print(np.max(np.abs(era5_am - get_cross_section(era5_pl_mon_alltime['am'], start_position[::-1], end_position[::-1], steps=200).squeeze().sel(y=slice(200, 1000))) / era5_am).values)
+
+    # print(np.max(np.abs(barra_r2_am - get_cross_section(barra_r2_pl_mon_alltime['am'], start_position[::-1], end_position[::-1], steps=200).squeeze().sel(y=slice(200, 1000))) / barra_r2_am).values)
+    # print(np.max(np.abs(get_cross_section(barra_r2_pl_mon_alltime['ann'], start_position[::-1], end_position[::-1]).sel(y=slice(200, 1000), time=slice(years, yeare)).mean(dim='time') - get_cross_section(barra_r2_pl_mon_alltime['am'], start_position[::-1], end_position[::-1]).squeeze().sel(y=slice(200, 1000))) / get_cross_section(barra_r2_pl_mon_alltime['ann'], start_position[::-1], end_position[::-1]).sel(y=slice(200, 1000), time=slice(years, yeare)).mean(dim='time')).values)
+
+    # print(np.max(np.abs(barra_c2_am - get_cross_section(barra_c2_pl_mon_alltime['am'], start_position[::-1], end_position[::-1], steps=200).squeeze().sel(y=slice(200, 1000))) / barra_c2_am).values)
+    # print(np.max(np.abs(get_cross_section(barra_c2_pl_mon_alltime['ann'], start_position[::-1], end_position[::-1]).sel(y=slice(200, 1000), time=slice(years, yeare)).mean(dim='time') - get_cross_section(barra_c2_pl_mon_alltime['am'], start_position[::-1], end_position[::-1]).squeeze().sel(y=slice(200, 1000))) / get_cross_section(barra_c2_pl_mon_alltime['ann'], start_position[::-1], end_position[::-1]).sel(y=slice(200, 1000), time=slice(years, yeare)).mean(dim='time')).values)
+
+
 '''
 # endregion
 
