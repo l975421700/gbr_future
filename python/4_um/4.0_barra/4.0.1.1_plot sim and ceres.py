@@ -1,6 +1,6 @@
 
 
-# qsub -I -q express -l walltime=5:00:00,ncpus=1,mem=192GB,jobfs=100MB,storage=gdata/v46+gdata/rt52+gdata/ob53+gdata/zv2+scratch/v46
+# qsub -I -q normal -l walltime=5:00:00,ncpus=1,mem=60GB,jobfs=100MB,storage=gdata/v46+gdata/rt52+gdata/ob53+gdata/zv2+scratch/v46
 
 
 # region import packages
@@ -1162,5 +1162,135 @@ stats.describe(plt_data[plt_colnames[0]].values, axis=None, nan_policy='omit')
 stats.describe(plt_data[plt_colnames[3]].values, axis=None, nan_policy='omit')
 '''
 # endregion
+
+
+# region plot global CERES vs. ERA5
+
+years = '2001'
+yeare = '2023'
+
+for var in ['mtuwswrf', 'mtnlwrf', 'mtdwswrf', 'msdwswrf', 'msuwswrf', 'msdwlwrf', 'msuwlwrf', 'msnswrf', 'msnlwrf', 'toa_albedo']:
+    # var = 'mtuwswrf'
+    print(f'#-------------------------------- {var}')
+    
+    with open(f'data/obs/CERES/ceres_mon_alltime_{var}.pkl', 'rb') as f:
+        ceres_mon_alltime = pickle.load(f)
+    with open(f'data/obs/era5/mon/era5_sl_mon_alltime_{var}.pkl', 'rb') as f:
+        era5_sl_mon_alltime = pickle.load(f)
+    # print(ceres_mon_alltime['ann'].shape)
+    # print(era5_sl_mon_alltime['ann'].shape)
+    
+    if var in ['mtuwswrf']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-250, cm_max=-20, cm_interval1=10, cm_interval2=20, cmap='viridis')
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10, cmap='BrBG')
+    elif var in ['mtnlwrf']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-300, cm_max=-130, cm_interval1=10, cm_interval2=20, cmap='viridis',)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10, cmap='BrBG')
+    elif var in ['mtdwswrf']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=180, cm_max=420, cm_interval1=10, cm_interval2=20, cmap='viridis_r',)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10, cmap='BrBG')
+    elif var in ['msdwswrf']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=60, cm_max=330, cm_interval1=10, cm_interval2=20, cmap='viridis_r',)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10, cmap='BrBG')
+    elif var in ['msuwswrf']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-220, cm_max=0, cm_interval1=10, cm_interval2=20, cmap='viridis')
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10, cmap='BrBG')
+    elif var in ['msdwlwrf']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=80, cm_max=430, cm_interval1=10, cm_interval2=20, cmap='viridis_r',)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10, cmap='BrBG')
+    elif var in ['msuwlwrf']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-540, cm_max=-120, cm_interval1=10, cm_interval2=40, cmap='viridis')
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10, cmap='BrBG')
+    elif var in ['msnswrf']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=0, cm_max=300, cm_interval1=10, cm_interval2=20, cmap='viridis_r',)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10, cmap='BrBG')
+    elif var in ['msnlwrf']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-170, cm_max=0, cm_interval1=10, cm_interval2=20, cmap='viridis',)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10, cmap='BrBG')
+    elif var in ['toa_albedo']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=0, cm_max=1, cm_interval1=0.1, cm_interval2=0.1, cmap='viridis')
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-0.5, cm_max=0.5, cm_interval1=0.1, cm_interval2=0.1, cmap='BrBG')
+    
+    opng = f'figures/5_era5/5.1_era5_obs/5.1.1_ceres vs. era5 {var} {years}_{yeare}.png'
+    cbar_label1 = f'{years}-{yeare} {era5_varlabels[var]}'
+    cbar_label2 = f'Difference in {years}-{yeare} {era5_varlabels[var]}'
+    plt_colnames = ['CERES', 'ERA5', 'ERA5 - CERES']
+    
+    nrow = 1
+    ncol = 3
+    fm_bottom = 1.5 / (4.4*nrow + 2)
+    
+    fig, axs = plt.subplots(
+        nrow, ncol, figsize=np.array([8.8*ncol, 4.4*nrow + 2]) / 2.54,
+        subplot_kw={'projection': ccrs.Mollweide(central_longitude=180)},
+        gridspec_kw={'hspace': 0.01, 'wspace': 0.01},)
+    
+    for jcol in range(ncol):
+        axs[jcol] = globe_plot(ax_org=axs[jcol])
+        axs[jcol].text(
+            0.5, 1.02, f'({string.ascii_lowercase[jcol]}) {plt_colnames[jcol]}',
+            ha='center', va='bottom', transform=axs[jcol].transAxes)
+    
+    plt_mesh = axs[0].pcolormesh(
+        ceres_mon_alltime['ann'].lon, ceres_mon_alltime['ann'].lat,
+        ceres_mon_alltime['ann'].mean(dim='time'),
+        norm=pltnorm, cmap=pltcmp, transform=ccrs.PlateCarree())
+    plt_mesh = axs[1].pcolormesh(
+        era5_sl_mon_alltime['ann'].lon, era5_sl_mon_alltime['ann'].lat,
+        era5_sl_mon_alltime['ann'].sel(time=slice(years, yeare)).mean(dim='time'),
+        norm=pltnorm, cmap=pltcmp, transform=ccrs.PlateCarree())
+    
+    if not 'regridder' in globals():
+        regridder = xe.Regridder(era5_sl_mon_alltime['am'], ceres_mon_alltime['am'], 'bilinear')
+    era5_ann_regrid = regridder(era5_sl_mon_alltime['ann'].sel(time=slice(years, yeare)))
+    plt_data = era5_ann_regrid.mean(dim='time') - ceres_mon_alltime['ann'].mean(dim='time')
+    ttest_fdr_res = ttest_fdr_control(era5_ann_regrid, ceres_mon_alltime['ann'])
+    plt_data = plt_data.where(ttest_fdr_res, np.nan)
+    plt_mesh2 = axs[2].pcolormesh(
+        plt_data.lon, plt_data.lat, plt_data,
+        norm=pltnorm2, cmap=pltcmp2, transform=ccrs.PlateCarree())
+    
+    cbar = fig.colorbar(
+        plt_mesh, #cm.ScalarMappable(norm=pltnorm, cmap=pltcmp), #
+        ax=axs, format=remove_trailing_zero_pos,
+        orientation="horizontal", ticks=pltticks, extend='both',
+        cax=fig.add_axes([0.05, fm_bottom-0.05, 0.4, 0.04]))
+    cbar.ax.set_xlabel(cbar_label1)
+    cbar2 = fig.colorbar(
+        plt_mesh2, #cm.ScalarMappable(norm=pltnorm2, cmap=pltcmp2), #
+        ax=axs, format=remove_trailing_zero_pos,
+        orientation="horizontal", ticks=pltticks2, extend='both',
+        cax=fig.add_axes([0.55, fm_bottom-0.05, 0.4, 0.04]))
+    cbar2.ax.set_xlabel(cbar_label2)
+    
+    fig.subplots_adjust(left=0.01, right=0.99, bottom=fm_bottom, top=0.92)
+    fig.savefig(opng)
+    del ceres_mon_alltime, era5_sl_mon_alltime
+
+
+
+
+# endregion
+
 
 

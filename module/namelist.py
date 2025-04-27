@@ -123,7 +123,7 @@ era5_varlabels = {
     'tciw': r'total column cloud ice water [$kg \; m^{-2}$]',
     'tclw': r'total column cloud liquid water [$kg \; m^{-2}$]',
     'e': r'evaporation [$mm \; day^{-1}$]',
-    'z': r'orography [$m$]',
+    # 'z': r'orography [$m$]',
     'mslhf': r'surface latent heat flux [$W \; m^{-2}$]',
     'msshf': r'surface sensible heat flux [$W \; m^{-2}$]',
     'tcw': r'total column water [$kg \; m^{-2}$]',
@@ -162,6 +162,14 @@ era5_varlabels = {
     'toa_albedocs': r'clear-sky TOA albedo [$-$]',
     'toa_albedocl': r'CRE on TOA albedo [$-$]',
     'msnrf': r'surface net radiation [$W \; m^{-2}$]',
+    'q': r'specific humidity [$g \; kg^{-1}$]',
+    'pv': r'potential vorticity [$10^{-6} \; K \; m^{2} \; kg^{-1} \; s^{-1}$]',
+    'r': r'relative humidity [$\%$]',
+    't': r'temperature [$°C$]',
+    'u': r'u [$m\;s^{-1}$]',
+    'v': r'v [$m\;s^{-1}$]',
+    'w': r'w [$Pa\;s^{-1}$]',
+    'z': r'geopotential height [$m$]',
 }
 
 cmip6_era5_var = {
@@ -216,6 +224,7 @@ cmip6_era5_var = {
     'clivi': 'tciw',
     'prw': 'tcwv',
     'rns': 'msnrf',
+    'hus': 'q',
 }
 # tcw = tcwv + tcsw + tcrw + tclw + tciw
 # 'cbh', 'tcw', 'tcsw', 'tcrw', 'tcslw', 'z', 'd2m', 'cp', 'lsp', 'deg0l', 'u100', 'v100'

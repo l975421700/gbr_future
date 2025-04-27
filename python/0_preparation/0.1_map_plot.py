@@ -1,5 +1,7 @@
 
+
 # qsub -I -q express -l walltime=2:00:00,ncpus=1,mem=192GB,storage=gdata/v46+gdata/rr1
+
 
 # region import packages
 
@@ -28,7 +30,7 @@ from matplotlib.colors import BoundaryNorm
 from matplotlib import cm
 import cartopy.crs as ccrs
 plt.rcParams['pcolor.shading'] = 'auto'
-mpl.rcParams['figure.dpi'] = 300
+mpl.rcParams['figure.dpi'] = 600
 mpl.rc('font', family='Times New Roman', size=10)
 mpl.rcParams['axes.linewidth'] = 0.2
 plt.rcParams.update({"mathtext.fontset": "stix"})
@@ -228,14 +230,14 @@ ax.scatter(
 
 fig, ax = regional_plot(
     extent=[108, 160, -45.7, -5],
-    figsize = np.array([13.2, 12])/2.54, lgrid=False)
+    figsize = np.array([8.8, 8.1])/2.54, lgrid=False, lw=0.15)
 
 ax.set_xticks(np.arange(110, 160+1e-4, 10))
 ax.set_yticks(np.arange(-40, -10+1e-4, 10))
 ax.xaxis.set_major_formatter(LongitudeFormatter(degree_symbol='° '))
 ax.yaxis.set_major_formatter(LatitudeFormatter(degree_symbol='° '))
 ax.gridlines(
-    crs=ccrs.PlateCarree(), linewidth=0.25, zorder=2,
+    crs=ccrs.PlateCarree(), linewidth=0.15, zorder=2,
     color='gray', alpha=0.5, linestyle='--',)
 
 # # plot dem and bathy from Aus
@@ -279,7 +281,7 @@ plt_mesh1 = ax.pcolormesh(
     orog.values,
     norm=pltnorm, cmap=pltcmp,transform=ccrs.PlateCarree())
 extend='max'
-cbar_label='Topography [$m$]'
+cbar_label='Topography in BARRA-C2 [$m$]'
 
 min_lon, max_lon, min_lat, max_lat = [
     orog.lon.values[int(len(orog.lon)*0.05)],
@@ -290,20 +292,36 @@ min_lon, max_lon, min_lat, max_lat = [
 # orog.sel(lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat))
 rec_m = ax.add_patch(Rectangle(
     (min_lon, min_lat), max_lon-min_lon, max_lat-min_lat,
-    ec = 'red', color = 'None', lw = 0.5))
+    ec = 'red', color = 'None', lw = 1))
+
+
+# Plot Cross section
+CS_A1 = [min_lon, min_lat]
+CS_A2 = [max_lon, max_lat]
+CS_A3 = [min_lon, max_lat]
+CS_A4 = [max_lon, min_lat]
+
+ax.plot([CS_A1[0], CS_A2[0]], [CS_A1[1], CS_A2[1]], 'o-',
+        color='tab:orange', lw=1, ms=4, transform=ccrs.PlateCarree())
+ax.plot([CS_A3[0], CS_A4[0]], [CS_A3[1], CS_A4[1]], 'o-',
+        color='tab:orange', lw=1, ms=4, transform=ccrs.PlateCarree())
+ax.text(CS_A1[0]+1, CS_A1[1]+1, 'A1', ha='left', va='bottom')
+ax.text(CS_A2[0]-1, CS_A2[1]-1, 'A2', ha='right', va='top')
+ax.text(CS_A3[0]+1, CS_A3[1]-1, 'A3', ha='left', va='top')
+ax.text(CS_A4[0]-1, CS_A4[1]+1, 'A4', ha='right', va='bottom')
 
 opng='figures/0_gbr/0.1_study region/0.0_Australia1.png'
 
 gbr_shp = gpd.read_file('data/others/Great_Barrier_Reef_Marine_Park_Boundary/Great_Barrier_Reef_Marine_Park_Boundary.shp')
-gbr_shp.plot(ax=ax, edgecolor='tab:blue', facecolor='none', lw=0.8, zorder=2)
+gbr_shp.plot(ax=ax, edgecolor='tab:blue', facecolor='none', lw=1, zorder=2)
 
 cbar = fig.colorbar(
     plt_mesh1,
     ax=ax, aspect=30,
     orientation="horizontal", shrink=1.05, ticks=pltticks, extend=extend,
-    pad=0.08, fraction=0.06,)
+    pad=0.11, fraction=0.07,)
 cbar.ax.set_xlabel(cbar_label)
-fig.subplots_adjust(left=0.09, right=0.96, bottom=0.08, top=0.99)
+fig.subplots_adjust(left=0.12, right=0.94, bottom=0.12, top=0.995)
 fig.savefig(opng)
 
 

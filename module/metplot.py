@@ -191,3 +191,70 @@ def plot_wyoming_sounding_vertical(
 # endregion
 
 
+# region get_cross_section
+
+def get_cross_section(da, start, end, steps=None, interp_type='linear'):
+    '''
+    #---- Input
+    da: 3D or 4D xarray.DataArray [(time,) level/pressure, lat, lon]
+    start/end: [lat, lon]
+    '''
+    from haversine import haversine
+    from metpy.interpolate import cross_section
+    import numpy as np
+    import xarray as xr
+    
+    cross_section_length = haversine(start, end, unit='km')
+    if steps is None:
+        midx_lat = int(np.ceil(len(da.lat)/2))
+        midx_lon = int(np.ceil(len(da.lon)/2))
+        mpoint = (da.lat.values[midx_lat], da.lon.values[midx_lon])
+        mpoint_lon1 = (da.lat.values[midx_lat], da.lon.values[midx_lon + 1])
+        mpoint_lat1 = (da.lat.values[midx_lat+1], da.lon.values[midx_lon])
+        
+        grid_spacing1 = haversine(mpoint, mpoint_lon1, unit='km')
+        grid_spacing2 = haversine(mpoint, mpoint_lat1, unit='km')
+        grid_spacing = (grid_spacing1 + grid_spacing2) / 2
+        
+        steps = int(np.ceil(cross_section_length / grid_spacing))
+    
+    da_parse = da.to_dataset().metpy.parse_cf()[da.name]
+    da_cs = cross_section(da_parse, start, end, steps, interp_type)
+    
+    vertical_name = [var for var in list(da_cs.coords) if var not in ['metpy_crs', 'lon', 'lat', 'index', 'crs', 'time']][0]
+    da_cs = da_cs.rename({vertical_name: 'y', 'index': 'x'})
+    
+    
+    da_cs['x'] = np.linspace(0, cross_section_length, steps)
+    da_cs['x'] = da_cs['x'].assign_attrs(units='km')
+    da_cs['y'] = da_cs['y'].assign_attrs(units='hPa')
+    
+    return(da_cs)
+
+
+
+
+'''
+da = era5_pl_mon_alltime['am']
+# da = barra_c2_pl_mon_alltime['am']
+# da = era5_pl_mon_alltime['ann']
+# da = barra_c2_pl_mon_alltime['ann']
+start = start_position[::-1]
+end = end_position[::-1]
+interp_type = 'linear'
+
+haversine((da_cs.lat.values[0], da_cs.lon.values[0]), (da_cs.lat.values[-1], da_cs.lon.values[-1]))
+
+
+
+    haversine((da.lat.values[int(np.ceil(len(da.lat)/2))],
+               da.lon.values[int(np.ceil(len(da.lon)/2))]),
+              (da.lat.values[int(np.ceil(len(da.lat)/2))],
+               da.lon.values[int(np.ceil(len(da.lon)/2)) + 1]), unit='km')
+    
+    haversine((da.lat.values[int(np.ceil(len(da.lat)/2))],
+               da.lon.values[int(np.ceil(len(da.lon)/2))]),
+              (da.lat.values[int(np.ceil(len(da.lat)/2))+1],
+               da.lon.values[int(np.ceil(len(da.lon)/2))]), unit='km')
+'''
+# endregion

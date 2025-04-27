@@ -248,6 +248,174 @@ rlns, rns, rsns: 1983-2009
 # region plot am domain OAFlux vs. ERA5, BARRA-R2, BARRA-C2
 
 
+mpl.rc('font', family='Times New Roman', size=8)
+plt_colnames = ['OAFlux', 'ERA5 - OAFlux', 'BARRA-R2 - OAFlux', 'BARRA-C2 - OAFlux']
+extent = [110.58, 157.34, -43.69, -7.01]
+min_lon, max_lon, min_lat, max_lat = extent
+nrow = 1
+ncol = len(plt_colnames)
+fm_bottom=1.5/(4*nrow+1.5)
+
+
+for var in ['evspsbl', 'hfls', 'rlns', 'rns', 'hfss', 'rsns', 'tas']:
+    # 'huss'
+    # var = 'tas'
+    print(f'#-------------------------------- {var} {cmip6_era5_var[var]}')
+    
+    with open(f'data/obs/OAFlux/oaflux_mon_alltime_{var}.pkl', 'rb') as f:
+        oaflux_mon_alltime = pickle.load(f)
+    with open(f'data/obs/era5/mon/era5_sl_mon_alltime_{cmip6_era5_var[var]}.pkl','rb') as f:
+        era5_sl_mon_alltime = pickle.load(f)
+    with open(f'data/sim/um/barra_r2/barra_r2_mon_alltime_{var}.pkl','rb') as f:
+        barra_r2_mon_alltime = pickle.load(f)
+    with open(f'data/sim/um/barra_c2/barra_c2_mon_alltime_{var}.pkl','rb') as f:
+        barra_c2_mon_alltime = pickle.load(f)
+    
+    plt_data = {}
+    plt_rmse = {}
+    
+    oaflux_ann = oaflux_mon_alltime['ann'].sel(lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat))
+    years = str(oaflux_ann.time[0].dt.year.values)
+    yeare = str(oaflux_ann.time[-1].dt.year.values)
+    plt_data['OAFlux'] = oaflux_ann.mean(dim='time').compute()
+    plt_mean = plt_data['OAFlux'].weighted(np.cos(np.deg2rad(plt_data['OAFlux'].lat))).mean(skipna=True).values
+    
+    if not 'era5_regridder' in globals():
+        era5_regridder = xe.Regridder(era5_sl_mon_alltime['am'], plt_data['OAFlux'], 'bilinear')
+    era5_ann = era5_regridder(era5_sl_mon_alltime['ann'].sel(time=slice(years, yeare)))
+    plt_data['ERA5 - OAFlux'] = (era5_ann.mean(dim='time') - plt_data['OAFlux']).compute()
+    plt_rmse['ERA5 - OAFlux'] = np.sqrt(np.square(plt_data['ERA5 - OAFlux']).weighted(np.cos(np.deg2rad(plt_data['ERA5 - OAFlux'].lat))).mean(skipna=True)).values
+    ttest_fdr_res = ttest_fdr_control(era5_ann, oaflux_ann)
+    plt_data['ERA5 - OAFlux'] = plt_data['ERA5 - OAFlux'].where(ttest_fdr_res, np.nan)
+    
+    if not 'barra_r2_regridder' in globals():
+        barra_r2_regridder = xe.Regridder(barra_r2_mon_alltime['am'], plt_data['OAFlux'], 'bilinear')
+    barra_r2_ann = barra_r2_regridder(barra_r2_mon_alltime['ann'].sel(time=slice(years, yeare)))
+    plt_data['BARRA-R2 - OAFlux'] = (barra_r2_ann.mean(dim='time') - plt_data['OAFlux']).compute()
+    plt_rmse['BARRA-R2 - OAFlux'] = np.sqrt(np.square(plt_data['BARRA-R2 - OAFlux']).weighted(np.cos(np.deg2rad(plt_data['BARRA-R2 - OAFlux'].lat))).mean(skipna=True)).values
+    ttest_fdr_res = ttest_fdr_control(barra_r2_ann, oaflux_ann)
+    plt_data['BARRA-R2 - OAFlux'] = plt_data['BARRA-R2 - OAFlux'].where(ttest_fdr_res, np.nan)
+    
+    if not 'barra_c2_regridder' in globals():
+        barra_c2_regridder = xe.Regridder(barra_c2_mon_alltime['am'], plt_data['OAFlux'], 'bilinear')
+    barra_c2_ann = barra_c2_regridder(barra_c2_mon_alltime['ann'].sel(time=slice(years, yeare)))
+    plt_data['BARRA-C2 - OAFlux'] = (barra_c2_ann.mean(dim='time') - plt_data['OAFlux']).compute()
+    plt_rmse['BARRA-C2 - OAFlux'] = np.sqrt(np.square(plt_data['BARRA-C2 - OAFlux']).weighted(np.cos(np.deg2rad(plt_data['BARRA-C2 - OAFlux'].lat))).mean(skipna=True)).values
+    ttest_fdr_res = ttest_fdr_control(barra_c2_ann, oaflux_ann)
+    plt_data['BARRA-C2 - OAFlux'] = plt_data['BARRA-C2 - OAFlux'].where(ttest_fdr_res, np.nan)
+    
+    print(stats.describe(plt_data['OAFlux'].values, axis=None, nan_policy='omit'))
+    print(stats.describe(np.concatenate([plt_data[colname].values for colname in plt_colnames[1:]]), axis=None, nan_policy='omit'))
+    
+    
+    if var in ['evspsbl']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=0, cm_max=8, cm_interval1=1, cm_interval2=1, cmap='viridis')
+        # pltlevel = np.array([-0.1, 0, 0.1, 0.2, 0.5, 1, 2, 4, 6, 8, 10])
+        # pltticks = np.array([-0.1, 0, 0.1, 0.2, 0.5, 1, 2, 4, 6, 8, 10])
+        # pltnorm = BoundaryNorm(pltlevel, ncolors=len(pltlevel)-1, clip=True)
+        # pltcmp = plt.get_cmap('viridis', len(pltlevel)-1)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-2, cm_max=2, cm_interval1=0.5, cm_interval2=0.5, cmap='BrBG_r')
+        # pltlevel2 = np.array([-2, -1.5, -1, -0.5, -0.2, -0.1, 0, 0.1, 0.2, 0.5, 1, 1.5, 2])
+        # pltticks2 = np.array([-2, -1.5, -1, -0.5, -0.2, -0.1, 0, 0.1, 0.2, 0.5, 1, 1.5, 2])
+        # pltnorm2 = BoundaryNorm(pltlevel2, ncolors=len(pltlevel2)-1, clip=True)
+        # pltcmp2 = plt.get_cmap('BrBG', len(pltlevel2)-1)
+    elif var in ['hfls']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-240, cm_max=0, cm_interval1=20, cm_interval2=40, cmap='viridis_r',)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10, cmap='BrBG')
+    elif var in ['rlns']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-100, cm_max=0, cm_interval1=10, cm_interval2=20, cmap='viridis_r',)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-20, cm_max=20, cm_interval1=2.5, cm_interval2=5, cmap='BrBG',)
+    elif var in ['rns']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-120, cm_max=120, cm_interval1=20, cm_interval2=40, cmap='PuOr',)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-80, cm_max=80, cm_interval1=10, cm_interval2=20, cmap='BrBG',)
+    elif var in ['hfss']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-40, cm_max=0, cm_interval1=2.5, cm_interval2=5, cmap='viridis_r')
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-20, cm_max=20, cm_interval1=2.5, cm_interval2=5, cmap='BrBG',)
+    elif var in ['rsns']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=140, cm_max=260, cm_interval1=10, cm_interval2=20, cmap='viridis_r',)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10, cmap='BrBG',)
+    elif var in ['tas']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=10, cm_max=30, cm_interval1=1, cm_interval2=4, cmap='viridis_r')
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-2, cm_max=2, cm_interval1=0.5, cm_interval2=1, cmap='BrBG')
+    elif var in ['sst']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-2, cm_max=30, cm_interval1=2, cm_interval2=4, cmap='viridis_r',)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-1, cm_max=1, cm_interval1=0.2, cm_interval2=0.4, cmap='BrBG', asymmetric=True)
+    elif var in ['sfcWind']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=2, cm_max=12, cm_interval1=1, cm_interval2=1, cmap='viridis_r')
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-2, cm_max=2, cm_interval1=0.25, cm_interval2=0.5, cmap='BrBG')
+    
+    
+    opng = f'figures/4_um/4.0_barra/4.0.3_surface_radiation/4.0.3.0_oaflux vs. era5, barra_r2, barra_c2 {var} {years}_{yeare}.png'
+    cbar_label1 = f'{years}-{yeare} {era5_varlabels[cmip6_era5_var[var]]}'
+    cbar_label2 = f'Difference in {years}-{yeare} {era5_varlabels[cmip6_era5_var[var]]}'
+    
+    
+    fig, axs = plt.subplots(
+        nrow, ncol, figsize=np.array([4.4*ncol, 4*nrow + 1.5]) / 2.54,
+        subplot_kw={'projection': ccrs.PlateCarree(central_longitude=180)},
+        gridspec_kw={'hspace': 0.01, 'wspace': 0.01},)
+    
+    for jcol in range(ncol):
+        axs[jcol] = regional_plot(extent=[min_lon, max_lon, min_lat, max_lat], central_longitude=180, ax_org=axs[jcol])
+        if jcol==0:
+            plt_text = f'({string.ascii_lowercase[jcol]}) {plt_colnames[jcol]}, Mean: {str(np.round(plt_mean, 1))}'
+        elif jcol==1:
+            plt_text = f'({string.ascii_lowercase[jcol]}) {plt_colnames[jcol]}, RMSE: {str(np.round(plt_rmse[plt_colnames[jcol]], 1))}'
+        else:
+            plt_text = f'({string.ascii_lowercase[jcol]}) {plt_colnames[jcol]}, {str(np.round(plt_rmse[plt_colnames[jcol]], 1))}'
+        axs[jcol].text(0, 1.02, plt_text, ha='left', va='bottom', transform=axs[jcol].transAxes, size=9)
+    
+    plt_mesh1 = axs[0].pcolormesh(
+            plt_data[plt_colnames[0]].lon,
+            plt_data[plt_colnames[0]].lat,
+            plt_data[plt_colnames[0]].values,
+            norm=pltnorm, cmap=pltcmp, transform=ccrs.PlateCarree(),zorder=1)
+    for jcol in range(ncol-1):
+        plt_mesh2 = axs[jcol+1].pcolormesh(
+            plt_data[plt_colnames[jcol+1]].lon,
+            plt_data[plt_colnames[jcol+1]].lat,
+            plt_data[plt_colnames[jcol+1]].values,
+            norm=pltnorm2, cmap=pltcmp2, transform=ccrs.PlateCarree(),zorder=1)
+    
+    cbar1 = fig.colorbar(
+        plt_mesh1, #cm.ScalarMappable(norm=pltnorm1, cmap=pltcmp1), #
+        format=remove_trailing_zero_pos,
+        orientation="horizontal", ticks=pltticks, extend='both',
+        cax=fig.add_axes([0.05, fm_bottom-0.05, 0.4, 0.05]))
+    cbar1.ax.set_xlabel(cbar_label1)
+    cbar2 = fig.colorbar(
+        plt_mesh2, #cm.ScalarMappable(norm=pltnorm2, cmap=pltcmp2), #
+        format=remove_trailing_zero_pos,
+        orientation="horizontal", ticks=pltticks2, extend='both',
+        cax=fig.add_axes([0.55, fm_bottom-0.05, 0.4, 0.05]))
+    cbar2.ax.set_xlabel(cbar_label2)
+    
+    fig.subplots_adjust(left=0.005, right=0.995, bottom=fm_bottom, top=0.95)
+    fig.savefig(opng)
+    
+    del oaflux_mon_alltime, era5_sl_mon_alltime, barra_r2_mon_alltime, barra_c2_mon_alltime
+
+
+
+
 # endregion
 
 

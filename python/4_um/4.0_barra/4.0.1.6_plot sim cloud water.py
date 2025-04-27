@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -l walltime=4:00:00,ncpus=1,mem=192GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22
+# qsub -I -q normal -l walltime=4:00:00,ncpus=1,mem=60GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22
 
 
 # region import packages
@@ -250,7 +250,7 @@ ani.save(omp4, progress_callback=lambda iframe, n: print(f'Frame {iframe}/{n}'))
 dss = ['Himawari', 'ERA5', 'BARRA-R2', 'BARRA-C2']
 extent = [110.58, 157.34, -43.69, -7.01]
 min_lon, max_lon, min_lat, max_lat = extent
-year, month, day, hour, minute = 2020, 6, 2, 4, 0
+year, month, day, hour, minute = 2020, 6, 18, 4, 0
 start_day = pd.Timestamp(year, month, 1, 0, 0)
 end_day = start_day + pd.Timedelta(days=calendar.monthrange(year, month)[1])
 max_value = 0.5
@@ -379,7 +379,7 @@ fig.savefig(opng)
 
 
 # region animate cloud liquid/ice water and himawari images
-
+# Memory Used: 60GB; Walltime Used: 16:00:00
 
 dss = ['Himawari', 'ERA5', 'BARRA-R2', 'BARRA-C2']
 extent = [110.58, 157.34, -43.69, -7.01]
@@ -460,7 +460,7 @@ def update_frames(itime):
         ifile = sorted(Path(dfolder/f'{year}/{month:02d}/{day:02d}/{hour:02d}{minute:02d}').glob(f'*OBS_{iband}*'))
         if not ifile:
             print('Warning: No file found')
-            continue
+            return
         
         channels[iband] = Dataset(ifile[-1], 'r')
         var_name = next(var for var in channels[iband].variables if var.startswith("channel_00"))
@@ -503,8 +503,9 @@ def update_frames(itime):
     start_time = pd.Timestamp(year, month, day, hour, minute)
     end_time = start_time + pd.Timedelta(minutes=60)
     geolocation_subset = geolocation_all.loc[((geolocation_all.date_time >= start_time) & (geolocation_all.date_time <= end_time))]
+    plt_scatters = []
     for jcol in range(ncol):
-        plt_scatter = axs[jcol].scatter(geolocation_subset.lon, geolocation_subset.lat, s=1, c='tab:orange', lw=0, transform=ccrs.PlateCarree(), zorder=2)
+        plt_scatters.append(axs[jcol].scatter(geolocation_subset.lon, geolocation_subset.lat, s=1, c='tab:orange', lw=0, transform=ccrs.PlateCarree(), zorder=2))
     
     plt_imshow = axs[0].imshow(rgb, extent=[-5499500., 5499500., -5499500., 5499500.], transform=ccrs.Geostationary(central_longitude=140.7, satellite_height=35785863.0), interpolation='none', origin='upper', resample=False)
     
@@ -517,15 +518,16 @@ def update_frames(itime):
             clwvi[dss[jcol+1]].sel(time=start_time) + clivi[dss[jcol+1]].sel(time=start_time),
             norm=pltnorm, cmap=pltcmp, transform=ccrs.PlateCarree()))
     
-    plt_objs = [plt_scatter, plt_text, plt_imshow, ] + [plt_meshs[jcol] for jcol in range(ncol-1)]
+    plt_objs = [plt_text, plt_imshow] + plt_meshs + plt_scatters
     del channels
     time2 = time.perf_counter()
     print(f'Execution time: {time2 - time1:.1f} seconds')
     return(plt_objs)
 
 fig.subplots_adjust(left=0.005, right=0.995, bottom=fm_bottom, top=0.95)
+# time_series=time_series[425:433]
 ani = animation.FuncAnimation(
-    fig, update_frames, frames=len(time_series[:4]), interval=500, blit=False)
+    fig, update_frames, frames=len(time_series), interval=500, blit=False)
 if os.path.exists(omp4): os.remove(omp4)
 ani.save(omp4, progress_callback=lambda iframe, n: print(f'Frame {iframe}/{n}'))
 

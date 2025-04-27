@@ -1,6 +1,6 @@
 #PBS -N qjob
-#PBS -q express
-#PBS -l walltime=00:30:00
+#PBS -q normal
+#PBS -l walltime=24:00:00
 #PBS -l mem=192GB
 #PBS -l jobfs=100MB
 #PBS -l ncpus=1
@@ -14,7 +14,7 @@ cd $HOME
 # /apps/python3/3.12.1/bin/python3 ${HOME}/code/gbr_future/shell/0_runpy/run3.py
 
 source ${HOME}/miniconda3/bin/activate lowclouds
-python ${HOME}/code/gbr_future/shell/0_runpy/run1.py
+python ${HOME}/code/gbr_future/shell/0_runpy/run7.py
 
 # ${HOME}/code/gbr_future/shell/2.0_get_clean_jaxa.sh 2015 07
 
@@ -27,3 +27,4 @@ python ${HOME}/code/gbr_future/shell/0_runpy/run1.py
 # check user usage: quota
 # check queue status: qstat -Q
 # https://opus.nci.org.au/spaces/Help/pages/236881198/Queue+Limits...
+# nci_account -P v46 -v
