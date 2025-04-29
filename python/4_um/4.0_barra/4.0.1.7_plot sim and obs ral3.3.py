@@ -1,6 +1,6 @@
 
 
-# qsub -I -q express -l walltime=5:00:00,ncpus=1,mem=192GB,jobfs=100MB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/py18
+# qsub -I -q normal -l walltime=4:00:00,ncpus=1,mem=192GB,jobfs=100MB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/py18
 
 
 # region import packages
@@ -48,7 +48,8 @@ from mapplot import (
 from namelist import (
     month_jan,
     era5_varlabels,
-    cmip6_era5_var)
+    cmip6_era5_var,
+    ds_color)
 
 from component_plot import (
     plt_mesh_pars)
@@ -65,9 +66,8 @@ from statistics0 import (
 
 # region plot CERES, ERA5, BARRA-R2, BARRA-C2, BARPA-R, BARPA-C, BARRA-C2-RAL3.3
 
-year = 2020
-season = 'JJA'
-
+# year = 2020; season = 'JJA'
+year = 2021; season = 'DJF'
 
 # TOA
 ceres_ebaf = xr.open_dataset('data/obs/CERES/CERES_EBAF-TOA_Ed4.2.1_Subset_200003-202411.nc')
@@ -115,9 +115,9 @@ for var2 in ['rsut']:
     plt_data = {}
     plt_rmse = {}
     
-    if season == 'JJA':
-        plt_data['CERES'] = ceres_ebaf[var1][(ceres_ebaf[var1].time.dt.year == year) & (ceres_ebaf[var1].time.dt.season == season)].pipe(time_weighted_mean).sel(lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat))
     
+    plt_data['CERES'] = ceres_ebaf[var1].resample({'time': 'QE-FEB'}).map(time_weighted_mean)
+    plt_data['CERES'] = plt_data['CERES'][(plt_data['CERES'].time.dt.year == year) & (plt_data['CERES'].time.dt.season == season)].sel(lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat)).squeeze()
     plt_mean = plt_data['CERES'].weighted(np.cos(np.deg2rad(plt_data['CERES'].lat))).mean().values
     
     plt_data['ERA5 - CERES'] = regrid(era5_sl_mon_alltime['sea'][(era5_sl_mon_alltime['sea'].time.dt.year == year) & (era5_sl_mon_alltime['sea'].time.dt.season == season)].squeeze(), plt_data['CERES']) - plt_data['CERES']
@@ -129,8 +129,8 @@ for var2 in ['rsut']:
     plt_data['BARRA-C2 - CERES'] = regrid(barra_c2_mon_alltime['sea'][(barra_c2_mon_alltime['sea'].time.dt.year == year) & (barra_c2_mon_alltime['sea'].time.dt.season == season)].squeeze(), plt_data['CERES']) - plt_data['CERES']
     plt_rmse['BARRA-C2 - CERES'] = np.sqrt(np.square(plt_data['BARRA-C2 - CERES']).weighted(np.cos(np.deg2rad(plt_data['BARRA-C2 - CERES'].lat))).mean()).values
     
-    plt_data['BARPA-R - CERES'] = regrid(barpa_r_mon_alltime['sea'][(barpa_r_mon_alltime['sea'].time.dt.year == year) & (barpa_r_mon_alltime['sea'].time.dt.season == season)].squeeze(), plt_data['CERES']) - plt_data['CERES']
-    plt_rmse['BARPA-R - CERES'] = np.sqrt(np.square(plt_data['BARPA-R - CERES']).weighted(np.cos(np.deg2rad(plt_data['BARPA-R - CERES'].lat))).mean()).values
+    # plt_data['BARPA-R - CERES'] = regrid(barpa_r_mon_alltime['sea'][(barpa_r_mon_alltime['sea'].time.dt.year == year) & (barpa_r_mon_alltime['sea'].time.dt.season == season)].squeeze(), plt_data['CERES']) - plt_data['CERES']
+    # plt_rmse['BARPA-R - CERES'] = np.sqrt(np.square(plt_data['BARPA-R - CERES']).weighted(np.cos(np.deg2rad(plt_data['BARPA-R - CERES'].lat))).mean()).values
     
     plt_data['BARPA-C - CERES'] = regrid(barpa_c_mon_alltime['sea'][(barpa_c_mon_alltime['sea'].time.dt.year == year) & (barpa_c_mon_alltime['sea'].time.dt.season == season)].squeeze(), plt_data['CERES']) - plt_data['CERES']
     plt_rmse['BARPA-C - CERES'] = np.sqrt(np.square(plt_data['BARPA-C - CERES']).weighted(np.cos(np.deg2rad(plt_data['BARPA-C - CERES'].lat))).mean()).values
@@ -141,8 +141,8 @@ for var2 in ['rsut']:
     # for ikey in plt_colnames[1:]:
     #     print(f'{ikey} : {str(np.round(plt_rmse[ikey], 1))}')
     
-    print(stats.describe(plt_data['CERES'].values, axis=None, nan_policy='omit'))
-    print(stats.describe(np.concatenate([plt_data[colname].values for colname in plt_colnames[1:]]), axis=None, nan_policy='omit'))
+    # print(stats.describe(plt_data['CERES'].values, axis=None, nan_policy='omit'))
+    # print(stats.describe(np.concatenate([plt_data[colname].values for colname in plt_colnames[1:]]), axis=None, nan_policy='omit'))
     
     cbar_label1 = f'{season} {year} ' + era5_varlabels[var1]
     cbar_label2 = f'Difference in {season} {year} ' + era5_varlabels[var1]
@@ -170,8 +170,10 @@ for var2 in ['rsut']:
             plt_text = f'({string.ascii_lowercase[jcol]}) {plt_colnames[jcol]}, Mean: {np.round(plt_mean, 1)}'
         elif jcol==1:
             plt_text = f'({string.ascii_lowercase[jcol]}) {plt_colnames[jcol]}, RMSE: {np.round(plt_rmse[plt_colnames[jcol]], 1)}'
-        else:
+        elif plt_colnames[jcol]!='BARPA-R - CERES':
             plt_text = f'({string.ascii_lowercase[jcol]}) {plt_colnames[jcol]}, {np.round(plt_rmse[plt_colnames[jcol]], 1)}'
+        else:
+            plt_text = f'({string.ascii_lowercase[jcol]}) {plt_colnames[jcol]}'
         axs[jcol].text(0, 1.02, plt_text, ha='left', va='bottom', transform=axs[jcol].transAxes, size=9)
     
     plt_mesh1 = axs[0].pcolormesh(
@@ -180,11 +182,12 @@ for var2 in ['rsut']:
             plt_data[plt_colnames[0]].values,
             norm=pltnorm1, cmap=pltcmp1, transform=ccrs.PlateCarree(),zorder=1)
     for jcol in range(ncol-1):
-        plt_mesh2 = axs[jcol+1].pcolormesh(
-            plt_data[plt_colnames[jcol+1]].lon,
-            plt_data[plt_colnames[jcol+1]].lat,
-            plt_data[plt_colnames[jcol+1]].values,
-            norm=pltnorm2, cmap=pltcmp2, transform=ccrs.PlateCarree(),zorder=1)
+        if plt_colnames[jcol+1] != 'BARPA-R - CERES':
+            plt_mesh2 = axs[jcol+1].pcolormesh(
+                plt_data[plt_colnames[jcol+1]].lon,
+                plt_data[plt_colnames[jcol+1]].lat,
+                plt_data[plt_colnames[jcol+1]].values,
+                norm=pltnorm2, cmap=pltcmp2, transform=ccrs.PlateCarree(),zorder=1)
     
     cbar1 = fig.colorbar(
         plt_mesh1, #cm.ScalarMappable(norm=pltnorm1, cmap=pltcmp1), #
@@ -212,9 +215,8 @@ for var2 in ['rsut']:
 
 # region plot Himawari, ERA5, BARRA-R2, BARRA-C2, BARPA-R, BARPA-C, BARRA-C2-RAL3.3
 
-year = 2020
-season = 'JJA'
-
+# year = 2020; season = 'JJA'
+year = 2021; season = 'DJF'
 
 with open('/scratch/v46/qg8515/data/obs/jaxa/clp/cltype_frequency_alltime.pkl', 'rb') as f:
     cltype_frequency_alltime = pickle.load(f)
@@ -229,7 +231,7 @@ plt_colnames = ['Himawari', 'ERA5 - Himawari', 'BARRA-R2 - Himawari', 'BARRA-C2 
 min_lon, max_lon, min_lat, max_lat = [110.58, 157.34, -43.69, -7.01]
 
 
-for var2 in ['cll', 'clm', 'clh', 'clt']:
+for var2 in ['cll']:
     # var2='cll'
     # ['cll', 'clm', 'clh', 'clt']
     var1 = cmip6_era5_var[var2]
@@ -241,8 +243,8 @@ for var2 in ['cll', 'clm', 'clh', 'clt']:
         barra_r2_mon_alltime = pickle.load(f)
     with open(f'data/sim/um/barra_c2/barra_c2_mon_alltime_{var2}.pkl','rb') as f:
         barra_c2_mon_alltime = pickle.load(f)
-    with open(f'data/sim/um/barpa_r/barpa_r_mon_alltime_{var2}.pkl','rb') as f:
-        barpa_r_mon_alltime = pickle.load(f)
+    # with open(f'data/sim/um/barpa_r/barpa_r_mon_alltime_{var2}.pkl','rb') as f:
+    #     barpa_r_mon_alltime = pickle.load(f)
     with open(f'data/sim/um/barpa_c/barpa_c_mon_alltime_{var2}.pkl','rb') as f:
         barpa_c_mon_alltime = pickle.load(f)
     
@@ -263,8 +265,8 @@ for var2 in ['cll', 'clm', 'clh', 'clt']:
     plt_data['BARRA-C2 - Himawari'] = regrid(barra_c2_mon_alltime['sea'][(barra_c2_mon_alltime['sea'].time.dt.year == year) & (barra_c2_mon_alltime['sea'].time.dt.season == season)].squeeze(), plt_data['Himawari']) - plt_data['Himawari']
     plt_rmse['BARRA-C2 - Himawari'] = np.sqrt(np.square(plt_data['BARRA-C2 - Himawari']).weighted(np.cos(np.deg2rad(plt_data['BARRA-C2 - Himawari'].lat))).mean()).values
     
-    plt_data['BARPA-R - Himawari'] = regrid(barpa_r_mon_alltime['sea'][(barpa_r_mon_alltime['sea'].time.dt.year == year) & (barpa_r_mon_alltime['sea'].time.dt.season == season)].squeeze(), plt_data['Himawari']) - plt_data['Himawari']
-    plt_rmse['BARPA-R - Himawari'] = np.sqrt(np.square(plt_data['BARPA-R - Himawari']).weighted(np.cos(np.deg2rad(plt_data['BARPA-R - Himawari'].lat))).mean()).values
+    # plt_data['BARPA-R - Himawari'] = regrid(barpa_r_mon_alltime['sea'][(barpa_r_mon_alltime['sea'].time.dt.year == year) & (barpa_r_mon_alltime['sea'].time.dt.season == season)].squeeze(), plt_data['Himawari']) - plt_data['Himawari']
+    # plt_rmse['BARPA-R - Himawari'] = np.sqrt(np.square(plt_data['BARPA-R - Himawari']).weighted(np.cos(np.deg2rad(plt_data['BARPA-R - Himawari'].lat))).mean()).values
     
     plt_data['BARPA-C - Himawari'] = regrid(barpa_c_mon_alltime['sea'][(barpa_c_mon_alltime['sea'].time.dt.year == year) & (barpa_c_mon_alltime['sea'].time.dt.season == season)].squeeze(), plt_data['Himawari']) - plt_data['Himawari']
     plt_rmse['BARPA-C - Himawari'] = np.sqrt(np.square(plt_data['BARPA-C - Himawari']).weighted(np.cos(np.deg2rad(plt_data['BARPA-C - Himawari'].lat))).mean()).values
@@ -272,10 +274,10 @@ for var2 in ['cll', 'clm', 'clh', 'clt']:
     plt_data['C2-RAL3.3 - Himawari'] = regrid(barra_c2_ral3p3[barra_c2_ral3p3.time.dt.season == season].pipe(time_weighted_mean), plt_data['Himawari']) - plt_data['Himawari']
     plt_rmse['C2-RAL3.3 - Himawari'] = np.sqrt(np.square(plt_data['C2-RAL3.3 - Himawari']).weighted(np.cos(np.deg2rad(plt_data['C2-RAL3.3 - Himawari'].lat))).mean()).values
     
-    for ikey in plt_colnames[1:]:
-        print(f'{ikey} : {str(np.round(plt_rmse[ikey], 1))}')
-    print(stats.describe(plt_data['Himawari'].values, axis=None, nan_policy='omit'))
-    print(stats.describe(np.concatenate([plt_data[colname].values for colname in plt_colnames[1:]]), axis=None, nan_policy='omit'))
+    # for ikey in plt_colnames[1:]:
+    #     print(f'{ikey} : {str(np.round(plt_rmse[ikey], 1))}')
+    # print(stats.describe(plt_data['Himawari'].values, axis=None, nan_policy='omit'))
+    # print(stats.describe(np.concatenate([plt_data[colname].values for colname in plt_colnames[1:]]), axis=None, nan_policy='omit'))
     
     cbar_label1 = f'{season} {year} ' + era5_varlabels[var1]
     cbar_label2 = f'Difference in {season} {year} ' + era5_varlabels[var1]
@@ -307,6 +309,8 @@ for var2 in ['cll', 'clm', 'clh', 'clt']:
             plt_text = f'({string.ascii_lowercase[jcol]}) {plt_colnames[jcol]}, Mean: {np.round(plt_mean, 1)}'
         elif jcol==1:
             plt_text = f'({string.ascii_lowercase[jcol]}) {plt_colnames[jcol]}, RMSE: {np.round(plt_rmse[plt_colnames[jcol]], 1)}'
+        elif plt_colnames[jcol]=='BARPA-R - Himawari':
+            plt_text = f'({string.ascii_lowercase[jcol]}) {plt_colnames[jcol]}'
         else:
             plt_text = f'({string.ascii_lowercase[jcol]}) {plt_colnames[jcol]}, {np.round(plt_rmse[plt_colnames[jcol]], 1)}'
         axs[jcol].text(0, 1.02, plt_text, ha='left', va='bottom', transform=axs[jcol].transAxes, size=9)
@@ -317,11 +321,12 @@ for var2 in ['cll', 'clm', 'clh', 'clt']:
             plt_data[plt_colnames[0]].values,
             norm=pltnorm1, cmap=pltcmp1, transform=ccrs.PlateCarree(),zorder=1)
     for jcol in range(ncol-1):
-        plt_mesh2 = axs[jcol+1].pcolormesh(
-            plt_data[plt_colnames[jcol+1]].lon,
-            plt_data[plt_colnames[jcol+1]].lat,
-            plt_data[plt_colnames[jcol+1]].values,
-            norm=pltnorm2, cmap=pltcmp2, transform=ccrs.PlateCarree(),zorder=1)
+        if plt_colnames[jcol+1] != 'BARPA-R - Himawari':
+            plt_mesh2 = axs[jcol+1].pcolormesh(
+                plt_data[plt_colnames[jcol+1]].lon,
+                plt_data[plt_colnames[jcol+1]].lat,
+                plt_data[plt_colnames[jcol+1]].values,
+                norm=pltnorm2, cmap=pltcmp2, transform=ccrs.PlateCarree(),zorder=1)
     
     cbar1 = fig.colorbar(
         plt_mesh1, #cm.ScalarMappable(norm=pltnorm1, cmap=pltcmp1), #
@@ -346,4 +351,97 @@ for var2 in ['cll', 'clm', 'clh', 'clt']:
 
 # endregion
 
+
+# region plot hourly (Himawari,) ERA5, BARRA-R2, BARRA-C2, BARRA-C2-RAL3.3
+
+year = 2020; season = 'JJA'
+# year = 2021; season = 'DJF'
+
+inc_himawari = True
+
+dss = ['ERA5', 'BARRA-R2', 'BARRA-C2', 'C2-RAL3.3']
+if inc_himawari: dss = ['Himawari'] + dss
+
+extent = [110.58, 157.34, -43.69, -7.01]
+min_lon, max_lon, min_lat, max_lat = extent
+cltypes = {
+    'hcc': ['Cirrus', 'Cirrostratus', 'Deep convection'],
+    'mcc': ['Altocumulus', 'Altostratus', 'Nimbostratus'],
+    'lcc': ['Cumulus', 'Stratocumulus', 'Stratus'],
+    'tcc': ['Cirrus', 'Cirrostratus', 'Deep convection', 'Altocumulus', 'Altostratus', 'Nimbostratus', 'Cumulus', 'Stratocumulus', 'Stratus'],
+    'clear': ['Clear'],
+    'unknown': ['Unknown']
+    }
+
+for var2 in ['cll']:
+    # var2 = 'cll'
+    # ['rsdt', 'clivi', 'clwvi', 'prw', 'cll', 'clh', 'clm', 'clt', 'pr']
+    var1 = cmip6_era5_var[var2]
+    print(f'#-------------------------------- {var1} and {var2}')
+    
+    ds_hourly_alltime = {}
+    
+    with open(f'data/obs/era5/hourly/era5_hourly_alltime_{var1}.pkl', 'rb') as f:
+        ds_hourly_alltime['ERA5'] = pickle.load(f)
+    with open(f'data/sim/um/barra_r2/barra_r2_hourly_alltime_{var2}.pkl','rb') as f:
+        ds_hourly_alltime['BARRA-R2'] = pickle.load(f)
+    with open(f'data/sim/um/barra_c2/barra_c2_hourly_alltime_{var2}.pkl','rb') as f:
+        ds_hourly_alltime['BARRA-C2'] = pickle.load(f)
+    
+    if (inc_himawari & (not 'cltype_hourly_frequency_alltime' in globals())):
+        with open('/scratch/v46/qg8515/data/obs/jaxa/clp/cltype_hourly_frequency_alltime.pkl', 'rb') as f:
+            cltype_hourly_frequency_alltime = pickle.load(f)
+    
+    barra_c2_ral3p3 = xr.open_mfdataset(sorted(glob.glob(f'data/sim/um/BARRA-C2-RAL3.3/1hr/{var2}/*/*')))[var2]
+    
+    plt_data = {}
+    plt_data['ERA5'] = ds_hourly_alltime['ERA5']['sea'][(ds_hourly_alltime['ERA5']['sea'].time.dt.year == year) & (ds_hourly_alltime['ERA5']['sea'].time.dt.season == season)].squeeze().sel(lon=slice(min_lon, max_lon), lat=slice(max_lat, min_lat))
+    plt_data['ERA5'] = plt_data['ERA5'].weighted(np.cos(np.deg2rad(plt_data['ERA5'].lat))).mean(dim=['lon', 'lat'])
+    plt_data['ERA5'] = plt_data['ERA5'].roll(hour=-1)
+    
+    plt_data['BARRA-R2'] = ds_hourly_alltime['BARRA-R2']['sea'][(ds_hourly_alltime['BARRA-R2']['sea'].time.dt.year == year) & (ds_hourly_alltime['BARRA-R2']['sea'].time.dt.season == season)].squeeze().sel(lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat))
+    plt_data['BARRA-R2'] = plt_data['BARRA-R2'].weighted(np.cos(np.deg2rad(plt_data['BARRA-R2'].lat))).mean(dim=['lon', 'lat'])
+    
+    plt_data['BARRA-C2'] = ds_hourly_alltime['BARRA-C2']['sea'][(ds_hourly_alltime['BARRA-C2']['sea'].time.dt.year == year) & (ds_hourly_alltime['BARRA-C2']['sea'].time.dt.season == season)].squeeze().sel(lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat))
+    plt_data['BARRA-C2'] = plt_data['BARRA-C2'].weighted(np.cos(np.deg2rad(plt_data['BARRA-C2'].lat))).mean(dim=['lon', 'lat'])
+    
+    if inc_himawari:
+        plt_data['Himawari'] = cltype_hourly_frequency_alltime['sea'][(cltype_hourly_frequency_alltime['sea'].time.dt.year == year) & (cltype_hourly_frequency_alltime['sea'].time.dt.season == season)].squeeze().sel(types=cltypes[var1], lon=slice(min_lon, max_lon), lat=slice(max_lat, min_lat)).sum(dim='types', skipna=False)
+        plt_data['Himawari'] = plt_data['Himawari'].weighted(np.cos(np.deg2rad(plt_data['Himawari'].lat))).mean(dim=['lon', 'lat'])
+        plt_data['Himawari'][7:23] = np.nan
+    
+    plt_data['C2-RAL3.3'] = barra_c2_ral3p3[barra_c2_ral3p3.time.dt.season==season].sel(lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat)).astype('float32').groupby('time.hour').mean()
+    plt_data['C2-RAL3.3'] = plt_data['C2-RAL3.3'].weighted(np.cos(np.deg2rad(plt_data['C2-RAL3.3'].lat))).mean(dim=['lon', 'lat']).compute()
+    
+    opng = f'figures/4_um/4.0_barra/4.0.1_domain average/4.0.1.0 dm {year} {season} hourly {var2} {', '.join(dss)}.png'
+    fig, ax = plt.subplots(1, 1, figsize=np.array([8.8, 8]) / 2.54)
+    
+    for ids in dss:
+        ax.plot(range(0, 24, 1), plt_data[ids],
+                '.-', lw=0.75, markersize=6, label=ids, color=ds_color[ids])
+    
+    if var2=='cll':
+        ax.legend(ncol=1, frameon=True, loc='upper center', handletextpad=0.5,
+                  handlelength=1, fontsize=8, columnspacing=1, labelspacing=0.3)
+    
+    ax.set_xticks(np.arange(0, 24, 6))
+    ax.set_ylabel(f'Area-weighted mean {era5_varlabels[var1]}', size=8)
+    ax.set_xlabel(f'UTC ({season} {year})', size=9)
+    if var2=='cll':
+        ax.set_ylim(16, 34)
+    elif var2=='clwvi':
+        ax.set_ylim(0, 0.08)
+    elif var2=='clivi':
+        ax.set_ylim(0, 0.13)
+    ax.yaxis.set_major_formatter(remove_trailing_zero_pos)
+    ax.grid(True, which='both', linewidth=0.5, color='gray',
+            alpha=0.5, linestyle='--')
+    fig.subplots_adjust(left=0.17, right=0.99, bottom=0.13, top=0.98)
+    fig.savefig(opng)
+    
+    del ds_hourly_alltime, barra_c2_ral3p3
+
+
+
+# endregion
 

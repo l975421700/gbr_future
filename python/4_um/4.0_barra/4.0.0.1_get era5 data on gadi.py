@@ -553,3 +553,58 @@ for var in ['tcwv', 'tclw', 'tciw']:
 # endregion
 
 
+# region derive era5 alltime hourly data
+
+
+for var1, vars in zip(['mtuwswrf'], [['mtnswrf', 'mtdwswrf']]):
+    # var1='mtuwswrf'; vars=['mtnswrf', 'mtdwswrf']
+    print(f'#-------------------------------- Derive {var1} from {vars}')
+    
+    era5_hourly_alltime = {}
+    for var2 in vars:
+        print(f'#---------------- {var2}')
+        with open(f'data/obs/era5/hourly/era5_hourly_alltime_{var2}.pkl','rb') as f:
+            era5_hourly_alltime[var2] = pickle.load(f)
+    
+    era5_hourly_alltime[var1] = {}
+    for ialltime in era5_hourly_alltime[vars[0]].keys():
+        # ialltime = 'am'
+        print(f'#-------- {ialltime}')
+        
+        if var1 in ['mtuwswrf']:
+            print(f'{var1} = {vars[0]} - {vars[1]}')
+            era5_hourly_alltime[var1][ialltime] = (era5_hourly_alltime[vars[0]][ialltime] - era5_hourly_alltime[vars[1]][ialltime]).rename(var1).compute()
+    
+    ofile = f'data/obs/era5/hourly/era5_hourly_alltime_{var1}.pkl'
+    if os.path.exists(ofile): os.remove(ofile)
+    with open(ofile,'wb') as f:
+        pickle.dump(era5_hourly_alltime[var1], f)
+    del era5_hourly_alltime
+
+
+
+
+'''
+#-------------------------------- check
+ilat = 100
+ilon = 100
+for var1, vars in zip(['mtuwswrf'], [['mtnswrf', 'mtdwswrf']]):
+    # var1='mtuwswrf'; vars=['mtnswrf', 'mtdwswrf']
+    print(f'#-------------------------------- {var1} and {vars}')
+    
+    era5_hourly_alltime = {}
+    for var2 in [var1]+vars:
+        print(f'#---------------- {var2}')
+        with open(f'data/obs/era5/hourly/era5_hourly_alltime_{var2}.pkl','rb') as f:
+            era5_hourly_alltime[var2] = pickle.load(f)
+    
+    for ialltime in era5_hourly_alltime[vars[0]].keys():
+        # ialltime = 'am'
+        print(f'#-------- {ialltime}')
+        
+        if var1 in ['mtuwswrf']:
+            print(f'{var1} = {vars[0]} - {vars[1]}')
+            print((era5_hourly_alltime[var1][ialltime][:, :, ilat, ilon].values == (era5_hourly_alltime[vars[0]][ialltime][:, :, ilat, ilon] - era5_hourly_alltime[vars[1]][ialltime][:, :, ilat, ilon]).values).all())
+
+'''
+# endregion

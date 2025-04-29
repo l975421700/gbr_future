@@ -1,6 +1,6 @@
 
 
-# qsub -I -q express -l walltime=4:00:00,ncpus=1,mem=192GB,storage=gdata/v46+gdata/rt52+gdata/ob53+gdata/zv2+scratch/v46
+# qsub -I -q normal -l walltime=4:00:00,ncpus=1,mem=192GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22
 
 
 # region import packages
@@ -157,25 +157,38 @@ for var in ['clh', 'clm', 'clt', 'pr', 'tas']:
 
 # region plot hourly dm am sim and obs
 
+inc_himawari = False
+inc_barpa_c = False
+
+dss = ['ERA5', 'BARRA-R2', 'BARRA-C2']
+if inc_himawari: dss = ['Himawari'] + dss
+if inc_barpa_c: dss = dss + ['BARPA-C']
+
+
 extent = [110.58, 157.34, -43.69, -7.01]
 min_lon, max_lon, min_lat, max_lat = extent
+cltypes = {
+    'hcc': ['Cirrus', 'Cirrostratus', 'Deep convection'],
+    'mcc': ['Altocumulus', 'Altostratus', 'Nimbostratus'],
+    'lcc': ['Cumulus', 'Stratocumulus', 'Stratus'],
+    'tcc': ['Cirrus', 'Cirrostratus', 'Deep convection', 'Altocumulus', 'Altostratus', 'Nimbostratus', 'Cumulus', 'Stratocumulus', 'Stratus'],
+    'clear': ['Clear'],
+    'unknown': ['Unknown']
+    }
+years = '1979'
+yeare = '2023'
 
-dss = ['ERA5', 'BARRA-R2', 'BARRA-C2'] # , 'BARPA-C'
-ds_hourly_alltime = {}
-ds_ann = {}
-ds_ann_dm = {}
-ds_dm_am = {}
-ds_dm_astd = {}
-for ids in dss:
-    ds_ann[ids] = {}
-    ds_ann_dm[ids] = {}
-    ds_dm_am[ids] = {}
-    ds_dm_astd[ids] = {}
-
-for var2 in ['rsdt', 'clivi', 'clwvi', 'prw', 'cll', 'clh', 'clm', 'clt', 'pr']:
-    # var2 = 'rsdt'
+for var2 in ['rsdt', 'rsut']:
+    # var2 = 'rsut'
+    # ['rsdt', 'clivi', 'clwvi', 'prw', 'cll', 'clh', 'clm', 'clt', 'pr']
     var1 = cmip6_era5_var[var2]
     print(f'#-------------------------------- {var1} and {var2}')
+    
+    ds_hourly_alltime = {}
+    ds_ann = {}
+    ds_ann_dm = {}
+    ds_dm_am = {}
+    ds_dm_astd = {}
     
     with open(f'data/obs/era5/hourly/era5_hourly_alltime_{var1}.pkl', 'rb') as f:
         ds_hourly_alltime['ERA5'] = pickle.load(f)
@@ -183,15 +196,25 @@ for var2 in ['rsdt', 'clivi', 'clwvi', 'prw', 'cll', 'clh', 'clm', 'clt', 'pr']:
         ds_hourly_alltime['BARRA-R2'] = pickle.load(f)
     with open(f'data/sim/um/barra_c2/barra_c2_hourly_alltime_{var2}.pkl','rb') as f:
         ds_hourly_alltime['BARRA-C2'] = pickle.load(f)
-    # with open(f'data/sim/um/barpa_c/barpa_c_hourly_alltime_{var2}.pkl','rb') as f:
-    #     ds_hourly_alltime['BARPA-C'] = pickle.load(f)
+    
+    if inc_barpa_c:
+        with open(f'data/sim/um/barpa_c/barpa_c_hourly_alltime_{var2}.pkl','rb') as f:
+            ds_hourly_alltime['BARPA-C'] = pickle.load(f)
+    
+    if (inc_himawari & (not 'cltype_hourly_frequency_alltime' in globals())):
+        with open('/scratch/v46/qg8515/data/obs/jaxa/clp/cltype_hourly_frequency_alltime.pkl', 'rb') as f:
+            cltype_hourly_frequency_alltime = pickle.load(f)
     
     for ids in dss:
-        # ids = 'BARPA-C'
+        print(f'#---------------- {ids}')
+        # ids = 'Himawari'
         if ids == 'ERA5':
-            ds_ann[ids] = ds_hourly_alltime[ids]['ann'].sel(time=slice('2016', '2021'), lon=slice(min_lon, max_lon), lat=slice(max_lat, min_lat))
+            ds_ann[ids] = ds_hourly_alltime[ids]['ann'].sel(time=slice(years, yeare), lon=slice(min_lon, max_lon), lat=slice(max_lat, min_lat))
+        elif ids == 'Himawari':
+            ds_ann[ids] = cltype_hourly_frequency_alltime['ann'].sel(time=slice(years, yeare), types=cltypes[var1], lon=slice(min_lon, max_lon), lat=slice(max_lat, min_lat)).sum(dim='types', skipna=False)
+            ds_ann[ids][:, 7:23] = np.nan
         else:
-            ds_ann[ids] = ds_hourly_alltime[ids]['ann'].sel(time=slice('2016', '2021'), lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat))
+            ds_ann[ids] = ds_hourly_alltime[ids]['ann'].sel(time=slice(years, yeare), lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat))
         ds_ann_dm[ids] = ds_ann[ids].weighted(np.cos(np.deg2rad(ds_ann[ids].lat))).mean(dim=['lon', 'lat'])
         ds_dm_am[ids] = ds_ann_dm[ids].mean(dim='time')
         ds_dm_astd[ids] = ds_ann_dm[ids].std(dim='time', ddof=1)
@@ -199,16 +222,18 @@ for var2 in ['rsdt', 'clivi', 'clwvi', 'prw', 'cll', 'clh', 'clm', 'clt', 'pr']:
     ds_dm_am['ERA5'] = ds_dm_am['ERA5'].roll(hour=-1)
     ds_dm_astd['ERA5'] = ds_dm_astd['ERA5'].roll(hour=-1)
     
-    opng = f'figures/4_um/4.0_barra/4.0.1_domain average/4.0.1.0 dm am hourly {var2} ERA5, BARRA-R2, C2.png' # 'clivi', 'clwvi', 'prw'
+    opng = f'figures/4_um/4.0_barra/4.0.1_domain average/4.0.1.0 dm am hourly {var2} {', '.join(dss)}.png'
     fig, ax = plt.subplots(1, 1, figsize=np.array([8.8, 8]) / 2.54)
     
     for ids in dss:
         ax.plot(range(0, 24, 1), ds_dm_am[ids],
-                '.-', lw=0.75, markersize=6, label=ids, color=ds_color[ids],alpha=0.5)
+                '.-', lw=0.75, markersize=6, label=ids, color=ds_color[ids])
         ax.errorbar(range(0, 24, 1), ds_dm_am[ids], yerr=ds_dm_astd[ids],
-                    fmt='none', capsize=4, color=ds_color[ids],lw=0.5,alpha=0.7)
+                    fmt='none', capsize=4, color=ds_color[ids],lw=0.5)
     
-    ax.legend(ncol=1, frameon=True, loc='upper center', handletextpad=0.5)
+    if var2=='cll':
+        ax.legend(ncol=1, frameon=True, loc='upper center', handletextpad=0.5,
+                  handlelength=1, fontsize=8, columnspacing=1, labelspacing=0.3)
     
     ax.set_xticks(np.arange(0, 24, 6))
     ax.set_ylabel(f'Area-weighted mean {era5_varlabels[var1]}', size=8)
@@ -225,7 +250,7 @@ for var2 in ['rsdt', 'clivi', 'clwvi', 'prw', 'cll', 'clh', 'clm', 'clt', 'pr']:
     fig.subplots_adjust(left=0.17, right=0.99, bottom=0.13, top=0.98)
     fig.savefig(opng)
     
-    del ds_hourly_alltime['ERA5'], ds_hourly_alltime['BARRA-R2'], ds_hourly_alltime['BARRA-C2']
+    del ds_hourly_alltime, ds_ann, ds_ann_dm, ds_dm_am, ds_dm_astd
 
 
 
