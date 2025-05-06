@@ -354,8 +354,8 @@ for var2 in ['cll']:
 
 # region plot hourly (Himawari,) ERA5, BARRA-R2, BARRA-C2, BARRA-C2-RAL3.3
 
-year = 2020; season = 'JJA'
-# year = 2021; season = 'DJF'
+# year = 2020; season = 'JJA'
+year = 2021; season = 'DJF'
 
 inc_himawari = True
 
@@ -427,12 +427,12 @@ for var2 in ['cll']:
     ax.set_xticks(np.arange(0, 24, 6))
     ax.set_ylabel(f'Area-weighted mean {era5_varlabels[var1]}', size=8)
     ax.set_xlabel(f'UTC ({season} {year})', size=9)
-    if var2=='cll':
-        ax.set_ylim(16, 34)
-    elif var2=='clwvi':
-        ax.set_ylim(0, 0.08)
-    elif var2=='clivi':
-        ax.set_ylim(0, 0.13)
+    # if var2=='cll':
+    #     ax.set_ylim(16, 34)
+    # elif var2=='clwvi':
+    #     ax.set_ylim(0, 0.08)
+    # elif var2=='clivi':
+    #     ax.set_ylim(0, 0.13)
     ax.yaxis.set_major_formatter(remove_trailing_zero_pos)
     ax.grid(True, which='both', linewidth=0.5, color='gray',
             alpha=0.5, linestyle='--')

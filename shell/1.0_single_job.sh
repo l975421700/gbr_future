@@ -28,3 +28,4 @@ python ${HOME}/code/gbr_future/shell/0_runpy/run7.py
 # check queue status: qstat -Q
 # https://opus.nci.org.au/spaces/Help/pages/236881198/Queue+Limits...
 # nci_account -P v46 -v
+# nci_account -P gx60 -v
