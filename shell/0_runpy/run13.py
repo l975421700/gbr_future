@@ -60,7 +60,7 @@ from component_plot import (
 # region animate hourly cross section
 
 imode = 'diff' #'org' #
-var2 = 'hus' #['hus', 'ta', 'ua', 'va', 'wap', 'zg']
+var2 = 'wap' #['hus', 'ta', 'ua', 'va', 'wap', 'zg']
 var1 = cmip6_era5_var[var2]
 
 year, month = 2020, 6

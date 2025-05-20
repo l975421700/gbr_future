@@ -43,7 +43,10 @@ mamba install pycircstat -y
 mamba install haversine -y
 mamba install zarr -y
 mamba install cfgrib -y
-
+mamba install requests aiohttp -y
+mamba install intake-xarray -y
+mamba install easygems -y
+mamba install healpy -y
 
 #-------------------------------- Other packages
 # mamba install numba -y
@@ -53,7 +56,6 @@ mamba install cfgrib -y
 # mamba install line_profiler -y
 # mamba install nose -y
 # mamba install intake-esm -y
-# mamba install intake-xarray -y
 # mamba install dask-gateway -y
 # mamba install xarrayutils -y
 # mamba install geopy -y

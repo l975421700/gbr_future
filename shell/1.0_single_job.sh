@@ -29,3 +29,4 @@ python ${HOME}/code/gbr_future/shell/0_runpy/run7.py
 # https://opus.nci.org.au/spaces/Help/pages/236881198/Queue+Limits...
 # nci_account -P v46 -v
 # nci_account -P gx60 -v
+# nci_account -P nf33 -v
