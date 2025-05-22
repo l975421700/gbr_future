@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -l walltime=4:00:00,ncpus=1,mem=192GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22
+# qsub -I -q normal -P nf33 -l walltime=3:00:00,ncpus=1,mem=10GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22
 
 
 # region import packages
@@ -9,7 +9,7 @@
 import numpy as np
 import xarray as xr
 import pandas as pd
-from metpy.calc import specific_humidity_from_dewpoint, relative_humidity_from_dewpoint
+from metpy.calc import specific_humidity_from_dewpoint, relative_humidity_from_dewpoint, vertical_velocity_pressure, mixing_ratio_from_specific_humidity
 from metpy.units import units
 import calendar
 import xesmf as xe
@@ -61,6 +61,8 @@ from component_plot import (
 
 
 # region animate hourly data
+# Memory Used: 6.19GB; Walltime Used: 01:17:26
+
 imode = 'diff' #'org' #
 vars = ['cll'] #['psl', 'cll'] #['psl', 'pr'] #['psl', 'huss'] #['psl', 'prw'] #['psl', 'clm'] #['psl', 'clh'] #['psl', 'clt'] #['psl', 'clwvi'] #['psl', 'clivi'] #['psl', 'evspsbl'] #['psl', 'hfls'] #['psl', 'hfss'] #['psl', 'sfcWind'] #['psl', 'tas'] #['psl', 'hurs'] #['psl', 'rsut'] #['psl', 'rlut'] #['psl', 'uas', 'vas'] #
 
@@ -92,18 +94,18 @@ if (len(set(vars) - set(['psl', 'uas', 'vas']))==1):
             cm_min=0, cm_max=80, cm_interval1=5, cm_interval2=10, cmap='Blues_r')
         extend = 'max'
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-20,cm_max=20,cm_interval1=2,cm_interval2=4,cmap='BrBG_r')
+            cm_min=-10,cm_max=10,cm_interval1=1,cm_interval2=2,cmap='BrBG_r')
         extend2 = 'both'
     elif var2 in ['cll', 'clm', 'clh', 'clt']:
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=0, cm_max=100, cm_interval1=10, cm_interval2=20, cmap='Blues_r')
+            cm_min=0, cm_max=100, cm_interval1=5, cm_interval2=10, cmap='Blues_r')
         extend = 'neither'
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-30,cm_max=30,cm_interval1=3,cm_interval2=6,cmap='BrBG_r')
-        extend2 = 'both'
+            cm_min=-100,cm_max=100,cm_interval1=10,cm_interval2=20,cmap='BrBG_r')
+        extend2 = 'neither'
     elif var2 in ['clwvi']:
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=0, cm_max=0.6, cm_interval1=0.1, cm_interval2=0.1, cmap='Blues_r')
+            cm_min=0, cm_max=0.6, cm_interval1=0.05, cm_interval2=0.1, cmap='Blues_r')
         extend = 'max'
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
             cm_min=-0.6,cm_max=0.6,cm_interval1=0.1,cm_interval2=0.1,cmap='BrBG_r')
@@ -117,17 +119,17 @@ if (len(set(vars) - set(['psl', 'uas', 'vas']))==1):
         extend2 = 'both'
     elif var2=='pr':
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=0, cm_max=96, cm_interval1=6, cm_interval2=12, cmap='Blues_r')
+            cm_min=0, cm_max=8, cm_interval1=1, cm_interval2=1, cmap='Blues_r')
         extend = 'max'
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-48,cm_max=48,cm_interval1=6,cm_interval2=12,cmap='BrBG_r')
+            cm_min=-4,cm_max=4,cm_interval1=1,cm_interval2=1,cmap='BrBG_r')
         extend2 = 'both'
     elif var2 in ['evspsbl', 'evspsblpot']:
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=0, cm_max=16, cm_interval1=1, cm_interval2=2, cmap='Blues_r')
+            cm_min=0, cm_max=1, cm_interval1=0.1, cm_interval2=0.2, cmap='Blues_r')
         extend = 'max'
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-8,cm_max=8,cm_interval1=1,cm_interval2=2,cmap='BrBG_r')
+            cm_min=-1,cm_max=1,cm_interval1=0.1,cm_interval2=0.2,cmap='BrBG_r')
         extend2 = 'both'
     elif var2 in ['hfls']:
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
@@ -173,17 +175,17 @@ if (len(set(vars) - set(['psl', 'uas', 'vas']))==1):
         extend2 = 'both'
     elif var2 in ['rsut']:
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=-500, cm_max=0, cm_interval1=25, cm_interval2=100, cmap='Greens')
+            cm_min=-800, cm_max=0, cm_interval1=50, cm_interval2=100, cmap='Greens')
         extend = 'min'
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-30,cm_max=30,cm_interval1=5,cm_interval2=10,cmap='BrBG')
+            cm_min=-400,cm_max=400,cm_interval1=50,cm_interval2=100,cmap='BrBG')
         extend2 = 'both'
     elif var2 in ['rlut']:
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=-400, cm_max=-100, cm_interval1=25, cm_interval2=50, cmap='viridis')
-        extend = 'both'
+            cm_min=-360, cm_max=0, cm_interval1=20, cm_interval2=40, cmap='Greens')
+        extend = 'min'
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-30,cm_max=30,cm_interval1=5,cm_interval2=10,cmap='BrBG')
+            cm_min=-180,cm_max=180,cm_interval1=20,cm_interval2=40,cmap='BrBG')
         extend2 = 'both'
 
 
@@ -282,7 +284,7 @@ def update_frames(itime):
             ds['BARRA-C2'][var2] = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/{var2}/latest/{var2}_AUST-04_ERA5_historical_hres_BOM_BARRA-C2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')[var2].sel(time=pd.Timestamp(year,month,day,hour) + pd.Timedelta('30min'))
         
         if var1 in ['tp', 'e', 'cp', 'lsp', 'pev']:
-            ds['ERA5'][var2] *= 24000
+            ds['ERA5'][var2] *= 24000 / 24
         elif var1 in ['msl']:
             ds['ERA5'][var2] /= 100
         elif var1 in ['sst', 't2m', 'd2m', 'skt']:
@@ -292,14 +294,14 @@ def update_frames(itime):
         elif var1 in ['z']:
             ds['ERA5'][var2] /= 9.80665
         elif var1 in ['mper']:
-            ds['ERA5'][var2] *= seconds_per_d
+            ds['ERA5'][var2] *= seconds_per_d / 24
         
         if var1 in ['e', 'pev', 'mper']:
             ds['ERA5'][var2] *= (-1)
         
         if var2 in ['pr', 'evspsbl', 'evspsblpot']:
-            ds['BARRA-R2'][var2] *= seconds_per_d
-            ds['BARRA-C2'][var2] *= seconds_per_d
+            ds['BARRA-R2'][var2] *= seconds_per_d / 24
+            ds['BARRA-C2'][var2] *= seconds_per_d / 24
         elif var2 in ['tas', 'ts']:
             ds['BARRA-R2'][var2] -= zerok
             ds['BARRA-C2'][var2] -= zerok
@@ -403,7 +405,7 @@ def update_frames(itime):
                     format=remove_trailing_zero_pos,
                     orientation="horizontal", ticks=pltticks, extend=extend,
                     cax=fig.add_axes([1/3, fm_bottom-0.115, 1/3, 0.03]))
-                cbar.ax.set_xlabel(era5_varlabels[var1], fontsize=9, labelpad=1)
+                cbar.ax.set_xlabel(era5_varlabels[var1].replace('day^{-1}', 'hour^{-1}'), fontsize=9, labelpad=1)
                 cbar.ax.tick_params(labelsize=9, pad=1)
             elif imode=='diff':
                 cbar = fig.colorbar(
@@ -411,14 +413,14 @@ def update_frames(itime):
                     format=remove_trailing_zero_pos,
                     orientation="horizontal", ticks=pltticks, extend=extend,
                     cax=fig.add_axes([0.05, fm_bottom-0.115, 0.4, 0.03]))
-                cbar.ax.set_xlabel(era5_varlabels[var1], fontsize=9, labelpad=1)
+                cbar.ax.set_xlabel(era5_varlabels[var1].replace('day^{-1}', 'hour^{-1}'), fontsize=9, labelpad=1)
                 cbar.ax.tick_params(labelsize=9, pad=1)
                 cbar2 = fig.colorbar(
                     plt_mesh[1], #cm.ScalarMappable(norm=pltnorm2, cmap=pltcmp2), #
                     format=remove_trailing_zero_pos,
                     orientation="horizontal", ticks=pltticks2, extend=extend2,
                     cax=fig.add_axes([0.55, fm_bottom-0.115, 0.4, 0.03]))
-                cbar2.ax.set_xlabel(f'Difference in {era5_varlabels[var1]}',
+                cbar2.ax.set_xlabel(f'Difference in {era5_varlabels[var1].replace('day^{-1}', 'hour^{-1}')}',
                                     fontsize=9, labelpad=1)
                 cbar2.ax.tick_params(labelsize=9, pad=1)
         
@@ -448,7 +450,7 @@ ani.save(omp4,progress_callback=lambda iframe,n:print(f'Frame {iframe}/{n-1}'))
 dss = ['ERA5', 'BARRA-R2', 'BARRA-C2']
 regridder = {}
 
-year, month, day, hour = 2020, 6, 1, 3
+year, month, day, hour = 2020, 6, 2, 4
 ntime = pd.Timestamp(year,month,day,hour) + pd.Timedelta('1h')
 year1, month1, day1, hour1 = ntime.year, ntime.month, ntime.day, ntime.hour
 
@@ -464,12 +466,12 @@ fm_bottom = 1.6/(pheight*nrow+2.1)
 fm_top = 1 - 0.5/(pheight*nrow+2.1)
 
 
-for imode in ['org', 'diff']:
+for imode in ['org']:
     # imode = 'org'
     # ['org', 'diff']
     print(f'#-------------------------------- {imode}')
     
-    for vars in [['psl', 'uas', 'vas', 'pr']]:
+    for vars in [['psl', 'uas', 'vas']]:
         # [['psl', 'uas', 'vas']] + [['psl', ivar] for ivar in ['prw', 'cll', 'clm', 'clh', 'clt', 'clwvi', 'clivi', 'pr', 'evspsbl', 'evspsblpot', 'hfls', 'hfss', 'sfcWind', 'tas', 'huss', 'hurs', 'rsut', 'rlut']]
         # ['prw', 'cll', 'clm', 'clh', 'clt', 'clwvi', 'clivi', 'pr', 'evspsbl', 'evspsblpot', 'hfls', 'hfss', 'sfcWind', 'tas', 'huss', 'hurs', 'rsut', 'rlut']
         print(f'#---------------- {vars}')
@@ -516,15 +518,8 @@ for imode in ['org', 'diff']:
             ds['ERA5'][var2]['longitude'] = ds['ERA5'][var2]['longitude'] % 360
             ds['ERA5'][var2] = ds['ERA5'][var2].sortby(['longitude', 'latitude']).rename({'latitude': 'lat', 'longitude': 'lon'}).sel(lon=slice(min_lon1, max_lon1), lat=slice(min_lat1, max_lat1))
             
-            if var2 in ['psl', 'uas', 'vas', 'prw', 'clwvi', 'clivi', 'sfcWind', 'tas', 'huss', 'hurs']:
-                ds['BARRA-R2'][var2] = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/{var2}/latest/{var2}_AUS-11_ERA5_historical_hres_BOM_BARRA-R2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')[var2].sel(time=pd.Timestamp(year,month,day,hour))
-                ds['BARRA-C2'][var2] = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/{var2}/latest/{var2}_AUST-04_ERA5_historical_hres_BOM_BARRA-C2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')[var2].sel(time=pd.Timestamp(year,month,day,hour))
-            elif var2 in ['cll', 'clm', 'clh', 'clt', 'pr', 'evspsbl', 'evspsblpot', 'hfls', 'hfss', 'rsut', 'rlut']:
-                ds['BARRA-R2'][var2] = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/{var2}/latest/{var2}_AUS-11_ERA5_historical_hres_BOM_BARRA-R2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')[var2].sel(time=pd.Timestamp(year,month,day,hour) + pd.Timedelta('30min'))
-                ds['BARRA-C2'][var2] = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/{var2}/latest/{var2}_AUST-04_ERA5_historical_hres_BOM_BARRA-C2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')[var2].sel(time=pd.Timestamp(year,month,day,hour) + pd.Timedelta('30min'))
-            
             if var1 in ['tp', 'e', 'cp', 'lsp', 'pev']:
-                ds['ERA5'][var2] *= 24000
+                ds['ERA5'][var2] *= 24000 / 24
             elif var1 in ['msl']:
                 ds['ERA5'][var2] /= 100
             elif var1 in ['sst', 't2m', 'd2m', 'skt']:
@@ -534,14 +529,21 @@ for imode in ['org', 'diff']:
             elif var1 in ['z']:
                 ds['ERA5'][var2] /= 9.80665
             elif var1 in ['mper']:
-                ds['ERA5'][var2] *= seconds_per_d
+                ds['ERA5'][var2] *= seconds_per_d / 24
             
             if var1 in ['e', 'pev', 'mper']:
                 ds['ERA5'][var2] *= (-1)
             
+            if var2 in ['psl', 'uas', 'vas', 'prw', 'clwvi', 'clivi', 'sfcWind', 'tas', 'huss', 'hurs']:
+                ds['BARRA-R2'][var2] = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/{var2}/latest/{var2}_AUS-11_ERA5_historical_hres_BOM_BARRA-R2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')[var2].sel(time=pd.Timestamp(year,month,day,hour))
+                ds['BARRA-C2'][var2] = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/{var2}/latest/{var2}_AUST-04_ERA5_historical_hres_BOM_BARRA-C2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')[var2].sel(time=pd.Timestamp(year,month,day,hour))
+            elif var2 in ['cll', 'clm', 'clh', 'clt', 'pr', 'evspsbl', 'evspsblpot', 'hfls', 'hfss', 'rsut', 'rlut']:
+                ds['BARRA-R2'][var2] = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/{var2}/latest/{var2}_AUS-11_ERA5_historical_hres_BOM_BARRA-R2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')[var2].sel(time=pd.Timestamp(year,month,day,hour) + pd.Timedelta('30min'))
+                ds['BARRA-C2'][var2] = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/{var2}/latest/{var2}_AUST-04_ERA5_historical_hres_BOM_BARRA-C2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')[var2].sel(time=pd.Timestamp(year,month,day,hour) + pd.Timedelta('30min'))
+            
             if var2 in ['pr', 'evspsbl', 'evspsblpot']:
-                ds['BARRA-R2'][var2] *= seconds_per_d
-                ds['BARRA-C2'][var2] *= seconds_per_d
+                ds['BARRA-R2'][var2] *= seconds_per_d / 24
+                ds['BARRA-C2'][var2] *= seconds_per_d / 24
             elif var2 in ['tas', 'ts']:
                 ds['BARRA-R2'][var2] -= zerok
                 ds['BARRA-C2'][var2] -= zerok
@@ -642,18 +644,18 @@ for imode in ['org', 'diff']:
                     cm_min=0, cm_max=80, cm_interval1=5, cm_interval2=10, cmap='Blues_r')
                 extend = 'max'
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-                    cm_min=-20,cm_max=20,cm_interval1=2,cm_interval2=4,cmap='BrBG_r')
+                    cm_min=-10,cm_max=10,cm_interval1=1,cm_interval2=2,cmap='BrBG_r')
                 extend2 = 'both'
             elif var2 in ['cll', 'clm', 'clh', 'clt']:
                 pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-                    cm_min=0, cm_max=100, cm_interval1=10, cm_interval2=20, cmap='Blues_r')
+                    cm_min=0, cm_max=100, cm_interval1=5, cm_interval2=10, cmap='Blues_r')
                 extend = 'neither'
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-                    cm_min=-30,cm_max=30,cm_interval1=3,cm_interval2=6,cmap='BrBG_r')
-                extend2 = 'both'
+                    cm_min=-100,cm_max=100,cm_interval1=10,cm_interval2=20,cmap='BrBG_r')
+                extend2 = 'neither'
             elif var2 in ['clwvi']:
                 pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-                    cm_min=0, cm_max=0.6, cm_interval1=0.1, cm_interval2=0.1, cmap='Blues_r')
+                    cm_min=0, cm_max=0.6, cm_interval1=0.05, cm_interval2=0.1, cmap='Blues_r')
                 extend = 'max'
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
                     cm_min=-0.6,cm_max=0.6,cm_interval1=0.1,cm_interval2=0.1,cmap='BrBG_r')
@@ -667,17 +669,17 @@ for imode in ['org', 'diff']:
                 extend2 = 'both'
             elif var2=='pr':
                 pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-                    cm_min=0, cm_max=96, cm_interval1=6, cm_interval2=12, cmap='Blues_r')
+                    cm_min=0, cm_max=8, cm_interval1=1, cm_interval2=1, cmap='Blues_r')
                 extend = 'max'
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-                    cm_min=-48,cm_max=48,cm_interval1=6,cm_interval2=12,cmap='BrBG_r')
+                    cm_min=-4,cm_max=4,cm_interval1=1,cm_interval2=1,cmap='BrBG_r')
                 extend2 = 'both'
             elif var2 in ['evspsbl', 'evspsblpot']:
                 pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-                    cm_min=0, cm_max=16, cm_interval1=1, cm_interval2=2, cmap='Blues_r')
+                    cm_min=0, cm_max=1, cm_interval1=0.1, cm_interval2=0.2, cmap='Blues_r')
                 extend = 'max'
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-                    cm_min=-8,cm_max=8,cm_interval1=1,cm_interval2=2,cmap='BrBG_r')
+                    cm_min=-1,cm_max=1,cm_interval1=0.1,cm_interval2=0.2,cmap='BrBG_r')
                 extend2 = 'both'
             elif var2 in ['hfls']:
                 pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
@@ -723,17 +725,17 @@ for imode in ['org', 'diff']:
                 extend2 = 'both'
             elif var2 in ['rsut']:
                 pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-                    cm_min=-500, cm_max=0, cm_interval1=25, cm_interval2=100, cmap='Greens')
+                    cm_min=-800, cm_max=0, cm_interval1=50, cm_interval2=100, cmap='Greens')
                 extend = 'min'
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-                    cm_min=-30,cm_max=30,cm_interval1=5,cm_interval2=10,cmap='BrBG')
+                    cm_min=-400,cm_max=400,cm_interval1=50,cm_interval2=100,cmap='BrBG')
                 extend2 = 'both'
             elif var2 in ['rlut']:
                 pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-                    cm_min=-400, cm_max=-100, cm_interval1=25, cm_interval2=50, cmap='viridis')
-                extend = 'both'
+                    cm_min=-360, cm_max=0, cm_interval1=20, cm_interval2=40, cmap='Greens')
+                extend = 'min'
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-                    cm_min=-30,cm_max=30,cm_interval1=5,cm_interval2=10,cmap='BrBG')
+                    cm_min=-180,cm_max=180,cm_interval1=20,cm_interval2=40,cmap='BrBG')
                 extend2 = 'both'
             
             if imode=='org':
@@ -751,7 +753,7 @@ for imode in ['org', 'diff']:
                     format=remove_trailing_zero_pos,
                     orientation="horizontal", ticks=pltticks, extend=extend,
                     cax=fig.add_axes([1/3, fm_bottom-0.115, 1/3, 0.03]))
-                cbar.ax.set_xlabel(era5_varlabels[var1], fontsize=9, labelpad=1)
+                cbar.ax.set_xlabel(era5_varlabels[var1].replace('day^{-1}', 'hour^{-1}'), fontsize=9, labelpad=1)
                 cbar.ax.tick_params(labelsize=9, pad=1)
             elif imode=='diff':
                 plt_mesh = axs[0].pcolormesh(
@@ -776,14 +778,14 @@ for imode in ['org', 'diff']:
                     format=remove_trailing_zero_pos,
                     orientation="horizontal", ticks=pltticks, extend=extend,
                     cax=fig.add_axes([0.05, fm_bottom-0.115, 0.4, 0.03]))
-                cbar.ax.set_xlabel(era5_varlabels[var1], fontsize=9, labelpad=1)
+                cbar.ax.set_xlabel(era5_varlabels[var1].replace('day^{-1}', 'hour^{-1}'), fontsize=9, labelpad=1)
                 cbar.ax.tick_params(labelsize=9, pad=1)
                 cbar2 = fig.colorbar(
                     plt_mesh2, #cm.ScalarMappable(norm=pltnorm2, cmap=pltcmp2), #
                     format=remove_trailing_zero_pos,
                     orientation="horizontal", ticks=pltticks2, extend=extend2,
                     cax=fig.add_axes([0.55, fm_bottom-0.115, 0.4, 0.03]))
-                cbar2.ax.set_xlabel(f'Difference in {era5_varlabels[var1]}',
+                cbar2.ax.set_xlabel(f'Difference in {era5_varlabels[var1].replace('day^{-1}', 'hour^{-1}')}',
                                     fontsize=9, labelpad=1)
                 cbar2.ax.tick_params(labelsize=9, pad=1)
         
@@ -853,7 +855,7 @@ print(f'{year1}-{month1}-{day1} {hour1}')
 # region plot hourly cross section
 
 dss = ['ERA5', 'BARRA-R2', 'BARRA-C2']
-year, month, day, hour = 2020, 6, 1, 2
+year, month, day, hour = 2020, 6, 1, 3
 
 min_lon1, max_lon1, min_lat1, max_lat1 = 80, 220, -70, 20
 min_lon, max_lon, min_lat, max_lat = 110.58, 157.34, -43.69, -7.01
@@ -868,89 +870,97 @@ fm_bottom = 2.2/(pheight*nrow+2.7)
 fm_top = 1 - 0.5/(pheight*nrow+2.7)
 
 
-for imode in ['org', 'diff']:
-    # imode = 'diff'
-    # ['org', 'diff']
-    print(f'#-------------------------------- {imode}')
+for var2 in ['hus', 'ta', 'ua', 'va', 'wap']:
+    # var2 = 'hus'
+    # ['hus', 'ta', 'ua', 'va', 'wap', 'zg']
+    var1 = cmip6_era5_var[var2]
+    print(f'#-------------------------------- {var1} in ERA5 vs. {var2} in BARRA-R2/C2')
     
-    for var2 in ['hus']:
-        # var2 = 'hus'
-        # ['hus', 'ta', 'ua', 'va', 'wap', 'zg']
-        var1 = cmip6_era5_var[var2]
-        print(f'#---------------- {var1} in ERA5 vs. {var2} in BARRA-R2/C2')
+    ds = {}
+    ds['ERA5'] = xr.open_dataset(f'/g/data/rt52/era5/pressure-levels/reanalysis/{var1}/{year}/{var1}_era5_oper_pl_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')[var1].sel(time=pd.Timestamp(year, month, day, hour), level=slice(200, 1000), latitude=slice(max_lat1, min_lat1)).sel(longitude=clon, method='nearest').rename({'latitude': 'lat', 'level': 'pressure'}).sortby('lat')
+    if var1 in ['q']:
+        ds['ERA5'] *= 1000
+    elif var1 in ['t']:
+        ds['ERA5'] -= zerok
+    elif var1 in ['z']:
+        ds['ERA5'] /= 9.80665
+    
+    def std_func(ds_in, var=var2):
+        ds = ds_in.expand_dims(dim='pressure', axis=1)
+        varname = [varname for varname in ds.data_vars if varname.startswith(var)][0]
+        ds = ds.rename({varname: var})
+        ds = ds.chunk(chunks={'time': 1, 'pressure': 1, 'lat': len(ds.lat), 'lon': len(ds.lon)})
+        ds = ds.astype('float32')
+        if var == 'hus':
+            ds = ds * 1000
+        elif var == 'ta':
+            ds = ds - zerok
+        return(ds)
+    
+    if var2 == 'wap':
+        barra_r2_hus = xr.open_mfdataset(sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/hus[0-9]*[!m]/latest/hus[0-9]*_AUS-11_ERA5_historical_hres_BOM_BARRA-R2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')), parallel=True, preprocess=lambda ds: std_func(ds, var='hus'))['hus'].sel(time=pd.Timestamp(year, month, day, hour), pressure=slice(200, 1000)).sel(lon=clon, method='nearest')
+        barra_r2_wa = xr.open_mfdataset(sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/wa[0-9]*[!m]/latest/wa[0-9]*_AUS-11_ERA5_historical_hres_BOM_BARRA-R2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')), parallel=True, preprocess=lambda ds: std_func(ds, var='wa'))['wa'].sel(time=pd.Timestamp(year, month, day, hour), pressure=slice(200, 1000)).sel(lon=clon, method='nearest')
+        barra_r2_ta = xr.open_mfdataset(sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/ta[0-9]*[!m]/latest/ta[0-9]*_AUS-11_ERA5_historical_hres_BOM_BARRA-R2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')), parallel=True, preprocess=lambda ds: std_func(ds, var='ta'))['ta'].sel(time=pd.Timestamp(year, month, day, hour), pressure=slice(200, 1000)).sel(lon=clon, method='nearest')
+        barra_r2_mixr = mixing_ratio_from_specific_humidity(barra_r2_hus.sel(pressure=barra_r2_wa.pressure) * units('g/kg')).compute()
+        ds['BARRA-R2'] = vertical_velocity_pressure(
+            barra_r2_wa * units('m/s'),
+            barra_r2_wa.pressure * units.hPa,
+            barra_r2_ta.sel(pressure=barra_r2_wa.pressure) * units.degC,
+            barra_r2_mixr).compute()
+        del barra_r2_hus, barra_r2_wa, barra_r2_ta, barra_r2_mixr
+    else:
+        ds['BARRA-R2'] = xr.open_mfdataset(sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/{var2}[0-9]*[!m]/latest/{var2}[0-9]*_AUS-11_ERA5_historical_hres_BOM_BARRA-R2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')), parallel=True, preprocess=std_func)[var2].sel(time=pd.Timestamp(year, month, day, hour), pressure=slice(200, 1000)).sel(lon=clon, method='nearest')
+    
+    ds['BARRA-C2'] = xr.open_mfdataset(sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/{var2}[0-9]*[!m]/latest/{var2}[0-9]*_AUST-04_ERA5_historical_hres_BOM_BARRA-C2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')), parallel=True, preprocess=std_func)[var2].sel(time=pd.Timestamp(year, month, day, hour), pressure=slice(200, 1000)).sel(lon=clon, method='nearest')
+    
+    if var1 == 'q':
+        pltlevel = np.array([0, 0.1, 0.2, 0.5, 1, 2, 4, 8, 12, 16, 20])
+        pltticks = np.array([0, 0.1, 0.2, 0.5, 1, 2, 4, 8, 12, 16, 20])
+        pltnorm = BoundaryNorm(pltlevel, ncolors=len(pltlevel)-1, clip=True)
+        pltcmp = plt.get_cmap('viridis_r', len(pltlevel)-1)
+        extend = 'max'
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-100, cm_max=100, cm_interval1=20, cm_interval2=20, cmap='BrBG_r')
+    elif var1 == 't':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-48, cm_max=32, cm_interval1=4, cm_interval2=8, cmap='PuOr', asymmetric=True)
+        extend = 'both'
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-3, cm_max=3, cm_interval1=0.5, cm_interval2=1, cmap='BrBG', asymmetric=True)
+    elif var1 == 'w':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-2, cm_max=2, cm_interval1=0.2, cm_interval2=0.4, cmap='PuOr')
+        extend = 'both'
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-2, cm_max=2, cm_interval1=0.2, cm_interval2=0.4, cmap='BrBG')
+    elif var1 == 'u':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-20, cm_max=50, cm_interval1=2.5, cm_interval2=10, cmap='PuOr', asymmetric=True)
+        extend = 'both'
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-10, cm_max=10, cm_interval1=1, cm_interval2=2, cmap='BrBG')
+    elif var1 == 'v':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-40, cm_max=50, cm_interval1=2.5, cm_interval2=10, cmap='PuOr', asymmetric=True)
+        extend = 'both'
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-10, cm_max=10, cm_interval1=1, cm_interval2=2, cmap='BrBG')
+    elif var1 == 'z':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=0, cm_max=12000, cm_interval1=500, cm_interval2=2000, cmap='viridis_r')
+        extend = 'max'
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-20, cm_max=20, cm_interval1=2, cm_interval2=4, cmap='BrBG')
+    
+    extend2 = 'both'
+    
+    for imode in ['org', 'diff']:
+        # imode = 'org'
+        # ['org', 'diff']
+        print(f'#---------------- {imode}')
+        time1 = time.perf_counter()
         
         opng = f'figures/4_um/4.0_barra/4.0.5_case_studies/4.0.5.2_{year}-{month}-{day}-{hour} {var2} in {', '.join(dss)} {imode} {clon} {min_lat1}_{max_lat1}.png'
-        
-        ds = {}
-        ds['ERA5'] = xr.open_dataset(f'/g/data/rt52/era5/pressure-levels/reanalysis/{var1}/{year}/{var1}_era5_oper_pl_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')[var1].sel(time=pd.Timestamp(year, month, day, hour), level=slice(200, 1000), latitude=slice(max_lat1, min_lat1)).sel(longitude=clon, method='nearest').rename({'latitude': 'lat', 'level': 'pressure'}).sortby('lat')
-        if var1 in ['q']:
-            ds['ERA5'] *= 1000
-        elif var1 in ['t']:
-            ds['ERA5'] -= zerok
-        elif var1 in ['z']:
-            ds['ERA5'] /= 9.80665
-        
-        def std_func(ds_in, var=var2):
-            ds = ds_in.expand_dims(dim='pressure', axis=1)
-            varname = [varname for varname in ds.data_vars if varname.startswith(var)][0]
-            ds = ds.rename({varname: var})
-            ds = ds.chunk(chunks={'time': 1, 'pressure': 1, 'lat': len(ds.lat), 'lon': len(ds.lon)})
-            ds = ds.astype('float32')
-            if var == 'hus':
-                ds = ds * 1000
-            elif var == 'ta':
-                ds = ds - zerok
-            return(ds)
-        
-        if var2 != 'wap':
-            ds['BARRA-R2'] = xr.open_mfdataset(sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/{var2}[0-9]*[!m]/latest/{var2}[0-9]*_AUS-11_ERA5_historical_hres_BOM_BARRA-R2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')), parallel=True, preprocess=std_func)[var2].sel(time=pd.Timestamp(year, month, day, hour), pressure=slice(200, 1000)).sel(lon=clon, method='nearest').compute()
-        
-        ds['BARRA-C2'] = xr.open_mfdataset(sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/{var2}[0-9]*[!m]/latest/{var2}[0-9]*_AUST-04_ERA5_historical_hres_BOM_BARRA-C2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')), parallel=True, preprocess=std_func)[var2].sel(time=pd.Timestamp(year, month, day, hour), pressure=slice(200, 1000)).sel(lon=clon, method='nearest').compute()
-        
-        if var1 == 'q':
-            pltlevel = np.array([0, 0.1, 0.2, 0.5, 1, 2, 4, 8, 12, 16, 20])
-            pltticks = np.array([0, 0.1, 0.2, 0.5, 1, 2, 4, 8, 12, 16, 20])
-            pltnorm = BoundaryNorm(pltlevel, ncolors=len(pltlevel)-1, clip=True)
-            pltcmp = plt.get_cmap('viridis_r', len(pltlevel)-1)
-            extend = 'max'
-            pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-                cm_min=-100, cm_max=100, cm_interval1=20, cm_interval2=20, cmap='BrBG')
-            extend2 = 'max'
-        elif var1 == 't':
-            pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-                cm_min=-48, cm_max=32, cm_interval1=4, cm_interval2=8, cmap='PuOr', asymmetric=True)
-            extend = 'both'
-            pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-                cm_min=-3, cm_max=3, cm_interval1=0.5, cm_interval2=1, cmap='BrBG', asymmetric=True)
-            extend2 = 'both'
-        elif var1 == 'w':
-            pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-                cm_min=-0.1, cm_max=0.1, cm_interval1=0.01, cm_interval2=0.02, cmap='PuOr')
-            extend = 'both'
-            pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-                cm_min=-0.05, cm_max=0.05, cm_interval1=0.01, cm_interval2=0.01, cmap='BrBG')
-            extend2 = 'both'
-        elif var1 == 'u':
-            pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-                cm_min=-8, cm_max=32, cm_interval1=2, cm_interval2=4, cmap='PuOr', asymmetric=True)
-            extend = 'both'
-            pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-                cm_min=-5, cm_max=5, cm_interval1=1, cm_interval2=1, cmap='BrBG')
-            extend2 = 'both'
-        elif var1 == 'v':
-            pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-                cm_min=-20, cm_max=20, cm_interval1=4, cm_interval2=4, cmap='PuOr')
-            extend = 'both'
-            pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-                cm_min=-5, cm_max=5, cm_interval1=1, cm_interval2=1, cmap='BrBG')
-            extend2 = 'both'
-        elif var1 == 'z':
-            pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-                cm_min=0, cm_max=12000, cm_interval1=500, cm_interval2=2000, cmap='viridis_r')
-            extend = 'both'
-            pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-                cm_min=-200, cm_max=200, cm_interval1=50, cm_interval2=50, cmap='BrBG')
-            extend2 = 'both'
         
         if imode=='org':
             plt_colnames = dss
@@ -997,10 +1007,10 @@ for imode in ['org', 'diff']:
                 ds[dss[0]].lat, ds[dss[0]].pressure, ds[dss[0]],
                 norm=pltnorm, cmap=pltcmp, zorder=1)
             for jcol, ids1, ids2 in zip(range(1, len(dss)), dss[1:], dss[:-1]):
-                print(f'#-------- {jcol} {ids1} {ids2}')
+                # print(f'#-------- {jcol} {ids1} {ids2}')
                 plevels = np.intersect1d(ds[ids1].pressure.values, ds[ids2].pressure.values)
                 if var2 != 'hus':
-                    plt_data = ds[ids1].sel(pressure=plevels).interp(lat=ds[ids2].sel(lat=slice(ds[ids1].lat[0], ds[ids1].lat[-1])).lat) - ds[ids2].sel(pressure=plevels, lat=slice(ds[ids1].lat[0], ds[ids1].lat[-1]))
+                    plt_data = ds[ids1].sel(pressure=plevels).interp(lat=ds[ids2].sel(lat=slice(ds[ids1].lat[0], ds[ids1].lat[-1])).lat) - ds[ids2].sel(pressure=plevels, lat=slice(ds[ids1].lat[0], ds[ids1].lat[-1])).values
                 elif var2 == 'hus':
                     plt_data = (ds[ids1].sel(pressure=plevels).interp(lat=ds[ids2].sel(lat=slice(ds[ids1].lat[0], ds[ids1].lat[-1])).lat) - ds[ids2].sel(pressure=plevels, lat=slice(ds[ids1].lat[0], ds[ids1].lat[-1]))) / ds[ids2].sel(pressure=plevels, lat=slice(ds[ids1].lat[0], ds[ids1].lat[-1])) * 100
                 plt_mesh2 = axs[jcol].pcolormesh(
@@ -1019,12 +1029,17 @@ for imode in ['org', 'diff']:
                 orientation="horizontal", ticks=pltticks2, extend=extend2,
                 cax=fig.add_axes([0.55, fm_bottom-0.13, 0.4, 0.04]))
             cbar2.ax.set_xlabel(f'Difference in {era5_varlabels[var1].replace(r'[$g \; kg^{-1}$]', r'[$\%$]')}')
+            
+            del plt_data
         
         axs[0].set_ylabel(r'Pressure [$hPa$]')
         fig.subplots_adjust(left=0.08, right=0.99, bottom=fm_bottom, top=fm_top)
         fig.savefig(opng)
         
-        del ds
+        time2 = time.perf_counter()
+        print(f'Execution time: {time2 - time1:.1f} s')
+    
+    del ds
 
 
 
@@ -1051,9 +1066,10 @@ zg          z                       i
 
 
 # region animate hourly cross section
+# Memory Used: 31.73GB; Walltime Used: 09:57:15
 
 imode = 'diff' #'org' #
-var2 = 'hus' #['hus', 'ta', 'ua', 'va', 'wap', 'zg']
+var2 = 'wap' #['hus', 'ta', 'ua', 'va', 'wap']
 var1 = cmip6_era5_var[var2]
 
 year, month = 2020, 6
@@ -1079,43 +1095,39 @@ if var1 == 'q':
     pltcmp = plt.get_cmap('viridis_r', len(pltlevel)-1)
     extend = 'max'
     pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-        cm_min=-100, cm_max=100, cm_interval1=20, cm_interval2=20, cmap='BrBG')
-    extend2 = 'max'
+        cm_min=-100, cm_max=100, cm_interval1=20, cm_interval2=20, cmap='BrBG_r')
 elif var1 == 't':
     pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
         cm_min=-48, cm_max=32, cm_interval1=4, cm_interval2=8, cmap='PuOr', asymmetric=True)
     extend = 'both'
     pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
         cm_min=-3, cm_max=3, cm_interval1=0.5, cm_interval2=1, cmap='BrBG', asymmetric=True)
-    extend2 = 'both'
 elif var1 == 'w':
     pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-        cm_min=-0.1, cm_max=0.1, cm_interval1=0.01, cm_interval2=0.02, cmap='PuOr')
+        cm_min=-2, cm_max=2, cm_interval1=0.2, cm_interval2=0.4, cmap='PuOr')
     extend = 'both'
     pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-        cm_min=-0.05, cm_max=0.05, cm_interval1=0.01, cm_interval2=0.01, cmap='BrBG')
-    extend2 = 'both'
+        cm_min=-2, cm_max=2, cm_interval1=0.2, cm_interval2=0.4, cmap='BrBG')
 elif var1 == 'u':
     pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-        cm_min=-8, cm_max=32, cm_interval1=2, cm_interval2=4, cmap='PuOr', asymmetric=True)
+        cm_min=-20, cm_max=50, cm_interval1=2.5, cm_interval2=10, cmap='PuOr', asymmetric=True)
     extend = 'both'
     pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-        cm_min=-5, cm_max=5, cm_interval1=1, cm_interval2=1, cmap='BrBG')
-    extend2 = 'both'
+        cm_min=-10, cm_max=10, cm_interval1=1, cm_interval2=2, cmap='BrBG')
 elif var1 == 'v':
     pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-        cm_min=-20, cm_max=20, cm_interval1=4, cm_interval2=4, cmap='PuOr')
+        cm_min=-40, cm_max=50, cm_interval1=2.5, cm_interval2=10, cmap='PuOr', asymmetric=True)
     extend = 'both'
     pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-        cm_min=-5, cm_max=5, cm_interval1=1, cm_interval2=1, cmap='BrBG')
-    extend2 = 'both'
+        cm_min=-10, cm_max=10, cm_interval1=1, cm_interval2=2, cmap='BrBG')
 elif var1 == 'z':
     pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
         cm_min=0, cm_max=12000, cm_interval1=500, cm_interval2=2000, cmap='viridis_r')
-    extend = 'both'
+    extend = 'max'
     pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-        cm_min=-200, cm_max=200, cm_interval1=50, cm_interval2=50, cmap='BrBG')
-    extend2 = 'both'
+        cm_min=-20, cm_max=20, cm_interval1=2, cm_interval2=4, cmap='BrBG')
+
+extend2 = 'both'
 
 omp4 = f'figures/4_um/4.0_barra/4.0.5_case_studies/4.0.5.2_{year}-{month} {var2} in {', '.join(dss)} {imode} {clon} {min_lat1}_{max_lat1}.mp4'
 if imode=='org':
@@ -1144,7 +1156,17 @@ def std_func(ds_in, var=var2):
         ds = ds - zerok
     return(ds)
 
-if var2 != 'wap':
+if var2 == 'wap':
+    barra_r2_hus = xr.open_mfdataset(sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/hus[0-9]*[!m]/latest/hus[0-9]*_AUS-11_ERA5_historical_hres_BOM_BARRA-R2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')), parallel=True, preprocess=lambda ds: std_func(ds, var='hus'))['hus'].sel(pressure=slice(200, 1000)).sel(lon=clon, method='nearest')
+    barra_r2_wa = xr.open_mfdataset(sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/wa[0-9]*[!m]/latest/wa[0-9]*_AUS-11_ERA5_historical_hres_BOM_BARRA-R2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')), parallel=True, preprocess=lambda ds: std_func(ds, var='wa'))['wa'].sel(pressure=slice(200, 1000)).sel(lon=clon, method='nearest')
+    barra_r2_ta = xr.open_mfdataset(sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/ta[0-9]*[!m]/latest/ta[0-9]*_AUS-11_ERA5_historical_hres_BOM_BARRA-R2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')), parallel=True, preprocess=lambda ds: std_func(ds, var='ta'))['ta'].sel(pressure=slice(200, 1000)).sel(lon=clon, method='nearest')
+    barra_r2_mixr = mixing_ratio_from_specific_humidity(barra_r2_hus.sel(pressure=barra_r2_wa.pressure) * units('g/kg'))
+    ds['BARRA-R2'] = vertical_velocity_pressure(
+            barra_r2_wa * units('m/s'),
+            barra_r2_wa.pressure * units.hPa,
+            barra_r2_ta.sel(pressure=barra_r2_wa.pressure) * units.degC,
+            barra_r2_mixr).metpy.dequantify()
+else:
     ds['BARRA-R2'] = xr.open_mfdataset(sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/{var2}[0-9]*[!m]/latest/{var2}[0-9]*_AUS-11_ERA5_historical_hres_BOM_BARRA-R2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')), parallel=True, preprocess=std_func)[var2].sel(pressure=slice(200, 1000)).sel(lon=clon, method='nearest')
 
 ds['BARRA-C2'] = xr.open_mfdataset(sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/{var2}[0-9]*[!m]/latest/{var2}[0-9]*_AUST-04_ERA5_historical_hres_BOM_BARRA-C2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')), parallel=True, preprocess=std_func)[var2].sel(pressure=slice(200, 1000)).sel(lon=clon, method='nearest')
@@ -1211,10 +1233,11 @@ def update_frames(itime):
             ds[dss[0]].sel(time=pd.Timestamp(year, month, day, hour)),
             norm=pltnorm, cmap=pltcmp, zorder=1))
         for jcol, ids1, ids2 in zip(range(1, len(dss)), dss[1:], dss[:-1]):
-            print(f'#-------- {jcol} {ids1} {ids2}')
+            # jcol=1; ids1=dss[1]; ids2=dss[0]
+            # print(f'#-------- {jcol} {ids1} {ids2}')
             plevels = np.intersect1d(ds[ids1].pressure.values, ds[ids2].pressure.values)
             if var2 != 'hus':
-                plt_data = ds[ids1].sel(time=pd.Timestamp(year, month, day, hour)).sel(pressure=plevels).interp(lat=ds[ids2].sel(lat=slice(ds[ids1].lat[0], ds[ids1].lat[-1])).lat) - ds[ids2].sel(time=pd.Timestamp(year, month, day, hour)).sel(pressure=plevels, lat=slice(ds[ids1].lat[0], ds[ids1].lat[-1]))
+                plt_data = ds[ids1].sel(time=pd.Timestamp(year, month, day, hour)).sel(pressure=plevels).interp(lat=ds[ids2].sel(lat=slice(ds[ids1].lat[0], ds[ids1].lat[-1])).lat) - ds[ids2].sel(time=pd.Timestamp(year, month, day, hour)).sel(pressure=plevels, lat=slice(ds[ids1].lat[0], ds[ids1].lat[-1])).values
             elif var2 == 'hus':
                 plt_data = (ds[ids1].sel(time=pd.Timestamp(year, month, day, hour)).sel(pressure=plevels).interp(lat=ds[ids2].sel(lat=slice(ds[ids1].lat[0], ds[ids1].lat[-1])).lat) - ds[ids2].sel(time=pd.Timestamp(year, month, day, hour)).sel(pressure=plevels, lat=slice(ds[ids1].lat[0], ds[ids1].lat[-1]))) / ds[ids2].sel(time=pd.Timestamp(year, month, day, hour)).sel(pressure=plevels, lat=slice(ds[ids1].lat[0], ds[ids1].lat[-1])) * 100
             plt_mesh.append(axs[jcol].pcolormesh(
@@ -1244,7 +1267,7 @@ def update_frames(itime):
 axs[0].set_ylabel(r'Pressure [$hPa$]')
 fig.subplots_adjust(left=0.08, right=0.99, bottom=fm_bottom, top=fm_top)
 ani = animation.FuncAnimation(
-    fig, update_frames, frames=3, interval=500, blit=False)
+    fig, update_frames, frames=len(time_series), interval=500, blit=False)
 if os.path.exists(omp4): os.remove(omp4)
 ani.save(omp4,progress_callback=lambda iframe,n:print(f'Frame {iframe}/{n-1}'))
 

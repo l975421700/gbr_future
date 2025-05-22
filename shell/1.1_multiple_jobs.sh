@@ -1,9 +1,9 @@
-for idx in $(seq 1 13); do
+for idx in $(seq 1 10); do
     qsub -v idx=$idx <<EOF
 #PBS -N qjob$idx
 #PBS -q normal
-#PBS -l walltime=4:00:00
-#PBS -l mem=192GB
+#PBS -l walltime=10:00:00
+#PBS -l mem=36GB
 #PBS -l jobfs=100MB
 #PBS -l ncpus=1
 #PBS -j oe
