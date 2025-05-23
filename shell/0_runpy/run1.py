@@ -1,5 +1,8 @@
 
 
+# qsub -I -q normal -P nf33 -l walltime=3:00:00,ncpus=1,mem=20GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22
+
+
 # region import packages
 
 # data analysis
@@ -10,6 +13,7 @@ from metpy.calc import specific_humidity_from_dewpoint, relative_humidity_from_d
 from metpy.units import units
 import calendar
 import xesmf as xe
+import pickle
 
 # plot
 import matplotlib as mpl
@@ -49,7 +53,8 @@ from namelist import (
     seconds_per_d,
     zerok,
     era5_varlabels,
-    cmip6_era5_var)
+    cmip6_era5_var,
+    month_jan)
 
 from component_plot import (
     plt_mesh_pars)
@@ -57,215 +62,369 @@ from component_plot import (
 # endregion
 
 
-# region animate hourly cross section
+# region plot am/sea/mon data
 
-imode = 'diff' #'org' #
-var2 = 'hus' #['hus', 'ta', 'ua', 'va', 'wap']
-var1 = cmip6_era5_var[var2]
-
-year, month = 2020, 6
-start_day = pd.Timestamp(year, month, 1, 0, 0)
-end_day = start_day + pd.Timedelta(days=calendar.monthrange(year, month)[1])
-time_series = pd.date_range(start=start_day, end=end_day, freq='1h')[:-1]
 
 dss = ['ERA5', 'BARRA-R2', 'BARRA-C2']
+regridder = {}
 min_lon1, max_lon1, min_lat1, max_lat1 = 80, 220, -70, 20
 min_lon, max_lon, min_lat, max_lat = 110.58, 157.34, -43.69, -7.01
-clon = 150
 pwidth  = 6.6
-pheight = 5
+pheight = 6.6 * (max_lat1 - min_lat1) / (max_lon1 - min_lon1)
 nrow = 1
 ncol = len(dss)
-fm_bottom = 2.2/(pheight*nrow+2.7)
-fm_top = 1 - 0.5/(pheight*nrow+2.7)
-
-if var1 == 'q':
-    pltlevel = np.array([0, 0.1, 0.2, 0.5, 1, 2, 4, 8, 12, 16, 20])
-    pltticks = np.array([0, 0.1, 0.2, 0.5, 1, 2, 4, 8, 12, 16, 20])
-    pltnorm = BoundaryNorm(pltlevel, ncolors=len(pltlevel)-1, clip=True)
-    pltcmp = plt.get_cmap('viridis_r', len(pltlevel)-1)
-    extend = 'max'
-    pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-        cm_min=-100, cm_max=100, cm_interval1=20, cm_interval2=20, cmap='BrBG_r')
-elif var1 == 't':
-    pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-        cm_min=-48, cm_max=32, cm_interval1=4, cm_interval2=8, cmap='PuOr', asymmetric=True)
-    extend = 'both'
-    pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-        cm_min=-3, cm_max=3, cm_interval1=0.5, cm_interval2=1, cmap='BrBG', asymmetric=True)
-elif var1 == 'w':
-    pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-        cm_min=-2, cm_max=2, cm_interval1=0.2, cm_interval2=0.4, cmap='PuOr')
-    extend = 'both'
-    pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-        cm_min=-2, cm_max=2, cm_interval1=0.2, cm_interval2=0.4, cmap='BrBG')
-elif var1 == 'u':
-    pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-        cm_min=-20, cm_max=50, cm_interval1=2.5, cm_interval2=10, cmap='PuOr', asymmetric=True)
-    extend = 'both'
-    pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-        cm_min=-10, cm_max=10, cm_interval1=1, cm_interval2=2, cmap='BrBG')
-elif var1 == 'v':
-    pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-        cm_min=-40, cm_max=50, cm_interval1=2.5, cm_interval2=10, cmap='PuOr', asymmetric=True)
-    extend = 'both'
-    pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-        cm_min=-10, cm_max=10, cm_interval1=1, cm_interval2=2, cmap='BrBG')
-elif var1 == 'z':
-    pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-        cm_min=0, cm_max=12000, cm_interval1=500, cm_interval2=2000, cmap='viridis_r')
-    extend = 'max'
-    pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-        cm_min=-20, cm_max=20, cm_interval1=2, cm_interval2=4, cmap='BrBG')
-
-extend2 = 'both'
-
-omp4 = f'figures/4_um/4.0_barra/4.0.5_case_studies/4.0.5.2_{year}-{month} {var2} in {', '.join(dss)} {imode} {clon} {min_lat1}_{max_lat1}.mp4'
-if imode=='org':
-    plt_colnames = dss
-elif imode=='diff':
-    plt_colnames = [dss[0]] + [f'{ids1} - {ids2}' for ids1, ids2 in zip(dss[1:], dss[:-1])]
-
-ds = {}
-ds['ERA5'] = xr.open_dataset(f'/g/data/rt52/era5/pressure-levels/reanalysis/{var1}/{year}/{var1}_era5_oper_pl_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')[var1].sel(level=slice(200, 1000), latitude=slice(max_lat1, min_lat1)).sel(longitude=clon, method='nearest').rename({'latitude': 'lat', 'level': 'pressure'}).sortby('lat')
-if var1 in ['q']:
-    ds['ERA5'] *= 1000
-elif var1 in ['t']:
-    ds['ERA5'] -= zerok
-elif var1 in ['z']:
-    ds['ERA5'] /= 9.80665
-
-def std_func(ds_in, var=var2):
-    ds = ds_in.expand_dims(dim='pressure', axis=1)
-    varname = [varname for varname in ds.data_vars if varname.startswith(var)][0]
-    ds = ds.rename({varname: var})
-    ds = ds.chunk(chunks={'time': 1, 'pressure': 1, 'lat': len(ds.lat), 'lon': len(ds.lon)})
-    ds = ds.astype('float32')
-    if var == 'hus':
-        ds = ds * 1000
-    elif var == 'ta':
-        ds = ds - zerok
-    return(ds)
-
-if var2 == 'wap':
-    barra_r2_hus = xr.open_mfdataset(sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/hus[0-9]*[!m]/latest/hus[0-9]*_AUS-11_ERA5_historical_hres_BOM_BARRA-R2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')), parallel=True, preprocess=lambda ds: std_func(ds, var='hus'))['hus'].sel(pressure=slice(200, 1000)).sel(lon=clon, method='nearest')
-    barra_r2_wa = xr.open_mfdataset(sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/wa[0-9]*[!m]/latest/wa[0-9]*_AUS-11_ERA5_historical_hres_BOM_BARRA-R2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')), parallel=True, preprocess=lambda ds: std_func(ds, var='wa'))['wa'].sel(pressure=slice(200, 1000)).sel(lon=clon, method='nearest')
-    barra_r2_ta = xr.open_mfdataset(sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/ta[0-9]*[!m]/latest/ta[0-9]*_AUS-11_ERA5_historical_hres_BOM_BARRA-R2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')), parallel=True, preprocess=lambda ds: std_func(ds, var='ta'))['ta'].sel(pressure=slice(200, 1000)).sel(lon=clon, method='nearest')
-    barra_r2_mixr = mixing_ratio_from_specific_humidity(barra_r2_hus.sel(pressure=barra_r2_wa.pressure) * units('g/kg'))
-    ds['BARRA-R2'] = vertical_velocity_pressure(
-            barra_r2_wa * units('m/s'),
-            barra_r2_wa.pressure * units.hPa,
-            barra_r2_ta.sel(pressure=barra_r2_wa.pressure) * units.degC,
-            barra_r2_mixr)
-else:
-    ds['BARRA-R2'] = xr.open_mfdataset(sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/{var2}[0-9]*[!m]/latest/{var2}[0-9]*_AUS-11_ERA5_historical_hres_BOM_BARRA-R2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')), parallel=True, preprocess=std_func)[var2].sel(pressure=slice(200, 1000)).sel(lon=clon, method='nearest')
-
-ds['BARRA-C2'] = xr.open_mfdataset(sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/{var2}[0-9]*[!m]/latest/{var2}[0-9]*_AUST-04_ERA5_historical_hres_BOM_BARRA-C2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')), parallel=True, preprocess=std_func)[var2].sel(pressure=slice(200, 1000)).sel(lon=clon, method='nearest')
+fm_bottom = 1.6/(pheight*nrow+2.1)
+fm_top = 1 - 0.5/(pheight*nrow+2.1)
 
 
-fig, axs = plt.subplots(nrow, ncol, figsize=np.array([pwidth*ncol, pheight*nrow+2.7])/2.54, sharey=True, gridspec_kw={'hspace':0.01, 'wspace':0.05})
+era5_sl_mon_alltime = {}
+barra_r2_mon_alltime = {}
+barra_c2_mon_alltime = {}
 
-for jcol in range(ncol):
-    axs[jcol].invert_yaxis()
-    axs[jcol].set_ylim(1000, 200)
-    axs[jcol].set_yticks(np.arange(1000, 200 - 1e-4, -200))
+periods = ['am', 'mon'] # ['am', 'sea', 'mon']
+modes = ['org', 'diff'] # ['org', 'diff']
+for var2 in ['clwvi', 'clivi', 'prw', 'pr', 'clh', 'clm', 'cll', 'clt', 'evspsbl', 'hfls', 'hfss', 'psl', 'rlds', 'rldscs', 'rlus', 'rluscs', 'rlut', 'rlutcs', 'rsds', 'rsdscs', 'rsdt', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'sfcWind', 'tas', 'ts', 'evspsblpot', 'uas', 'vas', 'rlns',  'rsns',  'rlnscs', 'rsnscs',  'rlnscl', 'rsnscl', 'rldscl', 'rsdscl',  'rluscl', 'rsuscl',  'rsnt',  'rsntcs',  'rlutcl', 'rsntcl', 'rsutcl']:
+    # var2='clwvi'
+    # ['clwvi', 'clivi', 'prw', 'pr', 'clh', 'clm', 'cll', 'clt', 'evspsbl', 'hfls', 'hfss', 'psl', 'rlds', 'rldscs', 'rlus', 'rluscs', 'rlut', 'rlutcs', 'rsds', 'rsdscs', 'rsdt', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'sfcWind', 'tas', 'ts', 'evspsblpot', 'uas', 'vas', 'rlns',  'rsns',  'rlnscs', 'rsnscs',  'rlnscl', 'rsnscl', 'rldscl', 'rsdscl',  'rluscl', 'rsuscl',  'rsnt',  'rsntcs',  'rlutcl', 'rsntcl', 'rsutcl']
+    var1 = cmip6_era5_var[var2]
+    print(f'#-------------------------------- {var1} in ERA5 vs. {var2} in BARRA-R2/C2')
     
-    axs[jcol].set_xticks(np.arange(-90, 90+1e-4, 30))
-    axs[jcol].xaxis.set_minor_locator(ticker.AutoMinorLocator(3))
-    axs[jcol].set_xlim(min_lat1, max_lat1)
-    axs[jcol].xaxis.set_major_formatter(LatitudeFormatter(degree_symbol='° '))
+    with open(f'data/obs/era5/mon/era5_sl_mon_alltime_{var1}.pkl', 'rb') as f:
+        era5_sl_mon_alltime[var1] = pickle.load(f)
+    with open(f'data/sim/um/barra_r2/barra_r2_mon_alltime_{var2}.pkl','rb') as f:
+        barra_r2_mon_alltime[var2] = pickle.load(f)
+    with open(f'data/sim/um/barra_c2/barra_c2_mon_alltime_{var2}.pkl','rb') as f:
+        barra_c2_mon_alltime[var2] = pickle.load(f)
     
-    axs[jcol].axvline(min_lat, c='red', lw=0.5)
-    axs[jcol].axvline(max_lat, c='red', lw=0.5)
-    axs[jcol].axvline(ds['BARRA-R2'].lat[0], c='red', lw=0.5, ls='--')
-    axs[jcol].axvline(ds['BARRA-R2'].lat[-1], c='red', lw=0.5, ls='--')
-    axs[jcol].axvline(ds['BARRA-C2'].lat[0], c='red', lw=0.5, ls=':')
-    axs[jcol].axvline(ds['BARRA-C2'].lat[-1], c='red', lw=0.5, ls=':')
+    if var1=='tp':
+        pltlevel1 = np.array([0, 0.5, 1, 2, 3, 4, 6, 8, 10, 12, 16, 20,])
+        pltticks1 = np.array([0, 0.5, 1, 2, 3, 4, 6, 8, 10, 12, 16, 20,])
+        pltnorm1 = BoundaryNorm(pltlevel1, ncolors=len(pltlevel1)-1, clip=True)
+        pltcmp1 = plt.get_cmap('viridis_r', len(pltlevel1)-1)
+        extend1 = 'max'
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-6,cm_max=6,cm_interval1=1,cm_interval2=1,cmap='BrBG_r')
+    elif var1 in ['tcc', 'hcc', 'mcc', 'lcc']:
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=0, cm_max=100, cm_interval1=10, cm_interval2=10, cmap='Blues_r',)
+        extend1 = 'neither'
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-30, cm_max=30, cm_interval1=5, cm_interval2=10, cmap='BrBG_r',)
+    elif var1 in ['e', 'pev']:
+        pltlevel1 = np.array([0, 0.5, 1, 2, 3, 4, 5, 6, 7, 8])
+        pltticks1 = np.array([0, 0.5, 1, 2, 3, 4, 5, 6, 7, 8])
+        pltnorm1 = BoundaryNorm(pltlevel1, ncolors=len(pltlevel1)-1, clip=True)
+        pltcmp1 = plt.get_cmap('viridis_r', len(pltlevel1)-1)
+        extend1 = 'both'
+        pltlevel2 = np.array([-5, -4, -3, -2, -1, -0.5, 0, 0.5, 1, 2, 3, 4, 5])
+        pltticks2 = np.array([-5, -4, -3, -2, -1, -0.5, 0, 0.5, 1, 2, 3, 4, 5])
+        pltnorm2 = BoundaryNorm(pltlevel2, ncolors=len(pltlevel2)-1, clip=True)
+        pltcmp2 = plt.get_cmap('BrBG', len(pltlevel2)-1)
+    elif var1=='mslhf':
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=-280, cm_max=40, cm_interval1=10, cm_interval2=40, cmap='PRGn', asymmetric=True)
+        extend1 = 'both'
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-30, cm_max=30, cm_interval1=5, cm_interval2=10, cmap='BrBG')
+    elif var1=='msshf':
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=-200, cm_max=80, cm_interval1=10, cm_interval2=40, cmap='PRGn', asymmetric=True,)
+        extend1 = 'both'
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-30, cm_max=30, cm_interval1=5, cm_interval2=10, cmap='BrBG')
+    elif var1=='msl':
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=980, cm_max=1028, cm_interval1=2, cm_interval2=8, cmap='viridis_r',)
+        extend1 = 'both'
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-0.5, cm_max=0.5, cm_interval1=0.1, cm_interval2=0.1, cmap='BrBG')
+    elif var1 in ['msdwlwrf', 'msdwlwrfcs']:
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=200, cm_max=440, cm_interval1=10, cm_interval2=40, cmap='viridis_r',)
+        extend1 = 'both'
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-30, cm_max=30, cm_interval1=5, cm_interval2=10, cmap='BrBG')
+    elif var1 in ['msuwlwrf', 'msuwlwrfcs']:
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=-540, cm_max=-300, cm_interval1=10, cm_interval2=40, cmap='viridis',)
+        extend1 = 'both'
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-30, cm_max=30, cm_interval1=5, cm_interval2=10, cmap='BrBG')
+    elif var1 in ['mtnlwrf', 'mtnlwrfcs']:
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=-310, cm_max=-180, cm_interval1=5, cm_interval2=20, cmap='viridis',)
+        extend1 = 'both'
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-30, cm_max=30, cm_interval1=5, cm_interval2=10, cmap='BrBG')
+    elif var1 in ['msdwswrf', 'msdwswrfcs']:
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=40, cm_max=400, cm_interval1=10, cm_interval2=40, cmap='viridis_r',)
+        extend1 = 'both'
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-30, cm_max=30, cm_interval1=5, cm_interval2=10, cmap='BrBG')
+    elif var1=='mtdwswrf':
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=150, cm_max=490, cm_interval1=10, cm_interval2=40, cmap='viridis_r',)
+        extend1 = 'both'
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-0.6, cm_max=0.6, cm_interval1=0.1, cm_interval2=0.2, cmap='BrBG',)
+    elif var1 in ['msuwswrf', 'msuwswrfcs']:
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=-160, cm_max=0, cm_interval1=5, cm_interval2=20, cmap='viridis',)
+        extend1 = 'min'
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-30, cm_max=30, cm_interval1=5, cm_interval2=10, cmap='BrBG')
+    elif var1 in ['mtuwswrf', 'mtuwswrfcs']:
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=-250, cm_max=-20, cm_interval1=10, cm_interval2=40, cmap='viridis',)
+        extend1 = 'both'
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-30, cm_max=30, cm_interval1=5, cm_interval2=10, cmap='BrBG')
+    elif var1 in ['si10']:
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=0, cm_max=14, cm_interval1=1, cm_interval2=2, cmap='viridis_r',)
+        extend1 = 'max'
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-3, cm_max=3, cm_interval1=0.5, cm_interval2=1, cmap='BrBG')
+    elif var1=='t2m':
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=-20, cm_max=35, cm_interval1=2.5, cm_interval2=5, cmap='PuOr', asymmetric=True)
+        extend1 = 'both'
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-4, cm_max=4, cm_interval1=1, cm_interval2=1, cmap='BrBG')
+    elif var1=='skt':
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=-20, cm_max=35, cm_interval1=2.5, cm_interval2=5, cmap='PuOr', asymmetric=True)
+        extend1 = 'both'
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-4, cm_max=4, cm_interval1=1, cm_interval2=1, cmap='BrBG')
+    elif var1 in ['u10', 'v10']:
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=-10, cm_max=10, cm_interval1=1, cm_interval2=2, cmap='PRGn',)
+        extend1 = 'both'
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-1, cm_max=1, cm_interval1=0.1, cm_interval2=0.2, cmap='BrBG',)
+    elif var1 in ['msnlwrf', 'msnlwrfcs']:
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=-150, cm_max=0, cm_interval1=10, cm_interval2=20, cmap='viridis',)
+        extend1 = 'min'
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-30, cm_max=30, cm_interval1=5, cm_interval2=10, cmap='BrBG')
+    elif var1 in ['msnswrf', 'msnswrfcs']:
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=30, cm_max=350, cm_interval1=10, cm_interval2=40, cmap='viridis',)
+        extend1 = 'both'
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-30, cm_max=30, cm_interval1=5, cm_interval2=10, cmap='BrBG')
+    elif var1=='msnlwrfcl':
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=-25, cm_max=70, cm_interval1=5, cm_interval2=10, cmap='PRGn', asymmetric=True)
+        extend1 = 'both'
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-30, cm_max=30, cm_interval1=5, cm_interval2=10, cmap='BrBG')
+    elif var1=='msnswrfcl':
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=-230, cm_max=30, cm_interval1=10, cm_interval2=40, cmap='PRGn', asymmetric=True)
+        extend1 = 'both'
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-30, cm_max=30, cm_interval1=5, cm_interval2=10, cmap='BrBG')
+    elif var1=='msdwlwrfcl':
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=0, cm_max=70, cm_interval1=2.5, cm_interval2=10, cmap='viridis_r',)
+        extend1 = 'max'
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-30, cm_max=30, cm_interval1=5, cm_interval2=10, cmap='BrBG')
+    elif var1=='msdwswrfcl':
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=-270, cm_max=0, cm_interval1=10, cm_interval2=40, cmap='viridis',)
+        extend1 = 'min'
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-30, cm_max=30, cm_interval1=5, cm_interval2=10, cmap='BrBG')
+    elif var1=='msuwlwrfcl':
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10, cmap='PRGn',)
+        extend1 = 'both'
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-30, cm_max=30, cm_interval1=5, cm_interval2=10, cmap='BrBG')
+    elif var1=='msuwswrfcl':
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=-40, cm_max=60, cm_interval1=5, cm_interval2=10, cmap='PRGn', asymmetric=True)
+        extend1 = 'both'
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-30, cm_max=30, cm_interval1=5, cm_interval2=10, cmap='BrBG')
+    elif var1 in ['mtnswrf', 'mtnswrfcs']:
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=70, cm_max=440, cm_interval1=10, cm_interval2=40, cmap='viridis_r',)
+        extend1 = 'both'
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-30, cm_max=30, cm_interval1=5, cm_interval2=10, cmap='BrBG')
+    elif var1=='mtnlwrfcl':
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=0, cm_max=80, cm_interval1=5, cm_interval2=10, cmap='viridis_r',)
+        extend1 = 'max'
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-30, cm_max=30, cm_interval1=5, cm_interval2=10, cmap='BrBG')
+    elif var1 in ['mtnswrfcl', 'mtuwswrfcl']:
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=-180, cm_max=30, cm_interval1=10, cm_interval2=20, cmap='PRGn', asymmetric=True)
+        extend1 = 'both'
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-30, cm_max=30, cm_interval1=5, cm_interval2=10, cmap='BrBG')
+    elif var1 in ['tcwv']:
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=0, cm_max=80, cm_interval1=5, cm_interval2=10, cmap='Blues_r',)
+        extend1 = 'max'
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-5, cm_max=5, cm_interval1=0.5, cm_interval2=1, cmap='BrBG_r')
+    elif var1 in ['tclw']:
+        pltlevel1 = np.array([0, 0.01, 0.02, 0.04, 0.06, 0.1, 0.2, 0.3, 0.4])
+        pltticks1 = np.array([0, 0.01, 0.02, 0.04, 0.06, 0.1, 0.2, 0.3, 0.4])
+        pltnorm1 = BoundaryNorm(pltlevel1, ncolors=len(pltlevel1)-1, clip=True)
+        pltcmp1 = plt.get_cmap('viridis_r', len(pltlevel1)-1)
+        extend1 = 'max'
+        pltlevel2 = np.array([-0.1, -0.06, -0.04, -0.02, 0, 0.02, 0.04, 0.06, 0.1])
+        pltticks2 = np.array([-0.1, -0.06, -0.04, -0.02, 0, 0.02, 0.04, 0.06, 0.1])
+        pltnorm2 = BoundaryNorm(pltlevel2, ncolors=len(pltlevel2)-1, clip=True)
+        pltcmp2 = plt.get_cmap('BrBG', len(pltlevel2)-1)
+    elif var1 in ['tciw']:
+        pltlevel1 = np.array([0, 0.01, 0.02, 0.05, 0.1, 0.2, 0.4, 0.6, 0.8, 1])
+        pltticks1 = np.array([0, 0.01, 0.02, 0.05, 0.1, 0.2, 0.4, 0.6, 0.8, 1])
+        pltnorm1 = BoundaryNorm(pltlevel1, ncolors=len(pltlevel1)-1, clip=True)
+        pltcmp1 = plt.get_cmap('viridis_r', len(pltlevel1)-1)
+        extend1 = 'max'
+        pltlevel2 = np.array([-1, -0.8, -0.6, -0.4, -0.2, -0.1, 0, 0.1, 0.2, 0.4, 0.6, 0.8, 1])
+        pltticks2 = np.array([-1, -0.8, -0.6, -0.4, -0.2, -0.1, 0, 0.1, 0.2, 0.4, 0.6, 0.8, 1])
+        pltnorm2 = BoundaryNorm(pltlevel2, ncolors=len(pltlevel2)-1, clip=True)
+        pltcmp2 = plt.get_cmap('BrBG', len(pltlevel2)-1)
+    else:
+        print(f'Warning unspecified colorbar for {var1}')
     
-    axs[jcol].grid(True, which='both', lw=0.5, c='gray', alpha=0.5, linestyle='--')
+    for iperiod in periods:
+        # iperiod = 'am'
+        # ['am', 'sea', 'mon']
+        print(f'#---------------- {iperiod}')
+        
+        if iperiod=='am':
+            ostr = '1979-2023'
+        elif iperiod=='sea':
+            iyear = 2020
+            isea = 'JJA'
+            ostr = f'{isea}-{iyear}'
+        elif iperiod=='mon':
+            iyear = 2020
+            imon = 6
+            ostr = f'{month_jan[imon-1]}-{iyear}'
+        
+        plt_data = {}
+        if iperiod=='am':
+            plt_data['ERA5'] = era5_sl_mon_alltime[var1]['am'].squeeze()
+            plt_data['BARRA-R2'] = barra_r2_mon_alltime[var2]['am'].squeeze()
+            plt_data['BARRA-C2'] = barra_c2_mon_alltime[var2]['am'].squeeze()
+        elif iperiod=='sea':
+            plt_data['ERA5'] = era5_sl_mon_alltime[var1]['sea'][(era5_sl_mon_alltime[var1]['sea'].time.dt.year == iyear) & (era5_sl_mon_alltime[var1]['sea'].time.dt.season == isea)].squeeze()
+            plt_data['BARRA-R2'] = barra_r2_mon_alltime[var2]['sea'][(barra_r2_mon_alltime[var2]['sea'].time.dt.year == iyear) & (barra_r2_mon_alltime[var2]['sea'].time.dt.season == isea)].squeeze()
+            plt_data['BARRA-C2'] = barra_c2_mon_alltime[var2]['sea'][(barra_c2_mon_alltime[var2]['sea'].time.dt.year == iyear) & (barra_c2_mon_alltime[var2]['sea'].time.dt.season == isea)].squeeze()
+        elif iperiod=='mon':
+            plt_data['ERA5'] = era5_sl_mon_alltime[var1]['mon'][(era5_sl_mon_alltime[var1]['mon'].time.dt.year == iyear) & (era5_sl_mon_alltime[var1]['mon'].time.dt.month == imon)].squeeze()
+            plt_data['BARRA-R2'] = barra_r2_mon_alltime[var2]['mon'][(barra_r2_mon_alltime[var2]['mon'].time.dt.year == iyear) & (barra_r2_mon_alltime[var2]['mon'].time.dt.month == imon)].squeeze()
+            plt_data['BARRA-C2'] = barra_c2_mon_alltime[var2]['mon'][(barra_c2_mon_alltime[var2]['mon'].time.dt.year == iyear) & (barra_c2_mon_alltime[var2]['mon'].time.dt.month == imon)].squeeze()
+        
+        plt_data['ERA5']['lon'] = plt_data['ERA5']['lon'] % 360
+        plt_data['ERA5'] = plt_data['ERA5'].sortby(['lon', 'lat']).sel(lon=slice(min_lon1, max_lon1), lat=slice(min_lat1, max_lat1))
+        
+        for imode in modes:
+            # imode = 'org'
+            # ['org', 'diff']
+            print(f'#-------- {imode}')
+            
+            if imode=='org':
+                plt_colnames = dss
+            elif imode=='diff':
+                plt_colnames = [dss[0]] + [f'{ids1} - {ids2}' for ids1, ids2 in zip(dss[1:], dss[:-1])]
+            
+            opng = f'figures/4_um/4.0_barra/4.0.5_case_studies/4.0.5.3_{var2} in {', '.join(dss)} {imode} {min_lon1}_{max_lon1}_{min_lat1}_{max_lat1} {iperiod} {ostr}.png'
+            
+            fig, axs = plt.subplots(
+                nrow, ncol, figsize=np.array([pwidth*ncol, pheight*nrow+2.1])/2.54,
+                subplot_kw={'projection': ccrs.PlateCarree(central_longitude=180)},
+                gridspec_kw={'hspace': 0.01, 'wspace': 0.01},)
+            
+            for jcol in range(ncol):
+                axs[jcol] = regional_plot(extent=[min_lon1, max_lon1, min_lat1, max_lat1], central_longitude=180, ax_org=axs[jcol], lw=0.1)
+                axs[jcol].text(0, 1.02, f'({string.ascii_lowercase[jcol]}) {plt_colnames[jcol]}', ha='left', va='bottom', transform=axs[jcol].transAxes)
+                axs[jcol].add_patch(Rectangle(
+                    (min_lon, min_lat), max_lon-min_lon, max_lat-min_lat,
+                    ec='red', color='None', lw=0.5,
+                    transform=ccrs.PlateCarree(), zorder=2))
+                axs[jcol].add_patch(Rectangle(
+                    (barra_r2_mon_alltime[var2]['am'].lon[0],
+                     barra_r2_mon_alltime[var2]['am'].lat[0]),
+                    barra_r2_mon_alltime[var2]['am'].lon[-1] - barra_r2_mon_alltime[var2]['am'].lon[0],
+                    barra_r2_mon_alltime[var2]['am'].lat[-1] - barra_r2_mon_alltime[var2]['am'].lat[0],
+                    ec='red', color='None', lw=0.5, linestyle='--',
+                    transform=ccrs.PlateCarree(), zorder=2))
+                axs[jcol].add_patch(Rectangle(
+                    (barra_c2_mon_alltime[var2]['am'].lon[0],
+                     barra_c2_mon_alltime[var2]['am'].lat[0]),
+                    barra_c2_mon_alltime[var2]['am'].lon[-1] - barra_c2_mon_alltime[var2]['am'].lon[0],
+                    barra_c2_mon_alltime[var2]['am'].lat[-1] - barra_c2_mon_alltime[var2]['am'].lat[0],
+                    ec='red', color='None', lw=0.5, linestyle=':',
+                    transform=ccrs.PlateCarree(), zorder=2))
+            
+            if imode=='org':
+                for jcol, ids in enumerate(dss):
+                    plt_mesh = axs[jcol].pcolormesh(
+                        plt_data[ids].lon, plt_data[ids].lat, plt_data[ids],
+                        norm=pltnorm1, cmap=pltcmp1,
+                        transform=ccrs.PlateCarree(), zorder=1)
+                cbar = fig.colorbar(
+                    plt_mesh, #cm.ScalarMappable(norm=pltnorm1, cmap=pltcmp1), #
+                    format=remove_trailing_zero_pos,
+                    orientation="horizontal", ticks=pltticks1, extend=extend1,
+                    cax=fig.add_axes([1/3, fm_bottom-0.115, 1/3, 0.03]))
+                cbar.ax.set_xlabel(f'{ostr} {era5_varlabels[var1]}', fontsize=9, labelpad=1)
+                cbar.ax.tick_params(labelsize=9, pad=1)
+            elif imode=='diff':
+                plt_mesh = axs[0].pcolormesh(
+                    plt_data['ERA5'].lon, plt_data['ERA5'].lat,
+                    plt_data['ERA5'],
+                    norm=pltnorm1, cmap=pltcmp1,
+                    transform=ccrs.PlateCarree(), zorder=1)
+                for jcol, ids1, ids2 in zip(range(1, len(dss)), dss[1:], dss[:-1]):
+                    # jcol=1; ids1='BARRA-R2'; ids2='ERA5'
+                    # print(f'#-------- {jcol} {ids1} {ids2}')
+                    if not f'{ids1} - {ids2}' in regridder.keys():
+                        regridder[f'{ids1} - {ids2}'] = xe.Regridder(
+                            plt_data[ids1],
+                            plt_data[ids2].sel(lon=slice(plt_data[ids1].lon[0], plt_data[ids1].lon[-1]), lat=slice(plt_data[ids1].lat[0], plt_data[ids1].lat[-1])),
+                            method='bilinear')
+                    plt_data_tem = regridder[f'{ids1} - {ids2}'](plt_data[ids1]) - plt_data[ids2].sel(lon=slice(plt_data[ids1].lon[0], plt_data[ids1].lon[-1]), lat=slice(plt_data[ids1].lat[0], plt_data[ids1].lat[-1]))
+                    plt_mesh2 = axs[jcol].pcolormesh(
+                        plt_data_tem.lon, plt_data_tem.lat, plt_data_tem,
+                        norm=pltnorm2, cmap=pltcmp2,
+                        transform=ccrs.PlateCarree(), zorder=1)
+                cbar = fig.colorbar(
+                    plt_mesh, #cm.ScalarMappable(norm=pltnorm1, cmap=pltcmp1), #
+                    format=remove_trailing_zero_pos,
+                    orientation="horizontal", ticks=pltticks1, extend=extend1,
+                    cax=fig.add_axes([0.05, fm_bottom-0.115, 0.4, 0.03]))
+                cbar.ax.set_xlabel(f'{ostr} {era5_varlabels[var1]}', fontsize=9, labelpad=1)
+                cbar.ax.tick_params(labelsize=9, pad=1)
+                cbar2 = fig.colorbar(
+                    plt_mesh2, #cm.ScalarMappable(norm=pltnorm2, cmap=pltcmp2), #
+                    format=remove_trailing_zero_pos,
+                    orientation="horizontal", ticks=pltticks2, extend='both',
+                    cax=fig.add_axes([0.55, fm_bottom-0.115, 0.4, 0.03]))
+                cbar2.ax.set_xlabel(f'Difference in {era5_varlabels[var1]}',
+                                    fontsize=9, labelpad=1)
+                cbar2.ax.tick_params(labelsize=9, pad=1)
+            
+            fig.subplots_adjust(left=0.005, right=0.995, bottom=fm_bottom, top=fm_top)
+            fig.savefig(opng)
     
-    axs[jcol].text(0, 1.02, f'({string.ascii_lowercase[jcol]}) {plt_colnames[jcol]}', ha='left', va='bottom', transform=axs[jcol].transAxes)
-
-
-plt_objs = []
-def update_frames(itime):
-    # itime = 0
-    time1 = time.perf_counter()
-    global plt_objs
-    for plt_obj in plt_objs:
-        try:
-            plt_obj.remove()
-        except ValueError:
-            pass
-    plt_objs = []
-    
-    day = time_series[itime].day
-    hour = time_series[itime].hour
-    print(f'#-------------------------------- {day:02d} {hour:02d}')
-    
-    plt_mesh = []
-    if imode == 'org':
-        for jcol, ids in enumerate(dss):
-            # print(f'#---- {jcol} {ids}')
-            plt_mesh.append(axs[jcol].pcolormesh(
-                ds[ids].lat, ds[ids].pressure,
-                ds[ids].sel(time=pd.Timestamp(year, month, day, hour)),
-                norm=pltnorm, cmap=pltcmp, zorder=1))
-        plt_text = fig.text(0.05, 0.02, f'{year}-{month:02d}-{day:02d} {hour:02d}:00 UTC', ha='left', va='bottom')
-        cbar = fig.colorbar(
-            plt_mesh[0], #cm.ScalarMappable(norm=pltnorm, cmap=pltcmp), #
-            format=remove_trailing_zero_pos,
-            orientation="horizontal", ticks=pltticks, extend=extend,
-            cax=fig.add_axes([0.25, fm_bottom-0.13, 0.5, 0.04]))
-        cbar.ax.set_xlabel(f'{era5_varlabels[var1]}')
-    elif imode == 'diff':
-        plt_mesh.append(axs[0].pcolormesh(
-            ds[dss[0]].lat, ds[dss[0]].pressure,
-            ds[dss[0]].sel(time=pd.Timestamp(year, month, day, hour)),
-            norm=pltnorm, cmap=pltcmp, zorder=1))
-        for jcol, ids1, ids2 in zip(range(1, len(dss)), dss[1:], dss[:-1]):
-            # print(f'#-------- {jcol} {ids1} {ids2}')
-            plevels = np.intersect1d(ds[ids1].pressure.values, ds[ids2].pressure.values)
-            if var2 != 'hus':
-                plt_data = ds[ids1].sel(time=pd.Timestamp(year, month, day, hour)).sel(pressure=plevels).interp(lat=ds[ids2].sel(lat=slice(ds[ids1].lat[0], ds[ids1].lat[-1])).lat) - ds[ids2].sel(time=pd.Timestamp(year, month, day, hour)).sel(pressure=plevels, lat=slice(ds[ids1].lat[0], ds[ids1].lat[-1])).values
-            elif var2 == 'hus':
-                plt_data = (ds[ids1].sel(time=pd.Timestamp(year, month, day, hour)).sel(pressure=plevels).interp(lat=ds[ids2].sel(lat=slice(ds[ids1].lat[0], ds[ids1].lat[-1])).lat) - ds[ids2].sel(time=pd.Timestamp(year, month, day, hour)).sel(pressure=plevels, lat=slice(ds[ids1].lat[0], ds[ids1].lat[-1]))) / ds[ids2].sel(time=pd.Timestamp(year, month, day, hour)).sel(pressure=plevels, lat=slice(ds[ids1].lat[0], ds[ids1].lat[-1])) * 100
-            plt_mesh.append(axs[jcol].pcolormesh(
-                plt_data.lat, plt_data.pressure, plt_data,
-                norm=pltnorm2, cmap=pltcmp2, zorder=1))
-        plt_text = fig.text(0.5, 0.02, f'{year}-{month:02d}-{day:02d} {hour:02d}:00 UTC', ha='center', va='bottom')
-        cbar = fig.colorbar(
-            plt_mesh[0], #cm.ScalarMappable(norm=pltnorm, cmap=pltcmp), #
-            format=remove_trailing_zero_pos,
-            orientation="horizontal", ticks=pltticks, extend=extend,
-            cax=fig.add_axes([0.05, fm_bottom-0.13, 0.4, 0.04]))
-        cbar.ax.set_xlabel(f'{era5_varlabels[var1]}')
-        cbar2 = fig.colorbar(
-            plt_mesh[1], #cm.ScalarMappable(norm=pltnorm2, cmap=pltcmp2), #
-            format=remove_trailing_zero_pos,
-            orientation="horizontal", ticks=pltticks2, extend=extend2,
-            cax=fig.add_axes([0.55, fm_bottom-0.13, 0.4, 0.04]))
-        cbar2.ax.set_xlabel(f'Difference in {era5_varlabels[var1].replace(r'[$g \; kg^{-1}$]', r'[$\%$]')}')
-    
-    plt_objs += plt_mesh + [plt_text]
-    time2 = time.perf_counter()
-    print(f'Execution time: {time2 - time1:.1f} s')
-    print(f'Memory usage: {np.round(process.memory_info().rss/2**30, 3)} GB')
-    return(plt_objs)
-
-
-axs[0].set_ylabel(r'Pressure [$hPa$]')
-fig.subplots_adjust(left=0.08, right=0.99, bottom=fm_bottom, top=fm_top)
-ani = animation.FuncAnimation(
-    fig, update_frames, frames=len(time_series), interval=500, blit=False)
-if os.path.exists(omp4): os.remove(omp4)
-ani.save(omp4,progress_callback=lambda iframe,n:print(f'Frame {iframe}/{n-1}'))
-
-
+    del era5_sl_mon_alltime[var1], barra_r2_mon_alltime[var2], barra_c2_mon_alltime[var2]
 
 
 
 
 # endregion
-
-
