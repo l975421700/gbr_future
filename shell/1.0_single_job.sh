@@ -1,7 +1,7 @@
 #PBS -N qjob
-#PBS -q normal
-#PBS -l walltime=10:00:00
-#PBS -l mem=36GB
+#PBS -q hugemem
+#PBS -l walltime=2:00:00
+#PBS -l mem=400GB
 #PBS -l jobfs=100MB
 #PBS -l ncpus=1
 #PBS -j oe
@@ -10,11 +10,8 @@
 #PBS -r y
 
 cd $HOME
-# module load python3/3.12.1
-# /apps/python3/3.12.1/bin/python3 ${HOME}/code/gbr_future/shell/0_runpy/run3.py
-
 source ${HOME}/miniconda3/bin/activate lowclouds
-python ${HOME}/code/gbr_future/shell/0_runpy/run1.py
+python ${HOME}/code/gbr_future/shell/0_runpy/run3.py -y 2020 -m 6
 
 # ${HOME}/code/gbr_future/shell/2.0_get_clean_jaxa.sh 2015 07
 

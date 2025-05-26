@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -P nf33 -l walltime=3:00:00,ncpus=1,mem=20GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22
+# qsub -I -q normal -P nf33 -l walltime=3:00:00,ncpus=1,mem=192GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22
 
 
 # region import packages
@@ -1642,7 +1642,198 @@ ani.save(omp4,progress_callback=lambda iframe,n:print(f'Frame {iframe}/{n-1}'))
 # endregion
 
 
-# region plot am/sea/mon hourly cross section
+# region plot am/sea/mon cross section
+
+dss = ['ERA5', 'BARRA-R2', 'BARRA-C2']
+min_lon1, max_lon1, min_lat1, max_lat1 = 80, 220, -70, 20
+min_lon, max_lon, min_lat, max_lat = 110.58, 157.34, -43.69, -7.01
+clon = 150
+pwidth  = 6.6
+pheight = 5
+nrow = 1
+ncol = len(dss)
+fm_bottom = 2.2/(pheight*nrow+2.7)
+fm_top = 1 - 0.5/(pheight*nrow+2.7)
+
+periods = ['am', 'sea', 'mon'] # ['am', 'sea', 'mon']
+modes = ['org', 'diff'] # ['org', 'diff']
+for var2 in ['hus', 'ta', 'ua', 'va', 'wap']:
+    # var2 = 'hus'
+    # ['hus', 'ta', 'ua', 'va', 'wap', 'hur']
+    var1 = cmip6_era5_var[var2]
+    print(f'#-------------------------------- {var1} in ERA5 vs. {var2} in BARRA-R2/C2')
+    
+    ds = {}
+    with open(f'data/obs/era5/mon/era5_pl_mon_alltime_{var1}.pkl', 'rb') as f:
+        ds['ERA5'] = pickle.load(f)
+    with open(f'data/sim/um/barra_r2/barra_r2_pl_mon_alltime_{var2}.pkl','rb') as f:
+        ds['BARRA-R2'] = pickle.load(f)
+    with open(f'data/sim/um/barra_c2/barra_c2_pl_mon_alltime_{var2}.pkl','rb') as f:
+        ds['BARRA-C2'] = pickle.load(f)
+    
+    if var2 in ['wap', 'hur']:
+        years = 2008
+    else:
+        years = 1979
+    yeare = 2023
+    
+    if var1 == 'q':
+        pltlevel = np.array([0, 0.1, 0.2, 0.5, 1, 2, 4, 8, 12, 16, 20])
+        pltticks = np.array([0, 0.1, 0.2, 0.5, 1, 2, 4, 8, 12, 16, 20])
+        pltnorm = BoundaryNorm(pltlevel, ncolors=len(pltlevel)-1, clip=True)
+        pltcmp = plt.get_cmap('viridis_r', len(pltlevel)-1)
+        extend = 'max'
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-20, cm_max=20, cm_interval1=2, cm_interval2=4, cmap='BrBG_r')
+    elif var1 == 't':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-48, cm_max=32, cm_interval1=4, cm_interval2=8, cmap='PuOr', asymmetric=True)
+        extend = 'both'
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-1, cm_max=1, cm_interval1=0.1, cm_interval2=0.2, cmap='BrBG', asymmetric=True)
+    elif var1 == 'u':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-20, cm_max=50, cm_interval1=2.5, cm_interval2=10, cmap='PuOr', asymmetric=True)
+        extend = 'both'
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-1, cm_max=1, cm_interval1=0.1, cm_interval2=0.2, cmap='BrBG')
+    elif var1 == 'v':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-5, cm_max=5, cm_interval1=0.5, cm_interval2=1, cmap='PuOr', asymmetric=True)
+        extend = 'both'
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-1, cm_max=1, cm_interval1=0.1, cm_interval2=0.2, cmap='BrBG')
+    elif var1 == 'w':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=-0.4, cm_max=0.4, cm_interval1=0.1, cm_interval2=0.1, cmap='PuOr')
+        extend = 'both'
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-0.4, cm_max=0.4, cm_interval1=0.1, cm_interval2=0.1, cmap='BrBG')
+    elif var1 == 'z':
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=0, cm_max=12000, cm_interval1=500, cm_interval2=2000, cmap='viridis_r')
+        extend = 'max'
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-20, cm_max=20, cm_interval1=2, cm_interval2=4, cmap='BrBG')
+    else:
+        print(f'Warning unspecified colorbar for {var1}')
+    
+    for iperiod in periods:
+        # iperiod = 'am'
+        # ['am', 'sea', 'mon']
+        print(f'#---------------- {iperiod}')
+        
+        if iperiod=='am':
+            ostr = f'{years}-{yeare}'
+        elif iperiod=='sea':
+            iyear = 2020
+            isea = 'JJA'
+            ostr = f'{isea}-{iyear}'
+        elif iperiod=='mon':
+            iyear = 2020
+            imon = 6
+            ostr = f'{month_jan[imon-1]}-{iyear}'
+        
+        plt_data = {}
+        if iperiod=='am':
+            plt_data['ERA5'] = ds['ERA5']['ann'].sel(time=slice(str(years), str(yeare))).sel(lon=clon, method='nearest').mean(dim='time')
+            plt_data['BARRA-R2'] = ds['BARRA-R2']['ann'].sel(time=slice(str(years), str(yeare))).sel(lon=clon, method='nearest').mean(dim='time')
+            plt_data['BARRA-C2'] = ds['BARRA-C2']['ann'].sel(time=slice(str(years), str(yeare))).sel(lon=clon, method='nearest').mean(dim='time')
+        elif iperiod=='sea':
+            plt_data['ERA5'] = ds['ERA5']['sea'][(ds['ERA5']['sea'].time.dt.year == iyear) & (ds['ERA5']['sea'].time.dt.season == isea)].sel(lon=clon, method='nearest').squeeze()
+            plt_data['BARRA-R2'] = ds['BARRA-R2']['sea'][(ds['BARRA-R2']['sea'].time.dt.year == iyear) & (ds['BARRA-R2']['sea'].time.dt.season == isea)].sel(lon=clon, method='nearest').squeeze()
+            plt_data['BARRA-C2'] = ds['BARRA-C2']['sea'][(ds['BARRA-C2']['sea'].time.dt.year == iyear) & (ds['BARRA-C2']['sea'].time.dt.season == isea)].sel(lon=clon, method='nearest').squeeze()
+        elif iperiod=='mon':
+            plt_data['ERA5'] = ds['ERA5']['mon'][(ds['ERA5']['mon'].time.dt.year == iyear) & (ds['ERA5']['mon'].time.dt.month == imon)].sel(lon=clon, method='nearest').squeeze()
+            plt_data['BARRA-R2'] = ds['BARRA-R2']['mon'][(ds['BARRA-R2']['mon'].time.dt.year == iyear) & (ds['BARRA-R2']['mon'].time.dt.month == imon)].sel(lon=clon, method='nearest').squeeze()
+            plt_data['BARRA-C2'] = ds['BARRA-C2']['mon'][(ds['BARRA-C2']['mon'].time.dt.year == iyear) & (ds['BARRA-C2']['mon'].time.dt.month == imon)].sel(lon=clon, method='nearest').squeeze()
+        
+        plt_data['ERA5'] = plt_data['ERA5'].rename({'level': 'pressure'}).sortby('lat').sel(pressure=slice(200, 1000), lat=slice(min_lat1, max_lat1))
+        plt_data['BARRA-C2'] = plt_data['BARRA-C2'].sel(pressure=slice(200, 1000))
+        
+        for imode in modes:
+            # imode = 'org'
+            # ['org', 'diff']
+            print(f'#-------- {imode}')
+            
+            if imode=='org':
+                plt_colnames = dss
+            elif imode=='diff':
+                plt_colnames = [dss[0]] + [f'{ids1} - {ids2}' for ids1, ids2 in zip(dss[1:], dss[:-1])]
+            
+            opng = f'figures/4_um/4.0_barra/4.0.5_case_studies/4.0.5.4_{var2} in {', '.join(dss)} {imode} {clon} {min_lat1}_{max_lat1} {iperiod} {ostr}.png'
+            
+            fig, axs = plt.subplots(nrow, ncol, figsize=np.array([pwidth*ncol, pheight*nrow+2.7])/2.54, sharey=True, gridspec_kw={'hspace':0.01, 'wspace':0.05})
+            
+            for jcol in range(ncol):
+                axs[jcol].invert_yaxis()
+                axs[jcol].set_ylim(1000, 200)
+                axs[jcol].set_yticks(np.arange(1000, 200 - 1e-4, -200))
+                
+                axs[jcol].set_xticks(np.arange(-90, 90+1e-4, 30))
+                axs[jcol].xaxis.set_minor_locator(ticker.AutoMinorLocator(3))
+                axs[jcol].set_xlim(min_lat1, max_lat1)
+                axs[jcol].xaxis.set_major_formatter(LatitudeFormatter(degree_symbol='° '))
+                
+                axs[jcol].axvline(min_lat, c='red', lw=0.5)
+                axs[jcol].axvline(max_lat, c='red', lw=0.5)
+                # axs[jcol].axvline(ds['BARRA-R2'].lat[0], c='red', lw=0.5, ls='--')
+                # axs[jcol].axvline(ds['BARRA-R2'].lat[-1], c='red', lw=0.5, ls='--')
+                # axs[jcol].axvline(ds['BARRA-C2'].lat[0], c='red', lw=0.5, ls=':')
+                # axs[jcol].axvline(ds['BARRA-C2'].lat[-1], c='red', lw=0.5, ls=':')
+                
+                axs[jcol].grid(True, which='both', lw=0.5, c='gray', alpha=0.5, linestyle='--')
+                
+                axs[jcol].text(0, 1.02, f'({string.ascii_lowercase[jcol]}) {plt_colnames[jcol]}', ha='left', va='bottom', transform=axs[jcol].transAxes)
+            
+            if imode == 'org':
+                for jcol, ids in enumerate(dss):
+                    plt_mesh = axs[jcol].pcolormesh(
+                        plt_data[ids].lat,plt_data[ids].pressure,plt_data[ids],
+                        norm=pltnorm, cmap=pltcmp, zorder=1)
+                cbar = fig.colorbar(
+                    plt_mesh, #cm.ScalarMappable(norm=pltnorm, cmap=pltcmp), #
+                    format=remove_trailing_zero_pos,
+                    orientation="horizontal", ticks=pltticks, extend=extend,
+                    cax=fig.add_axes([0.25, fm_bottom-0.13, 0.5, 0.04]))
+                cbar.ax.set_xlabel(f'{ostr} {era5_varlabels[var1]}')
+            elif imode == 'diff':
+                plt_mesh = axs[0].pcolormesh(
+                    plt_data[dss[0]].lat, plt_data[dss[0]].pressure,
+                    plt_data[dss[0]],
+                    norm=pltnorm, cmap=pltcmp, zorder=1)
+                for jcol, ids1, ids2 in zip(range(1, len(dss)), dss[1:], dss[:-1]):
+                    # print(f'#-------- {jcol} {ids1} {ids2}')
+                    plevels = np.intersect1d(plt_data[ids1].pressure.values, plt_data[ids2].pressure.values)
+                    if var2 != 'hus':
+                        plt_data_tem = plt_data[ids1].sel(pressure=plevels).interp(lat=plt_data[ids2].sel(lat=slice(plt_data[ids1].lat[0], plt_data[ids1].lat[-1])).lat) - plt_data[ids2].sel(pressure=plevels, lat=slice(plt_data[ids1].lat[0], plt_data[ids1].lat[-1])).values
+                    elif var2 == 'hus':
+                        plt_data_tem = (plt_data[ids1].sel(pressure=plevels).interp(lat=plt_data[ids2].sel(lat=slice(plt_data[ids1].lat[0], plt_data[ids1].lat[-1])).lat) - plt_data[ids2].sel(pressure=plevels, lat=slice(plt_data[ids1].lat[0], plt_data[ids1].lat[-1])).values) / plt_data[ids2].sel(pressure=plevels, lat=slice(plt_data[ids1].lat[0], plt_data[ids1].lat[-1])).values * 100
+                    plt_mesh2 = axs[jcol].pcolormesh(
+                        plt_data_tem.lat, plt_data_tem.pressure,
+                        plt_data_tem,
+                        norm=pltnorm2, cmap=pltcmp2, zorder=1)
+                cbar = fig.colorbar(
+                    plt_mesh, #cm.ScalarMappable(norm=pltnorm, cmap=pltcmp), #
+                    format=remove_trailing_zero_pos,
+                    orientation="horizontal", ticks=pltticks, extend=extend,
+                    cax=fig.add_axes([0.05, fm_bottom-0.13, 0.4, 0.04]))
+                cbar.ax.set_xlabel(f'{ostr} {era5_varlabels[var1]}')
+                cbar2 = fig.colorbar(
+                    plt_mesh2, #cm.ScalarMappable(norm=pltnorm2,cmap=pltcmp2), #
+                    format=remove_trailing_zero_pos,
+                    orientation="horizontal", ticks=pltticks2, extend='both',
+                    cax=fig.add_axes([0.55, fm_bottom-0.13, 0.4, 0.04]))
+                cbar2.ax.set_xlabel(f'Difference in {era5_varlabels[var1].replace(r'[$g \; kg^{-1}$]', r'[$\%$]')}')
+            
+            axs[0].set_ylabel(r'Pressure [$hPa$]')
+            fig.subplots_adjust(left=0.08, right=0.99, bottom=fm_bottom, top=fm_top)
+            fig.savefig(opng)
+    
+    del ds
+
+
+
 
 # endregion
 
