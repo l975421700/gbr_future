@@ -19,6 +19,7 @@ def plot_wyoming_sounding(
     df, date, output_png=None,
     fig=None, figsize=np.array([8.8, 6.4]) / 2.54,
     ilev=1, plot_barbs=False, ihodograph=True, plot_ccl=False,
+    subset=('temperature', 'dewpoint', 'direction', 'speed'),
     xmin=-40, xmax=40, ymin=1030, ymax=200,
     fm_left=0.18, fm_bottom=0.14, fm_right=0.96, fm_top=0.98,
     hodo_ratio='35%', hodo_bbox=(0.05, 0, 1, 1), hodorange=14,
@@ -32,7 +33,9 @@ def plot_wyoming_sounding(
     import matplotlib.pyplot as plt
     from mpl_toolkits.axes_grid1.inset_locator import inset_axes
     
-    df = df[['pressure', 'height', 'temperature', 'dewpoint', 'direction', 'speed',]].dropna(subset=('temperature', 'dewpoint', 'direction', 'speed'), how='all').reset_index(drop=True).loc[df['pressure']>=200]
+    df = df[['pressure', 'height', 'temperature', 'dewpoint', 'direction', 'speed',]]
+    # df = df[['pressure', 'height', 'temperature', 'dewpoint', 'direction', 'speed',]].dropna(subset=subset, how='all').reset_index(drop=True)
+    df = df.loc[df['pressure']>=200]
     
     p = df['pressure'].values * units.hPa
     T = df['temperature'].values * units.degC
@@ -73,14 +76,14 @@ def plot_wyoming_sounding(
     skew.plot_dry_adiabats(lw=0.4, alpha=0.5)
     skew.plot_moist_adiabats(lw=0.4, alpha=0.5)
     skew.ax.grid(lw=0.2, alpha=0.5, ls='--')
-    skew.ax.set_xlabel('Temperature [$°C$]')
+    skew.ax.set_xlabel(f'Temperature [$°C$] at {str(date)[:13]}:00 UTC')
     skew.ax.set_ylabel('Pressure [$hPa$]')
     skew.ax.set_ylim(ymin, ymax)
     skew.ax.set_xlim(xmin, xmax)
-    skew.ax.text(
-        0.05, 0.05, str(date)[:13] + ' UTC',
-        transform=skew.ax.transAxes, ha='left', va='bottom',
-        bbox=dict(facecolor='white', edgecolor='white'))
+    # skew.ax.text(
+    #     0.05, 0.05, str(date)[:13] + ' UTC',
+    #     transform=skew.ax.transAxes, ha='left', va='bottom',
+    #     bbox=dict(facecolor='white', edgecolor='white'))
     # skew.plot_mixing_lines()
     # skew.ax.axvline(0, color='c', ls='--')
     

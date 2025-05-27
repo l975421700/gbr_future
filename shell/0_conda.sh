@@ -47,6 +47,7 @@ mamba install requests aiohttp -y
 mamba install intake-xarray -y
 mamba install easygems -y
 mamba install healpy -y
+mamba install satpy -y
 
 #-------------------------------- Other packages
 # mamba install numba -y
@@ -61,7 +62,6 @@ mamba install healpy -y
 # mamba install geopy -y
 # mamba install ipykernel -y
 # mamba install ipywidgets -y
-# mamba install satpy -y
 # mamba install pywavelets -y
 # mamba install pytables -y
 # mamba install notebook -y

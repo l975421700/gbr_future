@@ -468,12 +468,12 @@ fm_bottom = 1.6/(pheight*nrow+2.1)
 fm_top = 1 - 0.5/(pheight*nrow+2.1)
 
 
-for imode in ['org']:
+for imode in ['org', 'diff']:
     # imode = 'org'
     # ['org', 'diff']
     print(f'#-------------------------------- {imode}')
     
-    for vars in [['psl', 'uas', 'vas']]:
+    for vars in [['cll'], ['clm'], ['clh'], ['clt']]:
         # [['psl', 'uas', 'vas']] + [['psl', ivar] for ivar in ['prw', 'cll', 'clm', 'clh', 'clt', 'clwvi', 'clivi', 'pr', 'evspsbl', 'evspsblpot', 'hfls', 'hfss', 'sfcWind', 'tas', 'huss', 'hurs', 'rsut', 'rlut']]
         # ['prw', 'cll', 'clm', 'clh', 'clt', 'clwvi', 'clivi', 'pr', 'evspsbl', 'evspsblpot', 'hfls', 'hfss', 'sfcWind', 'tas', 'huss', 'hurs', 'rsut', 'rlut']
         print(f'#---------------- {vars}')
