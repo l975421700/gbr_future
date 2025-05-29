@@ -91,7 +91,7 @@ df = get_wyoming_sounding(date, station)
 print(df.columns)
 '''
 # endregion
-# region plot IGRA2 data
+# region get and plot IGRA2 sounding skew-T
 
 date = datetime(2020, 6, 2, 12)
 station = 'ASM00094299'

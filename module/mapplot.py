@@ -35,6 +35,7 @@ def globe_plot(
             1, 1, figsize=figsize, subplot_kw={'projection': projections},)
     else:
         ax = ax_org
+    ax.set_global()
     
     if add_grid_labels:
         ax.set_xticks(ticklabel[0],)

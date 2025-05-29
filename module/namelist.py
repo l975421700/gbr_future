@@ -177,6 +177,18 @@ era5_varlabels = {
     'D': r'$D$ [-]',
     'S+D': r'$S+D$ [-]',
     'LTS': r'LTS [$K$]',
+    'theta': r'potential temperature [$°C$]',
+    'theta_e': r'equivalent potential temperature [$°C$]',
+}
+
+era5_varlabels_sim = {
+    'q': r'$q$ [$g \; kg^{-1}$]',
+    'r': r'$RH$ [$\%$]',
+    't': r'$T$ [$°C$]',
+    'u': r'u [$m\;s^{-1}$]',
+    'v': r'v [$m\;s^{-1}$]',
+    'theta': r'$\theta$ [$°C$]',
+    'theta_e': r'$\theta_e$ [$°C$]',
 }
 
 cmip6_era5_var = {
@@ -232,11 +244,14 @@ cmip6_era5_var = {
     'prw': 'tcwv',
     'rns': 'msnrf',
     'hus': 'q',
+    'hur': 'r',
     'ta': 't',
     'ua': 'u',
     'va': 'v',
     'wap': 'w',
     'zg': 'z',
+    'theta': 'theta',
+    'theta_e': 'theta_e',
     # 'wa',
 }
 # tcw = tcwv + tcsw + tcrw + tclw + tciw

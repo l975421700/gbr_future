@@ -1,5 +1,33 @@
 
 
+# region si2reflectance
+
+def si2reflectance(scaled_integers, scales, offsets, gamma = 2.2):
+    import numpy as np
+    si = np.ma.array(scaled_integers)
+    si[si > 32767] = np.ma.masked
+    reflectance = scales * (si - offsets)
+    
+    # Apply range limits for each channel. RGB values must be between 0 and 1
+    reflectance = np.clip(reflectance, 0, 1)
+    
+    # Apply a gamma correction to the image to correct ABI detector brightness
+    reflectance = np.power(reflectance, 1/gamma)
+    
+    return reflectance
+
+
+def si2radiance(scaled_integers, scales, offsets):
+    import numpy as np
+    si = np.ma.array(scaled_integers)
+    si[si > 32767] = np.ma.masked
+    radiance = scales * (si - offsets)
+    return radiance
+
+
+# endregion
+
+
 # region get_wyoming_sounding
 
 def get_wyoming_sounding(date, station):

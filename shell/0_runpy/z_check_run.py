@@ -6,7 +6,7 @@ for ifile in qjobo_fl:
         content = file.read()
         if ('Exit Status:        0' in content):
             pass
-        elif ('Execution time: ' in content):
+        elif not ('Exit Status:        ' in content):
             pass
         else:
             print(f'#-------------------------------- Warning')
