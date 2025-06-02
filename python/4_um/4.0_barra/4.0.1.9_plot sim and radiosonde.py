@@ -1,6 +1,7 @@
 
 
-# qsub -I -q normal -P nf33 -l walltime=3:00:00,ncpus=1,mem=60GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22
+# qsub -I -q normal -P nf33 -l walltime=3:00:00,ncpus=1,mem=30GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/qx55
+# change range of theta to <=50
 
 
 # region import packages
@@ -25,6 +26,7 @@ from datetime import datetime
 from skimage.measure import block_reduce
 from netCDF4 import Dataset
 import xesmf as xe
+import healpy as hp
 
 # plot
 import matplotlib as mpl
@@ -96,6 +98,7 @@ from component_plot import (
     cplot_lon180,
     cplot_lon180_ctr,
     plt_mesh_pars,
+    get_nn_lon_lat_index,
 )
 
 from calculations import (
@@ -113,11 +116,15 @@ from statistics0 import (
 # region plot vertical profiles
 
 year, month, day, hour = 2020, 6, 1, 23
-date = datetime(year, month, day, hour)
+colvars = ['hus', 'hur', 'ta', 'theta', 'theta_e', 'ua', 'va']
+dss = ['ERA5', 'BARRA-R2', 'BARRA-C2', 'UM']
+top_pressure = 700
 station = 'Willis Island'
 stationNumber = '94299'
 slat = -16.288
 slon = 149.965
+date = datetime(year, month, day, hour)
+
 
 rename = {'pressure_hPa': 'pressure',
           'geopotential height_m': 'height',
@@ -143,16 +150,12 @@ ua, va = wind_components(
     df.speed.values * units('m/s'),
     df.direction.values * units.deg)
 df['ua'], df['va'] = ua.magnitude, va.magnitude
-
-top_pressure = 700
 df = df[df['pressure']>=top_pressure]
 
-colvars = ['hus', 'hur', 'ta', 'theta', 'theta_e', 'ua', 'va']
 
+if 'UM' in dss:
+    hk_um_z10_3H = xr.open_zarr(f'/g/data/qx55/uk_node/glm.n2560_RAL3p3/data.healpix.PT3H.z10.zarr')
 
-dss = ['ERA5', 'BARRA-R2', 'BARRA-C2']
-ds = {}
-for ids in dss: ds[ids] = {}
 
 def std_func(ds_in, var):
     ds = ds_in.expand_dims(dim='pressure', axis=1)
@@ -164,49 +167,74 @@ def std_func(ds_in, var):
         ds = ds - zerok
     return(ds)
 
+ds = {}
+for ids in dss: ds[ids] = {}
 for var2 in ['hus', 'ta', 'ua', 'va', 'hur', 'theta', 'theta_e']:
     var1 = cmip6_era5_var[var2]
     # var2='hus'; var1='q'
     print(f'#---------------- {var2} vs. {var1} {era5_varlabels_sim[var1]}')
     
     if var2 in ['hus', 'ta', 'ua', 'va']:
+        print('get ERA5')
         ds['ERA5'][var2] = xr.open_dataset(f'/g/data/rt52/era5/pressure-levels/reanalysis/{var1}/{year}/{var1}_era5_oper_pl_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')[var1].sel(time=date, level=slice(top_pressure, 1000)).sel(longitude=slon, latitude=slat, method='nearest').rename({'level': 'pressure'}).compute()
         if var2 in ['hus']:
             ds['ERA5'][var2] *= 1000
         elif var2 in ['ta']:
             ds['ERA5'][var2] -= zerok
         
+        print('get BARRA-R2')
         ds['BARRA-R2'][var2] = xr.open_mfdataset(sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/{var2}[0-9]*[!m]/latest/{var2}[0-9]*{year}{month:02d}-{year}{month:02d}.nc')), parallel=True, preprocess=lambda ds: std_func(ds, var=var2))[var2].sel(time=date, pressure=slice(top_pressure, 1000)).sel(lon=slon, lat=slat, method='nearest').compute()
         
+        print('get BARRA-C2')
         ds['BARRA-C2'][var2] = xr.open_mfdataset(sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/{var2}[0-9]*[!m]/latest/{var2}[0-9]*{year}{month:02d}-{year}{month:02d}.nc')), parallel=True, preprocess=lambda ds: std_func(ds, var=var2))[var2].sel(time=date, pressure=slice(top_pressure, 1000)).sel(lon=slon, lat=slat, method='nearest').compute()
+        
+        print('get UM')
+        if 'UM' in dss:
+            try:
+                ds['UM'][var2] = hk_um_z10_3H[var2].sel(time=date, cell=hp.ang2pix(2**10, slon, slat, nest=True, lonlat=True), method='nearest').sel(pressure=slice(top_pressure, 1000)).compute()
+                if var2 in ['hus']:
+                    ds['UM'][var2] *= 1000
+                elif var2 in ['ta']:
+                    ds['UM'][var2] -= zerok
+            except RuntimeError:
+                pass
     elif var2=='hur':
         for ids in dss:
             print(ids)
-            ds[ids]['hur'] = relative_humidity_from_specific_humidity(
-                ds[ids]['ta'].pressure * units.hPa,
-                ds[ids]['ta'] * units.degC,
-                ds[ids]['hus'] /1000) * 100
+            try:
+                ds[ids]['hur'] = relative_humidity_from_specific_humidity(
+                    ds[ids]['ta'].pressure * units.hPa,
+                    ds[ids]['ta'] * units.degC,
+                    ds[ids]['hus'] /1000) * 100
+            except KeyError:
+                pass
     elif var2=='theta':
         for ids in dss:
             print(ids)
-            ds[ids]['theta'] = potential_temperature(
-                ds[ids]['ta'].pressure * units.hPa,
-                ds[ids]['ta'] * units.degC).metpy.dequantify() - zerok
+            try:
+                ds[ids]['theta'] = potential_temperature(
+                    ds[ids]['ta'].pressure * units.hPa,
+                    ds[ids]['ta'] * units.degC).metpy.dequantify() - zerok
+            except KeyError:
+                pass
     elif var2=='theta_e':
         for ids in dss:
             print(ids)
-            dewpoint = dewpoint_from_specific_humidity(
-                ds[ids]['hus'].pressure * units.hPa,
-                ds[ids]['hus'] * units('g/kg'))
-            ds[ids]['theta_e'] = equivalent_potential_temperature(
-                ds[ids]['ta'].pressure * units.hPa,
-                ds[ids]['ta'] * units.degC,
-                dewpoint).metpy.dequantify() - zerok
+            try:
+                dewpoint = dewpoint_from_specific_humidity(
+                    ds[ids]['hus'].pressure * units.hPa,
+                    ds[ids]['hus'] * units('g/kg'))
+                ds[ids]['theta_e'] = equivalent_potential_temperature(
+                    ds[ids]['ta'].pressure * units.hPa,
+                    ds[ids]['ta'] * units.degC,
+                    dewpoint).metpy.dequantify() - zerok
+            except KeyError:
+                pass
 
 opng=f'figures/4_um/4.0_barra/4.0.6_vertical_profiles/4.0.6.0 {str(date)[:13]}UTC {', '.join(sorted(colvars))} in {', '.join(dss)} at {station}.png'
 minmaxlim = {'hus': [0, 20],    'hur':   [0, 100],
-             'ta':  [5, 30],    'theta': [20, 40],  'theta_e': [30, 70],
-             'ua':  [-15, 15],  'va':    [-15, 15]}
+             'ta':  [5, 30],    'theta': [20, 50],  'theta_e': [30, 80],
+             'ua':  [-20, 20],  'va':    [-20, 20]}
 
 nrow = 1
 ncol = len(colvars)
@@ -231,11 +259,18 @@ for jcol in range(ncol):
         df[colvars[jcol]], df['pressure'],
         '.-', lw=0.75, markersize=1,  c='k', label='Radiosonde')
     for ids in dss:
-        axs[jcol].plot(
-            ds[ids][colvars[jcol]], ds[ids][colvars[jcol]].pressure,
-            '.-', lw=0.75, markersize=4, c=ds_color[ids], label=ids)
+        try:
+            axs[jcol].plot(
+                ds[ids][colvars[jcol]], ds[ids][colvars[jcol]].pressure,
+                '.-', lw=0.75, markersize=4, c=ds_color[ids], label=ids)
+        except KeyError:
+            pass
     
     axs[jcol].set_xlabel(era5_varlabels_sim[cmip6_era5_var[colvars[jcol]]])
+    if colvars[jcol]=='theta_e':
+        axs[jcol].set_xticks(np.array([20, 40, 60, 80]))
+    elif colvars[jcol] in ['ua', 'va']:
+        axs[jcol].set_xticks(np.array([-10, 0, 10]))
     axs[jcol].set_xlim(minmaxlim[colvars[jcol]])
     axs[jcol].xaxis.set_minor_locator(ticker.AutoMinorLocator(2))
     axs[jcol].grid(which='both', lw=0.5, alpha=0.5, ls='--')
@@ -252,6 +287,16 @@ plt.close()
 
 
 '''
+hk_ds = {}
+izlev = 10
+if 'UM' in dss:
+    hk_ds['UM'] = {}
+    hk_ds['UM'][f'z{izlev}3H'] = xr.open_zarr(f'/g/data/qx55/uk_node/glm.n2560_RAL3p3/data.healpix.PT3H.z{izlev}.zarr')
+# izlev2 = 11
+# if 'ICON' in dss:
+#     hk_ds['ICON'] = {}
+#     hk_ds['ICON'][f'z{izlev2}1Hp'] = xr.open_zarr(f'/g/data/qx55/germany_node/d3hp003.zarr/PT1H_point_z{izlev2}_atm.zarr')
+
 # 2nd y-axis
 height=np.round(pressure_to_height_std(np.arange(1000,500,-100)*units('hPa')),1)
 ax2 = axs[-1].twinx()
@@ -264,5 +309,455 @@ ax2.set_ylabel(r'Altitude in a standard atmosphere [$km$]', c = 'gray')
 # endregion
 
 
+# region animate vertical profiles
+# Memory Used: 26.1GB; Walltime Used: 00:44:14
 
+year, month = 2020, 6
+colvars = ['hus', 'hur', 'ta', 'theta', 'theta_e', 'ua', 'va']
+dss = ['ERA5', 'BARRA-R2', 'BARRA-C2', 'UM']
+top_pressure = 700
+station = 'Willis Island'
+stationNumber = '94299'
+slat = -16.288
+slon = 149.965
+
+rename = {'pressure_hPa': 'pressure',
+          'geopotential height_m': 'height',
+          'temperature_C': 'ta',
+          'dew point temperature_C': 'dewpoint',
+          'ice point temperature_C': 'icepoint',
+          'relative humidity_%': 'hur',
+          'mixing ratio_g/kg': 'mixr',
+          'wind direction_degree': 'direction',
+          'wind speed_m/s': 'speed'}
+
+omp4=f'figures/4_um/4.0_barra/4.0.6_vertical_profiles/4.0.6.1 {year}-{month} {', '.join(sorted(colvars))} in {', '.join(dss)} at {station}.mp4'
+radiosonde_fl = sorted(glob.glob(f'data/obs/radiosonde/Wyoming/{stationNumber}/{year}{month:02d}*-{stationNumber}.csv'))
+minmaxlim = {'hus': [0, 20],    'hur':   [0, 100],
+             'ta':  [5, 30],    'theta': [20, 50],  'theta_e': [30, 80],
+             'ua':  [-20, 20],  'va':    [-20, 20]}
+nrow = 1
+ncol = len(colvars)
+pwidth  = 3
+pheight = 6.6
+fm_left = 1.5/(pwidth*ncol+4)
+fm_right = 1-2.5/(pwidth*ncol+4)
+fm_bottom = 1.2/(pheight*nrow+2.4)
+fm_top = 1 - 1.2/(pheight*nrow+2.4)
+
+
+if 'UM' in dss:
+    hk_um_z10_3H = xr.open_zarr(f'/g/data/qx55/uk_node/glm.n2560_RAL3p3/data.healpix.PT3H.z10.zarr')
+
+def std_func(ds_in, var):
+    ds = ds_in.expand_dims(dim='pressure', axis=1)
+    varname = [varname for varname in ds.data_vars if varname.startswith(var)][0]
+    ds = ds.rename({varname: var})
+    if var == 'hus':
+        ds = ds * 1000
+    elif var == 'ta':
+        ds = ds - zerok
+    return(ds)
+
+ds = {}
+for ids in dss: ds[ids] = {}
+for var2 in ['hus', 'ta', 'ua', 'va', 'hur', 'theta', 'theta_e']:
+    var1 = cmip6_era5_var[var2]
+    # var2='hus'; var1='q'
+    print(f'#---------------- {var2} vs. {var1} {era5_varlabels_sim[var1]}')
+    
+    if var2 in ['hus', 'ta', 'ua', 'va']:
+        print('get ERA5')
+        ds['ERA5'][var2] = xr.open_dataset(f'/g/data/rt52/era5/pressure-levels/reanalysis/{var1}/{year}/{var1}_era5_oper_pl_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')[var1].sel(level=slice(top_pressure, 1000)).sel(longitude=slon, latitude=slat, method='nearest').rename({'level': 'pressure'})
+        if var2 in ['hus']:
+            ds['ERA5'][var2] *= 1000
+        elif var2 in ['ta']:
+            ds['ERA5'][var2] -= zerok
+        
+        print('get BARRA-R2')
+        ds['BARRA-R2'][var2] = xr.open_mfdataset(sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/{var2}[0-9]*[!m]/latest/{var2}[0-9]*{year}{month:02d}-{year}{month:02d}.nc')), parallel=True, preprocess=lambda ds: std_func(ds, var=var2))[var2].sel(pressure=slice(top_pressure, 1000)).sel(lon=slon, lat=slat, method='nearest')
+        
+        print('get BARRA-C2')
+        ds['BARRA-C2'][var2] = xr.open_mfdataset(sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/{var2}[0-9]*[!m]/latest/{var2}[0-9]*{year}{month:02d}-{year}{month:02d}.nc')), parallel=True, preprocess=lambda ds: std_func(ds, var=var2))[var2].sel(pressure=slice(top_pressure, 1000)).sel(lon=slon, lat=slat, method='nearest')
+        
+        print('get UM')
+        if 'UM' in dss:
+            ds['UM'][var2] = hk_um_z10_3H[var2].sel(cell=hp.ang2pix(2**10, slon, slat, nest=True, lonlat=True), method='nearest').sel(pressure=slice(top_pressure, 1000), time=slice(f'{year}-{month}', f'{year}-{month}'))
+            if var2 in ['hus']:
+                ds['UM'][var2] *= 1000
+            elif var2 in ['ta']:
+                ds['UM'][var2] -= zerok
+    elif var2=='hur':
+        for ids in dss:
+            print(ids)
+            ds[ids]['hur'] = relative_humidity_from_specific_humidity(
+                ds[ids]['ta'].pressure * units.hPa,
+                ds[ids]['ta'] * units.degC,
+                ds[ids]['hus'] /1000) * 100
+    elif var2=='theta':
+        for ids in dss:
+            print(ids)
+            ds[ids]['theta'] = potential_temperature(
+                ds[ids]['ta'].pressure * units.hPa,
+                ds[ids]['ta'] * units.degC).metpy.dequantify() - zerok
+    elif var2=='theta_e':
+        for ids in dss:
+            print(ids)
+            dewpoint = dewpoint_from_specific_humidity(
+                ds[ids]['hus'].pressure * units.hPa,
+                ds[ids]['hus'] * units('g/kg'))
+            ds[ids]['theta_e'] = equivalent_potential_temperature(
+                ds[ids]['ta'].pressure * units.hPa,
+                ds[ids]['ta'] * units.degC,
+                dewpoint).metpy.dequantify() - zerok
+
+fig, axs = plt.subplots(
+    nrow,ncol,sharey=True,
+    figsize=np.array([pwidth*ncol+4,pheight*nrow+2.4])/2.54,
+    gridspec_kw={'hspace': 0.01, 'wspace': 0.15})
+
+axs[0].invert_yaxis()
+axs[0].set_ylim(1030, top_pressure)
+axs[0].set_ylabel(r'Pressure [$hPa$]')
+
+for jcol in range(ncol):
+    axs[jcol].set_xlabel(era5_varlabels_sim[cmip6_era5_var[colvars[jcol]]])
+    if colvars[jcol]=='theta_e':
+        axs[jcol].set_xticks(np.array([20, 40, 60, 80]))
+    elif colvars[jcol] in ['ua', 'va']:
+        axs[jcol].set_xticks(np.array([-10, 0, 10]))
+    axs[jcol].set_xlim(minmaxlim[colvars[jcol]])
+    axs[jcol].xaxis.set_minor_locator(ticker.AutoMinorLocator(2))
+    axs[jcol].grid(which='both', lw=0.5, alpha=0.5, ls='--')
+    axs[jcol].text(0, 1.02, f'({string.ascii_lowercase[jcol]})',
+                   ha='left', va='bottom', transform=axs[jcol].transAxes)
+
+plt_objs = []
+def update_frames(itime):
+    # itime=0
+    time1 = time.perf_counter()
+    global plt_objs
+    for plt_obj in plt_objs:
+        try:
+            plt_obj.remove()
+        except ValueError:
+            pass
+    plt_objs = []
+    
+    ifile = radiosonde_fl[itime]
+    day = int(ifile.split('/')[-1].split('-')[0][6:8])
+    hour = int(ifile.split('/')[-1].split('-')[0][8:10])
+    date = datetime(year, month, day, hour)
+    
+    df = pd.read_csv(ifile,skipfooter=1,engine='python').rename(columns=rename)
+    df['theta'] = potential_temperature(
+        df.pressure.values * units.hPa,
+        df.ta.values * units.degC).to('degC').magnitude
+    df['theta_e'] = equivalent_potential_temperature(
+        df.pressure.values * units.hPa,
+        df.ta.values * units.degC,
+        df.dewpoint.values * units.degC).to('degC').magnitude
+    df['hus'] = specific_humidity_from_mixing_ratio(
+        df.mixr.values * units('g/kg')).magnitude
+    ua, va = wind_components(
+        df.speed.values * units('m/s'),
+        df.direction.values * units.deg)
+    df['ua'], df['va'] = ua.magnitude, va.magnitude
+    df = df[df['pressure']>=top_pressure]
+    
+    plt_lines = []
+    for jcol in range(ncol):
+        plt_lines += axs[jcol].plot(
+            df[colvars[jcol]], df['pressure'],
+            '.-', lw=0.75, markersize=1,  c='k', label='Radiosonde')
+        for ids in dss:
+            try:
+                plt_lines += axs[jcol].plot(
+                    ds[ids][colvars[jcol]].sel(time=date, method='nearest'),
+                    ds[ids][colvars[jcol]].pressure,
+                    '.-', lw=0.75, markersize=4, c=ds_color[ids], label=ids)
+            except RuntimeError:
+                pass
+    
+    if itime==0:
+        plt.legend(ncol=1, frameon=False, loc='center left', handlelength=1,
+           bbox_to_anchor=(fm_right, 0.5), handletextpad=0.5)
+    
+    plt_text = fig.text(0.5, fm_top + 0.07, f'{str(date)[:13]}:00 UTC at {station}', ha='center', va='bottom')
+    plt_objs += plt_lines + [plt_text]
+    time2 = time.perf_counter()
+    print(f'Execution time: {time2 - time1:.1f} s')
+    return(plt_objs)
+
+fig.subplots_adjust(fm_left, fm_bottom, fm_right, fm_top)
+ani = animation.FuncAnimation(
+    fig, update_frames, frames=len(radiosonde_fl), interval=500, blit=False)
+if os.path.exists(omp4): os.remove(omp4)
+ani.save(omp4,progress_callback=lambda iframe,n:print(f'Frame {iframe}/{n-1}'))
+
+
+
+
+# endregion
+
+
+# region plot mean vertical profiles
+
+year, month = 2020, 6
+colvars = ['hus', 'hur', 'ta', 'theta', 'theta_e', 'ua', 'va']
+dss = ['ERA5', 'BARRA-R2', 'BARRA-C2', 'UM']
+top_pressure = 700
+target_pressures = np.arange(1000, 700-1e-4, -1)
+station = 'Willis Island'
+stationNumber = '94299'
+slat = -16.288
+slon = 149.965
+
+
+izlev=9
+if 'UM' in dss:
+    hk_um_z10_3H = xr.open_zarr(f'/g/data/qx55/uk_node/glm.n2560_RAL3p3/data.healpix.PT3H.z{izlev}.zarr')
+
+def std_func(ds_in, var):
+    ds = ds_in.expand_dims(dim='pressure', axis=1)
+    varname = [varname for varname in ds.data_vars if varname.startswith(var)][0]
+    ds = ds.rename({varname: var})
+    if var == 'hus':
+        ds = ds * 1000
+    elif var == 'ta':
+        ds = ds - zerok
+    return(ds)
+
+ds = {}
+for ids in dss: ds[ids] = {}
+for var2 in ['hus', 'ta', 'ua', 'va', 'hur', 'theta', 'theta_e']:
+    var1 = cmip6_era5_var[var2]
+    # var2='hus'; var1='q'
+    print(f'#---------------- {var2} vs. {var1} {era5_varlabels_sim[var1]}')
+    
+    if var2 in ['hus', 'ta', 'ua', 'va']:
+        print('get ERA5')
+        ds['ERA5'][var2] = xr.open_dataset(f'/g/data/rt52/era5/pressure-levels/reanalysis/{var1}/{year}/{var1}_era5_oper_pl_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')[var1].sel(level=slice(top_pressure, 1000)).sel(longitude=slon, latitude=slat, method='nearest').rename({'level': 'pressure'}).compute()
+        if var2 in ['hus']:
+            ds['ERA5'][var2] *= 1000
+        elif var2 in ['ta']:
+            ds['ERA5'][var2] -= zerok
+        
+        print('get BARRA-R2')
+        ds['BARRA-R2'][var2] = xr.open_mfdataset(sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/{var2}[0-9]*[!m]/latest/{var2}[0-9]*{year}{month:02d}-{year}{month:02d}.nc')), parallel=True, preprocess=lambda ds: std_func(ds, var=var2))[var2].sel(pressure=slice(top_pressure, 1000)).sel(lon=slon, lat=slat, method='nearest').compute()
+        
+        print('get BARRA-C2')
+        ds['BARRA-C2'][var2] = xr.open_mfdataset(sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/{var2}[0-9]*[!m]/latest/{var2}[0-9]*{year}{month:02d}-{year}{month:02d}.nc')), parallel=True, preprocess=lambda ds: std_func(ds, var=var2))[var2].sel(pressure=slice(top_pressure, 1000)).sel(lon=slon, lat=slat, method='nearest').compute()
+        
+        print('get UM')
+        if 'UM' in dss:
+            ds['UM'][var2] = hk_um_z10_3H[var2].sel(cell=hp.ang2pix(2**izlev, slon, slat, nest=True, lonlat=True), method='nearest').sel(pressure=slice(top_pressure, 1000), time=slice(f'{year}-{month}', f'{year}-{month}')).compute()
+            if var2 in ['hus']:
+                ds['UM'][var2] *= 1000
+            elif var2 in ['ta']:
+                ds['UM'][var2] -= zerok
+    elif var2=='hur':
+        for ids in dss:
+            print(ids)
+            ds[ids]['hur'] = (relative_humidity_from_specific_humidity(
+                ds[ids]['ta'].pressure * units.hPa,
+                ds[ids]['ta'] * units.degC,
+                ds[ids]['hus'] /1000) * 100).compute()
+    elif var2=='theta':
+        for ids in dss:
+            print(ids)
+            ds[ids]['theta'] = (potential_temperature(
+                ds[ids]['ta'].pressure * units.hPa,
+                ds[ids]['ta'] * units.degC).metpy.dequantify() - zerok).compute()
+    elif var2=='theta_e':
+        for ids in dss:
+            print(ids)
+            dewpoint = (dewpoint_from_specific_humidity(
+                ds[ids]['hus'].pressure * units.hPa,
+                ds[ids]['hus'] * units('g/kg'))).compute()
+            ds[ids]['theta_e'] = (equivalent_potential_temperature(
+                ds[ids]['ta'].pressure * units.hPa,
+                ds[ids]['ta'] * units.degC,
+                dewpoint).metpy.dequantify() - zerok).compute()
+
+
+rename = {'pressure_hPa': 'pressure',
+          'geopotential height_m': 'height',
+          'temperature_C': 'ta',
+          'dew point temperature_C': 'dewpoint',
+          'ice point temperature_C': 'icepoint',
+          'relative humidity_%': 'hur',
+          'mixing ratio_g/kg': 'mixr',
+          'wind direction_degree': 'direction',
+          'wind speed_m/s': 'speed'}
+radiosonde_fl = sorted(glob.glob(f'data/obs/radiosonde/Wyoming/{stationNumber}/{year}{month:02d}*-{stationNumber}.csv'))
+for idx, ifile in enumerate(radiosonde_fl):
+    # idx=0; ifile = radiosonde_fl[0]
+    # print(f'#---------------- {idx} {ifile}')
+    
+    df = pd.read_csv(ifile,skipfooter=1,engine='python').rename(columns=rename)
+    df['theta'] = potential_temperature(
+        df.pressure.values * units.hPa,
+        df.ta.values * units.degC).to('degC').magnitude
+    df['theta_e'] = equivalent_potential_temperature(
+        df.pressure.values * units.hPa,
+        df.ta.values * units.degC,
+        df.dewpoint.values * units.degC).to('degC').magnitude
+    df['hus'] = specific_humidity_from_mixing_ratio(
+        df.mixr.values * units('g/kg')).magnitude
+    ua, va = wind_components(
+        df.speed.values * units('m/s'),
+        df.direction.values * units.deg)
+    df['ua'], df['va'] = ua.magnitude, va.magnitude
+    df = df[df['pressure']>=top_pressure]
+    
+    day = int(ifile.split('/')[-1].split('-')[0][6:8])
+    hour = int(ifile.split('/')[-1].split('-')[0][8:10])
+    date = datetime(year, month, day, hour)
+    
+    xdf = xr.Dataset(
+        {var: (['time', 'pressure'], np.zeros((1, len(target_pressures))))
+         for var in colvars},
+        coords={'time': [date], 'pressure': target_pressures})
+    for var in colvars:
+        # var=colvars[0]
+        xdf[var][:] = np.interp(np.log(target_pressures[::-1]),
+                                np.log(df['pressure'].values[::-1]),
+                                df[var].values[::-1])[::-1]
+    
+    if idx==0:
+        xdfs = xdf.copy()
+    else:
+        xdfs = xr.concat([xdfs, xdf], dim='time')
+
+
+opng=f'figures/4_um/4.0_barra/4.0.6_vertical_profiles/4.0.6.2 {year}-{month} {', '.join(sorted(colvars))} in {', '.join(dss)} at {station}.png'
+# minmaxlim = {'hus': [3, 17],    'hur':   [30, 100],
+#              'ta':  [7, 28],    'theta': [20, 40],  'theta_e': [50, 80],
+#              'ua':  [-12, 12],  'va':    [-12, 12]}
+nrow = 1
+ncol = len(colvars)
+pwidth  = 3
+pheight = 6.6
+fm_left = 1.5/(pwidth*ncol+4)
+fm_right = 1-2.5/(pwidth*ncol+4)
+fm_bottom = 1.2/(pheight*nrow+2.4)
+fm_top = 1 - 1.2/(pheight*nrow+2.4)
+
+fig, axs = plt.subplots(
+    nrow,ncol,sharey=True,
+    figsize=np.array([pwidth*ncol+4,pheight*nrow+2.4])/2.54,
+    gridspec_kw={'hspace': 0.01, 'wspace': 0.15})
+
+axs[0].invert_yaxis()
+axs[0].set_ylim(1000, top_pressure)
+axs[0].set_ylabel(r'Pressure [$hPa$]')
+
+for jcol in range(ncol):
+    axs[jcol].plot(
+        xdfs[colvars[jcol]].mean(dim='time'), xdfs.pressure,
+        '.-', lw=0.75, markersize=1,  c='k', label='Radiosonde')
+    for ids in dss:
+        # print(ids)
+        axs[jcol].plot(
+            ds[ids][colvars[jcol]].sel(time=xdfs.time, method='nearest').mean(dim='time'),
+            ds[ids][colvars[jcol]].pressure,
+            '.-', lw=0.75, markersize=4, c=ds_color[ids], label=ids)
+    
+    axs[jcol].set_xlabel(era5_varlabels_sim[cmip6_era5_var[colvars[jcol]]])
+    # if colvars[jcol]=='theta_e':
+    #     axs[jcol].set_xticks(np.array([20, 40, 60, 80]))
+    # elif colvars[jcol] in ['ua', 'va']:
+    #     axs[jcol].set_xticks(np.array([-10, 0, 10]))
+    # axs[jcol].set_xlim(minmaxlim[colvars[jcol]])
+    axs[jcol].xaxis.set_minor_locator(ticker.AutoMinorLocator(2))
+    axs[jcol].grid(which='both', lw=0.5, alpha=0.5, ls='--')
+    axs[jcol].text(0, 1.02, f'({string.ascii_lowercase[jcol]})',
+                   ha='left', va='bottom', transform=axs[jcol].transAxes)
+
+plt.legend(ncol=1, frameon=False, loc='center left', handlelength=1,
+           bbox_to_anchor=(fm_right, 0.5), handletextpad=0.5)
+
+fig.suptitle(f'{month_jan[month-1]}-{year} at {station}')
+fig.subplots_adjust(fm_left, fm_bottom, fm_right, fm_top)
+fig.savefig(opng)
+plt.close()
+
+
+
+
+
+'''
+#-------------------------------- check
+izlev = 9
+print(hp.ang2pix(2**izlev, slon, slat, nest=True, lonlat=True))
+theta = np.radians(90.0 - slat)
+phi = np.radians(slon)
+print(hp.ang2pix(2**izlev, theta, phi, nest=True))
+
+print(get_nn_lon_lat_index(2**izlev, [slon], [slat]).values)
+
+
+#-------------------------------- check
+
+opng=f'figures/test.png'
+minmaxlim = {'hus': [0, 20],    'hur':   [0, 100],
+             'ta':  [5, 30],    'theta': [20, 60],  'theta_e': [30, 80],
+             'ua':  [-20, 20],  'va':    [-20, 20]}
+
+nrow = 1
+ncol = len(colvars)
+pwidth  = 3
+pheight = 6.6
+fm_left = 1.5/(pwidth*ncol+4)
+fm_right = 1-2.5/(pwidth*ncol+4)
+fm_bottom = 1.2/(pheight*nrow+2.4)
+fm_top = 1 - 1.2/(pheight*nrow+2.4)
+
+year, month, day, hour = 2020, 6, 2, 11
+date = datetime(year, month, day, hour)
+
+fig, axs = plt.subplots(
+    nrow,ncol,sharey=True,
+    figsize=np.array([pwidth*ncol+4,pheight*nrow+2.4])/2.54,
+    gridspec_kw={'hspace': 0.01, 'wspace': 0.15})
+
+axs[0].invert_yaxis()
+axs[0].set_ylim(1030, top_pressure)
+axs[0].set_ylabel(r'Pressure [$hPa$]')
+
+for jcol in range(ncol):
+    axs[jcol].plot(
+        xdfs[colvars[jcol]].sel(time=date, method='nearest'), xdfs.pressure,
+        '.-', lw=0.75, markersize=1,  c='k', label='Radiosonde')
+    for ids in dss:
+        # print(ids)
+        axs[jcol].plot(
+            ds[ids][colvars[jcol]].sel(time=date, method='nearest'),
+            ds[ids][colvars[jcol]].pressure,
+            '.-', lw=0.75, markersize=4, c=ds_color[ids], label=ids)
+    
+    axs[jcol].set_xlabel(era5_varlabels_sim[cmip6_era5_var[colvars[jcol]]])
+    if colvars[jcol]=='theta_e':
+        axs[jcol].set_xticks(np.array([20, 40, 60, 80]))
+    elif colvars[jcol] in ['ua', 'va']:
+        axs[jcol].set_xticks(np.array([-10, 0, 10]))
+    axs[jcol].set_xlim(minmaxlim[colvars[jcol]])
+    axs[jcol].xaxis.set_minor_locator(ticker.AutoMinorLocator(2))
+    axs[jcol].grid(which='both', lw=0.5, alpha=0.5, ls='--')
+    axs[jcol].text(0, 1.02, f'({string.ascii_lowercase[jcol]})',
+                   ha='left', va='bottom', transform=axs[jcol].transAxes)
+
+plt.legend(ncol=1, frameon=False, loc='center left', handlelength=1,
+           bbox_to_anchor=(fm_right, 0.5), handletextpad=0.5)
+
+fig.suptitle(f'{str(date)[:13]}:00 UTC at {station}')
+fig.subplots_adjust(fm_left, fm_bottom, fm_right, fm_top)
+fig.savefig(opng)
+plt.close()
+
+
+
+'''
+# endregion
 
