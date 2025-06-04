@@ -1,6 +1,6 @@
 
 
-# qsub -I -q express -l walltime=10:00:00,ncpus=1,mem=192GB,storage=gdata/v46+gdata/rr1+scratch/v46
+# qsub -I -q normal -P nf33 -l walltime=3:00:00,ncpus=1,mem=40GB,storage=gdata/v46+gdata/rr1+scratch/v46
 
 
 # region import packages
@@ -219,6 +219,109 @@ print((geolocation_all.lon[idxs:(idxe+1)].values == geolocation_df.lon.values).a
 print((geolocation_all.date_time[idxs:(idxe+1)].values == geolocation_df.date_time.values).all())
 '''
 # endregion
+
+
+# region get CloudSat-CALIPSO data
+
+product_var = {'2B-CWC-RO.P1_R05': ['Height', 'RO_liq_water_content', 'RO_ice_water_content', 'LO_RO_liquid_water_content', 'IO_RO_ice_water_content'],
+          '2C-RAIN-PROFILE.P1_R05': ['precip_liquid_water', 'precip_ice_water', 'cloud_liquid_water'],
+          '2C-SNOW-PROFILE.P1_R05': ['snow_water_content', 'snowfall_rate'],
+          '2C-ICE.P1_R05': ['Temperature', 'IWC']}
+
+year, month, day, hour = 2020, 6, 2, 4
+doy = datetime(year, month, day).timetuple().tm_yday
+
+for iproduct in product_var.keys():
+    # ['2B-CWC-RO.P1_R05', '2C-RAIN-PROFILE.P1_R05', '2C-SNOW-PROFILE.P1_R05', '2C-ICE.P1_R05']
+    # iproduct = '2B-CWC-RO.P1_R05'
+    print(f'#-------------------------------- {iproduct}')
+    
+    fl = sorted(glob.glob(f'scratch/data/obs/CloudSat_CALIPSO/{iproduct}/{year}/{doy:03d}/{year}{doy}{hour:02d}*.hdf') + glob.glob(f'scratch/data/obs/CloudSat_CALIPSO/{iproduct}/{year}/{doy:03d}/{year}{doy}{hour-1:02d}*.hdf'))
+    
+    for idx, ifile in enumerate(fl):
+        # ifile=fl[0]; idx=0
+        print(f'#---------------- {idx}')
+        # print(ifile)
+        
+        hdf_vs = HDF(ifile).vstart()
+        hdf_sd = SD(ifile, SDC.READ)
+        # print(hdf_sd.datasets().keys())
+        # print(f'#----------------')
+        # print(hdf_vs.vdatainfo())
+        print(np.array(hdf_vs.attach('Longitude')[:]).squeeze().shape)
+        
+        for var in product_var[iproduct]:
+            print(f'#-------- {var}')
+            print(hdf_sd.select(var).get())
+        
+        
+        lat = np.array(hdf_vs.attach('Latitude')[:]).squeeze()
+        lon = np.array(hdf_vs.attach('Longitude')[:]).squeeze()
+        seconds = hdf_vs.attach('UTC_start')[:][0][0] + np.array(hdf_vs.attach('Profile_time')[:]).squeeze()
+        time = np.array([datetime(year, month, day) + timedelta(seconds=s) for s in seconds])
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+
+
+
+
+
+
+
+
+
+'''
+
+
+year, month, day, hour = 2020, 6, 2, 4
+doy = datetime(year, month, day).timetuple().tm_yday
+for iproduct in ['2B-CLDCLASS-LIDAR.P1_R05', '2B-CLDCLASS.P1_R05', '2B-CWC-RO.P1_R05', '2B-CWC-RVOD.P1_R05', '2B-FLXHR-LIDAR.P2_R05', '2B-GEOPROF-LIDAR.P2_R05', '2B-GEOPROF.P1_R05', '2C-PRECIP-COLUMN.P1_R05', '2C-RAIN-PROFILE.P1_R05', '2C-SNOW-PROFILE.P1_R05', '2B-TB94.P1_R05', '2C-ICE.P1_R05']:
+    print(f'#-------------------------------- {iproduct}')
+    fl = sorted(glob.glob(f'scratch/data/obs/CloudSat_CALIPSO/{iproduct}/{year}/{doy:03d}/{year}{doy}{hour:02d}*.hdf') + glob.glob(f'scratch/data/obs/CloudSat_CALIPSO/{iproduct}/{year}/{doy:03d}/{year}{doy}{hour-1:02d}*.hdf'))
+    if len(fl) > 0:
+        ifile=fl[0]
+        hdf1 = SD(ifile, SDC.READ)
+        print(hdf1.datasets().keys())
+    else:
+        print('No file found')
+
+#-------------------------------- 2B-CLDCLASS-LIDAR.P1_R05
+dict_keys(['Height', 'CloudLayerBase', 'LayerBaseFlag', 'CloudLayerTop', 'LayerTopFlag', 'HorizontalOrientedIce', 'CloudFraction', 'CloudPhase', 'CloudPhaseConfidenceLevel', 'CloudLayerType', 'CloudTypeQuality', 'Phase_log', 'Water_layer_top'])
+#-------------------------------- 2B-CLDCLASS.P1_R05
+dict_keys(['Height', 'cloud_scenario', 'CloudLayerBase', 'CloudLayerTop', 'CloudLayerType'])
+#-------------------------------- 2B-CWC-RO.P1_R05
+dict_keys(['Height', 'RO_liq_effective_radius', 'RO_liq_effective_radius_uncertainty', 'RO_ice_effective_radius', 'RO_ice_effective_radius_uncertainty', 'RO_liq_number_conc', 'RO_liq_num_conc_uncertainty', 'RO_ice_number_conc', 'RO_ice_num_conc_uncertainty', 'RO_liq_distrib_width_param', 'RO_liq_distrib_width_param_uncertainty', 'RO_ice_distrib_width_param', 'RO_ice_distrib_width_param_uncertainty', 'RO_liq_water_content', 'RO_liq_water_content_uncertainty', 'RO_ice_water_content', 'RO_ice_water_content_uncertainty', 'RO_ice_phase_fraction', 'RO_radar_uncertainty', 'LO_RO_AP_geo_mean_radius', 'LO_RO_AP_sdev_geo_mean_radius', 'LO_RO_AP_number_conc', 'LO_RO_AP_sdev_num_conc', 'LO_RO_AP_distrib_width_param', 'LO_RO_AP_sdev_distrib_width_param', 'LO_RO_effective_radius', 'LO_RO_effective_radius_uncertainty', 'LO_RO_number_conc', 'LO_RO_num_conc_uncertainty', 'LO_RO_distrib_width_param', 'LO_RO_distrib_width_param_uncertainty', 'LO_RO_liquid_water_content', 'LO_RO_liquid_water_content_uncertainty', 'IO_RO_AP_log_geo_mean_diameter', 'IO_RO_AP_sdev_log_geo_mean_diameter', 'IO_RO_AP_log_number_conc', 'IO_RO_AP_sdev_log_num_conc', 'IO_RO_AP_distrib_width_param', 'IO_RO_AP_sdev_distrib_width_param', 'IO_RO_effective_radius', 'IO_RO_effective_radius_uncertainty', 'IO_RO_log_number_conc', 'IO_RO_log_num_conc_uncertainty', 'IO_RO_distrib_width_param', 'IO_RO_distrib_width_param_uncertainty', 'IO_RO_ice_water_content', 'IO_RO_ice_water_content_uncertainty'])
+#-------------------------------- 2B-CWC-RVOD.P1_R05
+No file found
+#-------------------------------- 2B-FLXHR-LIDAR.P2_R05
+No file found
+#-------------------------------- 2B-GEOPROF-LIDAR.P2_R05
+dict_keys(['Height', 'CloudFraction', 'VFMHistogram', 'UncertaintyCF', 'LayerBase', 'LayerTop', 'FlagBase', 'FlagTop', 'DistanceAvg', 'NumLidar'])
+#-------------------------------- 2B-GEOPROF.P1_R05
+dict_keys(['Height', 'CPR_Cloud_mask', 'Gaseous_Attenuation', 'Radar_Reflectivity'])
+#-------------------------------- 2C-PRECIP-COLUMN.P1_R05
+dict_keys(['unused'])
+#-------------------------------- 2C-RAIN-PROFILE.P1_R05
+dict_keys(['Height', 'precip_liquid_water', 'precip_ice_water', 'cloud_liquid_water', 'PWC_uncertainty', 'modeled_reflectivity', 'attenuation_correction', 'MS_correction'])
+#-------------------------------- 2C-SNOW-PROFILE.P1_R05
+dict_keys(['Height', 'snowfall_rate', 'snowfall_rate_uncert', 'log_N0', 'log_N0_uncert', 'log_lambda', 'log_lambda_uncert', 'snow_water_content', 'snow_water_content_uncert'])
+#-------------------------------- 2B-TB94.P1_R05
+No file found
+#-------------------------------- 2C-ICE.P1_R05
+dict_keys(['Height', 'Temperature', 'AP_re', 'AP_IWC', 'dBZe_uncertainty', 'TAB_uncertainty', 're', 'IWC', 'EXT_coef', 're_uncertainty', 'IWC_uncertainty', 'EXT_coef_uncertainty', 'dBZe_simulation', 'TAB_simulation', 'zone', 'ze_makeup', 'tab_para'])
+'''
+# endregion
+
+
+
 
 
 # region get observations count in each 1*1 grid cell

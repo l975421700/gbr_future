@@ -116,7 +116,8 @@ from statistics0 import (
 # region plot hourly var at Willis Island
 
 periods = ['am', 'sea', 'mon']
-vars = ['pr', 'ts', 'clh', 'clm', 'cll', 'clt', 'evspsbl', 'hfls', 'hfss', 'psl', 'rlds', 'rldscs', 'rlus', 'rluscs', 'rlut', 'rlutcs', 'rsds', 'rsdscs', 'rsdt', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'sfcWind', 'tas', 'uas', 'vas', 'clivi', 'clwvi']
+vars = ['pr']
+# ['pr', 'ts', 'clh', 'clm', 'cll', 'clt', 'evspsbl', 'hfls', 'hfss', 'psl', 'rlds', 'rldscs', 'rlus', 'rluscs', 'rlut', 'rlutcs', 'rsds', 'rsdscs', 'rsdt', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'sfcWind', 'tas', 'uas', 'vas', 'clivi', 'clwvi']
 # 'hurs', 'huss',
 dss = ['ERA5', 'BARRA-R2', 'BARRA-C2', 'UM']
 station = 'Willis Island'
@@ -125,7 +126,7 @@ slon = 149.965
 years = 2020
 yeare = 2021
 
-izlev=10
+izlev=8
 if 'UM' in dss:
     hk_um_z10_1H = xr.open_zarr(f'/g/data/qx55/uk_node/glm.n2560_RAL3p3/data.healpix.PT1H.z{izlev}.zarr', chunks={'time': 10489, 'cell': 20})
 
@@ -136,79 +137,88 @@ for var2 in vars:
     ds = {}
     
     time1 = time.perf_counter()
-    if var1 in ['t2m', 'si10', 'd2m', 'u10', 'v10', 'u100', 'v100']:
-        if var1 == 't2m': vart='2t'
-        if var1 == 'si10': vart='10si'
-        if var1 == 'd2m': vart='2d'
-        if var1 == 'u10': vart='10u'
-        if var1 == 'v10': vart='10v'
-        if var1 == 'u100': vart='100u'
-        if var1 == 'v100': vart='100v'
-        ds['ERA5'] = xr.open_mfdataset(
-            sorted([file for iyear in np.arange(years, yeare + 1, 1)
-                    for file in glob.glob(f'/g/data/rt52/era5/single-levels/reanalysis/{vart}/{iyear}/*.nc')]),
-            parallel=True,
-            preprocess=lambda ds: ds[var1].sel(longitude=slon, latitude=slat, method='nearest').compute()
-            )[var1].sel(time=slice('2020-03', '2021-02'))
-    else:
-        ds['ERA5'] = xr.open_mfdataset(
-            sorted([file for iyear in np.arange(years, yeare + 1, 1)
-                    for file in glob.glob(f'/g/data/rt52/era5/single-levels/reanalysis/{var1}/{iyear}/*.nc')]),
-            parallel=True,
-            preprocess=lambda ds: ds[var1].sel(longitude=slon, latitude=slat, method='nearest').compute()
-            )[var1].sel(time=slice('2020-03', '2021-02'))
-    if var1 in ['tp', 'e', 'cp', 'lsp', 'pev']:
-        ds['ERA5'] *= 1000
-    elif var1 in ['msl']:
-        ds['ERA5'] /= 100
-    elif var1 in ['sst', 't2m', 'd2m', 'skt']:
-        ds['ERA5'] -= zerok
-    elif var1 in ['hcc', 'mcc', 'lcc', 'tcc']:
-        ds['ERA5'] *= 100
-    elif var1 in ['z']:
-        ds['ERA5'] /= 9.80665
-    elif var1 in ['mper']:
-        ds['ERA5'] *= 3600
+    try:
+        if var1 in ['t2m', 'si10', 'd2m', 'u10', 'v10', 'u100', 'v100']:
+            if var1 == 't2m': vart='2t'
+            if var1 == 'si10': vart='10si'
+            if var1 == 'd2m': vart='2d'
+            if var1 == 'u10': vart='10u'
+            if var1 == 'v10': vart='10v'
+            if var1 == 'u100': vart='100u'
+            if var1 == 'v100': vart='100v'
+            ds['ERA5'] = xr.open_mfdataset(
+                sorted([file for iyear in np.arange(years, yeare + 1, 1)
+                        for file in glob.glob(f'/g/data/rt52/era5/single-levels/reanalysis/{vart}/{iyear}/*.nc')]),
+                parallel=True,
+                preprocess=lambda ds: ds[var1].sel(longitude=slon, latitude=slat, method='nearest').compute()
+                )[var1].sel(time=slice('2020-03', '2021-02'))
+        else:
+            ds['ERA5'] = xr.open_mfdataset(
+                sorted([file for iyear in np.arange(years, yeare + 1, 1)
+                        for file in glob.glob(f'/g/data/rt52/era5/single-levels/reanalysis/{var1}/{iyear}/*.nc')]),
+                parallel=True,
+                preprocess=lambda ds: ds[var1].sel(longitude=slon, latitude=slat, method='nearest').compute()
+                )[var1].sel(time=slice('2020-03', '2021-02'))
+        if var1 in ['tp', 'e', 'cp', 'lsp', 'pev']:
+            ds['ERA5'] *= 1000
+        elif var1 in ['msl']:
+            ds['ERA5'] /= 100
+        elif var1 in ['sst', 't2m', 'd2m', 'skt']:
+            ds['ERA5'] -= zerok
+        elif var1 in ['hcc', 'mcc', 'lcc', 'tcc']:
+            ds['ERA5'] *= 100
+        elif var1 in ['z']:
+            ds['ERA5'] /= 9.80665
+        elif var1 in ['mper']:
+            ds['ERA5'] *= 3600
+    except OSError:
+        pass
     time2 = time.perf_counter()
     print(f'Execution time: {time2 - time1:.1f} s')
     
     time1 = time.perf_counter()
-    ds['BARRA-R2'] = xr.open_mfdataset(
-        sorted([file for iyear in np.arange(years, yeare + 1, 1)
-                for file in glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/{var2}/latest/*{iyear}??.nc')]),
-        parallel=True,
-        preprocess=lambda ds: ds[var2].sel(lon=slon, lat=slat, method='nearest').compute()
-        )[var2].sel(time=slice('2020-03', '2021-02'))
-    if var2 in ['pr', 'evspsbl', 'evspsblpot']:
-        ds['BARRA-R2'] *= 3600
-    elif var2 in ['tas', 'ts']:
-        ds['BARRA-R2'] -= zerok
-    elif var2 in ['rlus', 'rluscs', 'rlut', 'rlutcs', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'hfls', 'hfss']:
-        ds['BARRA-R2'] *= (-1)
-    elif var2 in ['psl']:
-        ds['BARRA-R2'] /= 100
-    elif var2 in ['huss']:
-        ds['BARRA-R2'] *= 1000
+    try:
+        ds['BARRA-R2'] = xr.open_mfdataset(
+            sorted([file for iyear in np.arange(years, yeare + 1, 1)
+                    for file in glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/{var2}/latest/*{iyear}??.nc')]),
+            parallel=True,
+            preprocess=lambda ds: ds[var2].sel(lon=slon, lat=slat, method='nearest').compute()
+            )[var2].sel(time=slice('2020-03', '2021-02'))
+        if var2 in ['pr', 'evspsbl', 'evspsblpot']:
+            ds['BARRA-R2'] *= 3600
+        elif var2 in ['tas', 'ts']:
+            ds['BARRA-R2'] -= zerok
+        elif var2 in ['rlus', 'rluscs', 'rlut', 'rlutcs', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'hfls', 'hfss']:
+            ds['BARRA-R2'] *= (-1)
+        elif var2 in ['psl']:
+            ds['BARRA-R2'] /= 100
+        elif var2 in ['huss']:
+            ds['BARRA-R2'] *= 1000
+    except OSError:
+        pass
     time2 = time.perf_counter()
     print(f'Execution time: {time2 - time1:.1f} s')
     
     time1 = time.perf_counter()
-    ds['BARRA-C2'] = xr.open_mfdataset(
-        sorted([file for iyear in np.arange(years, yeare + 1, 1)
-                for file in glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/{var2}/latest/*{iyear}??.nc')]),
-        parallel=True,
-        preprocess=lambda ds: ds[var2].sel(lon=slon, lat=slat, method='nearest').compute()
-        )[var2].sel(time=slice('2020-03', '2021-02'))
-    if var2 in ['pr', 'evspsbl', 'evspsblpot']:
-        ds['BARRA-C2'] *= 3600
-    elif var2 in ['tas', 'ts']:
-        ds['BARRA-C2'] -= zerok
-    elif var2 in ['rlus', 'rluscs', 'rlut', 'rlutcs', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'hfls', 'hfss']:
-        ds['BARRA-C2'] *= (-1)
-    elif var2 in ['psl']:
-        ds['BARRA-C2'] /= 100
-    elif var2 in ['huss']:
-        ds['BARRA-C2'] *= 1000
+    try:
+        ds['BARRA-C2'] = xr.open_mfdataset(
+            sorted([file for iyear in np.arange(years, yeare + 1, 1)
+                    for file in glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/{var2}/latest/*{iyear}??.nc')]),
+            parallel=True,
+            preprocess=lambda ds: ds[var2].sel(lon=slon, lat=slat, method='nearest').compute()
+            )[var2].sel(time=slice('2020-03', '2021-02'))
+        if var2 in ['pr', 'evspsbl', 'evspsblpot']:
+            ds['BARRA-C2'] *= 3600
+        elif var2 in ['tas', 'ts']:
+            ds['BARRA-C2'] -= zerok
+        elif var2 in ['rlus', 'rluscs', 'rlut', 'rlutcs', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'hfls', 'hfss']:
+            ds['BARRA-C2'] *= (-1)
+        elif var2 in ['psl']:
+            ds['BARRA-C2'] /= 100
+        elif var2 in ['huss']:
+            ds['BARRA-C2'] *= 1000
+    except OSError:
+        pass
     time2 = time.perf_counter()
     print(f'Execution time: {time2 - time1:.1f} s')
     
@@ -226,6 +236,8 @@ for var2 in vars:
                 ds['UM'] /= 100
             elif var2 in ['huss']:
                 ds['UM'] *= 1000
+            elif var2 in ['clt']:
+                ds['UM'] *= 100
         except KeyError:
             pass
     time2 = time.perf_counter()
@@ -239,6 +251,8 @@ for var2 in vars:
     
     if var2=='pr':
         lowerbound = 1e-3
+    elif var2 in ['clh', 'clm', 'cll', 'clt']:
+        lowerbound = 0
     else:
         lowerbound = -10**4
     

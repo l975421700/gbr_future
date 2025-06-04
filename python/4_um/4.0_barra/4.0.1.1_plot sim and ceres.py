@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -l walltime=5:00:00,ncpus=1,mem=60GB,jobfs=100MB,storage=gdata/v46+gdata/rt52+gdata/ob53+gdata/zv2+scratch/v46
+# qsub -I -q normal -P nf33 -l walltime=5:00:00,ncpus=1,mem=60GB,jobfs=100MB,storage=gdata/v46+gdata/rt52+gdata/ob53+gdata/zv2+scratch/v46
 
 
 # region import packages
