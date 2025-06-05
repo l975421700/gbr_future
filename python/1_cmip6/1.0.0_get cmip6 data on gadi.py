@@ -5,7 +5,7 @@
 # 2) check <change the units and sign convention>
 
 
-# qsub -I -q normal -l walltime=4:00:00,ncpus=1,mem=192GB,jobfs=10GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38
+# qsub -I -q normal -P nf33 -l walltime=4:00:00,ncpus=1,mem=192GB,jobfs=10GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38
 
 
 # region import packages
@@ -75,14 +75,14 @@ cmip6_ids = {
     source_id: member_id
     for source_id, member_id in exp_counts.groupby(level=0).idxmax().values}
 
-with open('scratch/data/sim/cmip6/cmip6_ids.pkl', 'wb') as f:
+with open('data/sim/cmip6/cmip6_ids.pkl', 'wb') as f:
     pickle.dump(cmip6_ids, f)
 
 
 
 '''
 # check
-with open('scratch/data/sim/cmip6/cmip6_ids.pkl', 'rb') as f:
+with open('data/sim/cmip6/cmip6_ids.pkl', 'rb') as f:
     cmip6_ids = pickle.load(f)
 for source_id, member_id in cmip6_ids.items():
     # source_id = source_ids[0]; member_id = member_ids[0]
@@ -122,7 +122,7 @@ set(source_intersect) == set(cmip6.search(experiment_id=['piControl', 'abrupt-4x
 # region get original data
 
 cmip6 = intake.open_catalog('/g/data/hh5/public/apps/nci-intake-catalogue/catalogue_new.yaml').esgf.cmip6
-with open('/home/563/qg8515/scratch/data/sim/cmip6/cmip6_ids.pkl', 'rb') as f:
+with open('/home/563/qg8515/data/sim/cmip6/cmip6_ids.pkl', 'rb') as f:
     cmip6_ids = pickle.load(f)
 
 cmip6_data = {}
@@ -201,7 +201,7 @@ for experiment_id in [['ssp585', 'esm-ssp585']]:
                 print('Warning file opening error')
         
         if len(cmip6_data[experiment_id[0]][table_id][variable_id]) > 0:
-            ofile = f'/home/563/qg8515/scratch/data/sim/cmip6/{experiment_id[0]}_{table_id}_{variable_id}.pkl'
+            ofile = f'/home/563/qg8515/data/sim/cmip6/{experiment_id[0]}_{table_id}_{variable_id}.pkl'
             if os.path.exists(ofile): os.remove(ofile)
             with open(ofile, 'wb') as f:
                 pickle.dump(cmip6_data[experiment_id[0]][table_id][variable_id], f)
@@ -213,7 +213,7 @@ for experiment_id in [['ssp585', 'esm-ssp585']]:
 '''
 # check availabel data
 cmip6 = intake.open_catalog('/g/data/hh5/public/apps/nci-intake-catalogue/catalogue_new.yaml').esgf.cmip6
-with open('/home/563/qg8515/scratch/data/sim/cmip6/cmip6_ids.pkl', 'rb') as f:
+with open('/home/563/qg8515/data/sim/cmip6/cmip6_ids.pkl', 'rb') as f:
     cmip6_ids = pickle.load(f)
 
 data_catalogue = cmip6.search(experiment_id=['piControl', 'esm-piControl', 'abrupt-4xCO2', 'historical', 'esm-hist', 'amip', 'ssp585', 'esm-ssp585'], source_id=list(cmip6_ids.keys()), variable_id='rluscs').df
@@ -222,7 +222,7 @@ cmip6.search(variable_id='rluscs').df
 
 #-------------------------------- check
 cmip6 = intake.open_catalog('/g/data/hh5/public/apps/nci-intake-catalogue/catalogue_new.yaml').esgf.cmip6
-with open('/home/563/qg8515/scratch/data/sim/cmip6/cmip6_ids.pkl', 'rb') as f:
+with open('/home/563/qg8515/data/sim/cmip6/cmip6_ids.pkl', 'rb') as f:
     cmip6_ids = pickle.load(f)
 cmip6_data = {}
 
@@ -242,7 +242,7 @@ for experiment_id in [['piControl', 'esm-piControl'], ['abrupt-4xCO2'], ['histor
         print(f'#---------------- {table_id} {variable_id}')
         cmip6_data[experiment_id[0]][table_id]={}
         
-        with open(f'/home/563/qg8515/scratch/data/sim/cmip6/{experiment_id[0]}_{table_id}_{variable_id}.pkl', 'rb') as f:
+        with open(f'/home/563/qg8515/data/sim/cmip6/{experiment_id[0]}_{table_id}_{variable_id}.pkl', 'rb') as f:
             cmip6_data[experiment_id[0]][table_id][variable_id] = pickle.load(f)
         
         for source_id in cmip6_data[experiment_id[0]][table_id][variable_id].keys():
@@ -301,7 +301,7 @@ table_id = 'Amon'; variable_id = 'rsdt'; source_id = 'CIESM'
 cmip6_data = {}
 cmip6_data[experiment_id[0]] = {}
 cmip6_data[experiment_id[0]][table_id]={}
-with open(f'scratch/data/sim/cmip6/{experiment_id[0]}_{table_id}_{variable_id}.pkl', 'rb') as f:
+with open(f'data/sim/cmip6/{experiment_id[0]}_{table_id}_{variable_id}.pkl', 'rb') as f:
     cmip6_data[experiment_id[0]][table_id][variable_id] = pickle.load(f)
 
 
@@ -344,7 +344,7 @@ for experiment_id in ['historical', 'amip', 'ssp585']:
         cmip6_data_regridded_alltime[experiment_id][table_id][variable_id] = {}
         cmip6_data_regridded_alltime_ens[experiment_id][table_id][variable_id] = {}
         
-        with open(f'/home/563/qg8515/scratch/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}.pkl', 'rb') as f:
+        with open(f'/home/563/qg8515/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}.pkl', 'rb') as f:
             cmip6_data[experiment_id][table_id][variable_id] = pickle.load(f)
         
         for source_id in cmip6_data[experiment_id][table_id][variable_id].keys():
@@ -436,12 +436,12 @@ for experiment_id in ['historical', 'amip', 'ssp585']:
             gc.collect()
             print(process.memory_info().rss / 2**30)
         
-        # ofile1=f'/home/563/qg8515/scratch/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}_alltime.pkl'
+        # ofile1=f'/home/563/qg8515/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}_alltime.pkl'
         # if os.path.exists(ofile1): os.remove(ofile1)
         # with open(ofile1, 'wb') as f:
         #     pickle.dump(cmip6_data_alltime[experiment_id][table_id][variable_id], f)
         
-        # ofile2=f'/home/563/qg8515/scratch/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}_regridded_alltime.pkl'
+        # ofile2=f'/home/563/qg8515/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}_regridded_alltime.pkl'
         # if os.path.exists(ofile2): os.remove(ofile2)
         # with open(ofile2, 'wb') as f:
         #     pickle.dump(cmip6_data_regridded_alltime[experiment_id][table_id][variable_id], f)
@@ -454,7 +454,7 @@ for experiment_id in ['historical', 'amip', 'ssp585']:
             print(f'#-------- {ialltime}')
             cmip6_data_regridded_alltime_ens[experiment_id][table_id][variable_id][ialltime] = xr.concat([cmip6_data_regridded_alltime[experiment_id][table_id][variable_id][source_id][ialltime] for source_id in source_ids], dim=source_da, coords='minimal', compat='override')
         
-        ofile=f'/home/563/qg8515/scratch/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}_regridded_alltime_ens.pkl'
+        ofile=f'/home/563/qg8515/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}_regridded_alltime_ens.pkl'
         if os.path.exists(ofile): os.remove(ofile)
         with open(ofile, 'wb') as f:
             pickle.dump(cmip6_data_regridded_alltime_ens[experiment_id][table_id][variable_id], f)
@@ -474,9 +474,9 @@ table_id = 'Amon'
 variable_id = 'clt' # 'pr', 'clt'
 source_id = 'FGOALS-f3-L' # 'CIESM', 'FIO-ESM-2-0'
 
-with open(f'/home/563/qg8515/scratch/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}_regridded_alltime_ens.pkl', 'rb') as f:
+with open(f'/home/563/qg8515/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}_regridded_alltime_ens.pkl', 'rb') as f:
     cmip6_data_regridded_alltime_ens = pickle.load(f)
-with open(f'/home/563/qg8515/scratch/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}.pkl', 'rb') as f:
+with open(f'/home/563/qg8515/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}.pkl', 'rb') as f:
     cmip6_data = pickle.load(f)
 cmip6_data[source_id]
 
@@ -509,13 +509,13 @@ for experiment_id in ['ssp585']:
         # cmip6_data_regridded_alltime[experiment_id][table_id] = {}
         cmip6_data_regridded_alltime_ens[experiment_id][table_id] = {}
         
-        with open(f'/home/563/qg8515/scratch/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}.pkl', 'rb') as f:
+        with open(f'/home/563/qg8515/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}.pkl', 'rb') as f:
             cmip6_data[experiment_id][table_id][variable_id] = pickle.load(f)
-        # with open(f'/home/563/qg8515/scratch/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}_alltime.pkl', 'rb') as f:
+        # with open(f'/home/563/qg8515/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}_alltime.pkl', 'rb') as f:
         #     cmip6_data_alltime[experiment_id][table_id][variable_id] = pickle.load(f)
-        # with open(f'/home/563/qg8515/scratch/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}_regridded_alltime.pkl', 'rb') as f:
+        # with open(f'/home/563/qg8515/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}_regridded_alltime.pkl', 'rb') as f:
         #     cmip6_data_regridded_alltime[experiment_id][table_id][variable_id] = pickle.load(f)
-        with open(f'/home/563/qg8515/scratch/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}_regridded_alltime_ens.pkl', 'rb') as f:
+        with open(f'/home/563/qg8515/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}_regridded_alltime_ens.pkl', 'rb') as f:
             cmip6_data_regridded_alltime_ens[experiment_id][table_id][variable_id] = pickle.load(f)
         
         # for ialltime in cmip6_data_regridded_alltime_ens[experiment_id][table_id][variable_id].keys():
@@ -599,7 +599,7 @@ for experiment_id in ['piControl', 'historical', 'amip', 'ssp585']:
         cmip6_data_regridded_alltime_ens_gzm[experiment_id][table_id] = {}
         cmip6_data_regridded_alltime_ens_gzm[experiment_id][table_id][variable_id] = {}
         
-        with open(f'/home/563/qg8515/scratch/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}_regridded_alltime_ens.pkl', 'rb') as f:
+        with open(f'/home/563/qg8515/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}_regridded_alltime_ens.pkl', 'rb') as f:
             cmip6_data_regridded_alltime_ens[experiment_id][table_id][variable_id] = pickle.load(f)
         
         for ialltime in cmip6_data_regridded_alltime_ens[experiment_id][table_id][variable_id].keys():
@@ -611,7 +611,7 @@ for experiment_id in ['piControl', 'historical', 'amip', 'ssp585']:
             
             cmip6_data_regridded_alltime_ens_gzm[experiment_id][table_id][variable_id][ialltime]['gm'] = cmip6_data_regridded_alltime_ens[experiment_id][table_id][variable_id][ialltime].weighted(np.cos(np.deg2rad(cmip6_data_regridded_alltime_ens[experiment_id][table_id][variable_id][ialltime].lat))).mean(dim=['x', 'y'], skipna=True).compute().astype(np.float32)
         
-        ofile=f'/home/563/qg8515/scratch/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}_regridded_alltime_ens_gzm.pkl'
+        ofile=f'/home/563/qg8515/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}_regridded_alltime_ens_gzm.pkl'
         if os.path.exists(ofile): os.remove(ofile)
         with open(ofile, 'wb') as f:
             pickle.dump(cmip6_data_regridded_alltime_ens_gzm[experiment_id][table_id][variable_id], f)
@@ -647,9 +647,9 @@ for experiment_id in ['piControl', 'historical', 'ssp585']:
         cmip6_data_regridded_alltime_ens[experiment_id][table_id] = {}
         cmip6_data_regridded_alltime_ens_gzm[experiment_id][table_id] = {}
         
-        with open(f'/home/563/qg8515/scratch/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}_regridded_alltime_ens.pkl', 'rb') as f:
+        with open(f'/home/563/qg8515/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}_regridded_alltime_ens.pkl', 'rb') as f:
             cmip6_data_regridded_alltime_ens[experiment_id][table_id][variable_id] = pickle.load(f)
-        with open(f'/home/563/qg8515/scratch/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}_regridded_alltime_ens_gzm.pkl', 'rb') as f:
+        with open(f'/home/563/qg8515/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}_regridded_alltime_ens_gzm.pkl', 'rb') as f:
             cmip6_data_regridded_alltime_ens_gzm[experiment_id][table_id][variable_id] = pickle.load(f)
         
         data11 = cmip6_data_regridded_alltime_ens[experiment_id][table_id][variable_id][ialltime].isel(source_id=ith_source_id, time=itime).mean(dim='x', skipna=True)

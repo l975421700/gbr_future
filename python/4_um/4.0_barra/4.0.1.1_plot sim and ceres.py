@@ -364,24 +364,32 @@ for var2 in ['rsut', 'rlut', 'rsdt']:
 
 
 # TOA
-# ceres_ebaf = xr.open_dataset('data/obs/CERES/CERES_EBAF-TOA_Ed4.2.1_Subset_200003-202411.nc').sel(time=slice('2001', '2014'))
-# ceres_ebaf = ceres_ebaf.rename({
-#     'toa_sw_all_mon': 'mtuwswrf',
-#     'toa_lw_all_mon': 'mtnlwrf',
-#     'solar_mon': 'mtdwswrf'})
-# ceres_ebaf['mtuwswrf'] *= (-1)
-# ceres_ebaf['mtnlwrf'] *= (-1)
+ceres_ebaf = xr.open_dataset('data/obs/CERES/CERES_EBAF-TOA_Ed4.2.1_Subset_200003-202411.nc').sel(time=slice('2001', '2014'))
+ceres_ebaf = ceres_ebaf.rename({
+    'toa_sw_all_mon': 'mtuwswrf',
+    'toa_lw_all_mon': 'mtnlwrf',
+    'solar_mon': 'mtdwswrf',
+    'toa_sw_clr_c_mon': 'mtuwswrfcs',
+    'toa_lw_clr_c_mon': 'mtnlwrfcs',
+    })
+ceres_ebaf['mtuwswrf'] *= (-1)
+ceres_ebaf['mtnlwrf'] *= (-1)
+ceres_ebaf['mtuwswrfcs'] *= (-1)
+ceres_ebaf['mtnlwrfcs'] *= (-1)
+
+ceres_ebaf['mtuwswrfcl'] = ceres_ebaf['mtuwswrf'] - ceres_ebaf['mtuwswrfcs']
+ceres_ebaf['mtnlwrfcl'] = ceres_ebaf['mtnlwrf'] - ceres_ebaf['mtnlwrfcs']
 
 # Surface
-ceres_ebaf = xr.open_dataset('data/obs/CERES/CERES_EBAF_Ed4.2_Subset_200003-202407 (1).nc').sel(time=slice('2001', '2014'))
-ceres_ebaf = ceres_ebaf.rename({
-    'sfc_sw_down_all_mon': 'msdwswrf',
-    'sfc_sw_up_all_mon': 'msuwswrf',
-    'sfc_lw_down_all_mon': 'msdwlwrf',
-    'sfc_lw_up_all_mon': 'msuwlwrf',
-})
-ceres_ebaf['msuwswrf'] *= (-1)
-ceres_ebaf['msuwlwrf'] *= (-1)
+# ceres_ebaf = xr.open_dataset('data/obs/CERES/CERES_EBAF_Ed4.2_Subset_200003-202407 (1).nc').sel(time=slice('2001', '2014'))
+# ceres_ebaf = ceres_ebaf.rename({
+#     'sfc_sw_down_all_mon': 'msdwswrf',
+#     'sfc_sw_up_all_mon': 'msuwswrf',
+#     'sfc_lw_down_all_mon': 'msdwlwrf',
+#     'sfc_lw_up_all_mon': 'msuwlwrf',
+# })
+# ceres_ebaf['msuwswrf'] *= (-1)
+# ceres_ebaf['msuwlwrf'] *= (-1)
 
 
 # settings
@@ -389,7 +397,7 @@ mpl.rc('font', family='Times New Roman', size=8)
 plt_colnames = ['CERES', 'ERA5 - CERES', 'BARRA-R2 - CERES', 'BARRA-C2 - CERES', r'$historical$ - CERES', r'$amip$ - CERES']
 min_lon, max_lon, min_lat, max_lat = [110.58, 157.34, -43.69, -7.01]
 
-for var2 in ['rsus', 'rlus', 'rsds', 'rlds']:
+for var2 in ['rsutcl', 'rsutcs', 'rlutcl', 'rlutcs']:
     # var2='rsut'
     var1 = cmip6_era5_var[var2]
     print(f'#-------------------------------- {var1} and {var2}')
@@ -1155,6 +1163,221 @@ for var2 in ['rsut']:
     fig.savefig(f'figures/4_um/4.0_barra/4.0.0_whole region/4.0.0.1 ceres vs. era5, barra_r2c2, and barpa_c am {var1}.png')
     
     del era5_sl_mon_alltime, barra_r2_mon_alltime, barra_c2_mon_alltime, barpa_c_mon_alltime
+
+
+'''
+stats.describe(plt_data[plt_colnames[0]].values, axis=None, nan_policy='omit')
+stats.describe(plt_data[plt_colnames[3]].values, axis=None, nan_policy='omit')
+'''
+# endregion
+
+
+# region plot CERES, ERA5, BARRA-R2, BARRA-C2, am
+
+years = '2001'
+yeare = '2023'
+
+# TOA
+ceres_ebaf = xr.open_dataset('data/obs/CERES/CERES_EBAF-TOA_Ed4.2.1_Subset_200003-202411.nc').sel(time=slice(years, yeare))
+ceres_ebaf = ceres_ebaf.rename({
+    'toa_sw_all_mon': 'mtuwswrf',
+    'toa_lw_all_mon': 'mtnlwrf',
+    'solar_mon': 'mtdwswrf',
+    'toa_sw_clr_c_mon': 'mtuwswrfcs',
+    'toa_lw_clr_c_mon': 'mtnlwrfcs',
+    })
+ceres_ebaf['mtuwswrf'] *= (-1)
+ceres_ebaf['mtnlwrf'] *= (-1)
+ceres_ebaf['mtuwswrfcs'] *= (-1)
+ceres_ebaf['mtnlwrfcs'] *= (-1)
+
+ceres_ebaf['mtuwswrfcl'] = ceres_ebaf['mtuwswrf'] - ceres_ebaf['mtuwswrfcs']
+ceres_ebaf['mtnlwrfcl'] = ceres_ebaf['mtnlwrf'] - ceres_ebaf['mtnlwrfcs']
+
+# # Surface
+# ceres_ebaf = xr.open_dataset('data/obs/CERES/CERES_EBAF_Ed4.2_Subset_200003-202407 (1).nc').sel(time=slice(years, yeare))
+# ceres_ebaf = ceres_ebaf.rename({
+#     'sfc_sw_down_all_mon': 'msdwswrf',
+#     'sfc_sw_up_all_mon': 'msuwswrf',
+#     'sfc_lw_down_all_mon': 'msdwlwrf',
+#     'sfc_lw_up_all_mon': 'msuwlwrf',
+# })
+# ceres_ebaf['msuwswrf'] *= (-1)
+# ceres_ebaf['msuwlwrf'] *= (-1)
+
+
+# settings
+mpl.rc('font', family='Times New Roman', size=8)
+plt_colnames = ['CERES', 'ERA5 - CERES', 'BARRA-R2 - CERES', 'BARRA-C2 - CERES']
+min_lon, max_lon, min_lat, max_lat = [110.58, 157.34, -43.69, -7.01]
+
+for var2 in ['rsut', 'rsutcs', 'rsutcl']:
+    # var2='rsut'
+    var1 = cmip6_era5_var[var2]
+    print(f'#-------------------------------- {var1} and {var2}')
+    
+    with open(f'data/obs/era5/mon/era5_sl_mon_alltime_{var1}.pkl', 'rb') as f:
+        era5_sl_mon_alltime = pickle.load(f)
+    with open(f'data/sim/um/barra_r2/barra_r2_mon_alltime_{var2}.pkl','rb') as f:
+        barra_r2_mon_alltime = pickle.load(f)
+    with open(f'data/sim/um/barra_c2/barra_c2_mon_alltime_{var2}.pkl','rb') as f:
+        barra_c2_mon_alltime = pickle.load(f)
+    # with open(f'data/sim/um/barpa_c/barpa_c_mon_alltime_{var2}.pkl','rb') as f:
+    #     barpa_c_mon_alltime = pickle.load(f)
+    
+    plt_data = {}
+    plt_rmse = {}
+    
+    ceres_ann = ceres_ebaf[var1].resample({'time': '1YE'}).map(time_weighted_mean).pipe(regrid).pipe(replace_x_y_nominal_lat_lon).sel(y=slice(min_lat, max_lat), x=slice(min_lon, max_lon)).compute()
+    plt_data['CERES'] = ceres_ann.mean(dim='time')
+    plt_mean = plt_data['CERES'].weighted(np.cos(np.deg2rad(plt_data['CERES'].lat))).mean().values
+    
+    era5_ann = regrid(era5_sl_mon_alltime['ann'].sel(time=slice(years, yeare)), ds_out=plt_data['CERES'])
+    plt_data['ERA5 - CERES'] = (era5_ann.mean(dim='time') - plt_data['CERES']).compute()
+    plt_rmse['ERA5 - CERES'] = np.sqrt(np.square(plt_data['ERA5 - CERES']).weighted(np.cos(np.deg2rad(plt_data['ERA5 - CERES'].lat))).mean()).values
+    # ttest_fdr_res = ttest_fdr_control(ceres_ann, era5_ann)
+    # plt_data['ERA5 - CERES'] = plt_data['ERA5 - CERES'].where(ttest_fdr_res, np.nan)
+    
+    barra_r2_ann = regrid(barra_r2_mon_alltime['ann'].sel(time=slice(years, yeare)), ds_out=plt_data['CERES'])
+    plt_data['BARRA-R2 - CERES'] = (barra_r2_ann.mean(dim='time') - plt_data['CERES']).compute()
+    plt_rmse['BARRA-R2 - CERES'] = np.sqrt(np.square(plt_data['BARRA-R2 - CERES']).weighted(np.cos(np.deg2rad(plt_data['BARRA-R2 - CERES'].lat))).mean()).values
+    # ttest_fdr_res = ttest_fdr_control(ceres_ann, barra_r2_ann)
+    # plt_data['BARRA-R2 - CERES'] = plt_data['BARRA-R2 - CERES'].where(ttest_fdr_res, np.nan)
+    
+    barra_c2_ann = regrid(barra_c2_mon_alltime['ann'].sel(time=slice(years, yeare)), ds_out=plt_data['CERES'])
+    plt_data['BARRA-C2 - CERES'] = (barra_c2_ann.mean(dim='time') - plt_data['CERES']).compute()
+    plt_rmse['BARRA-C2 - CERES'] = np.sqrt(np.square(plt_data['BARRA-C2 - CERES']).weighted(np.cos(np.deg2rad(plt_data['BARRA-C2 - CERES'].lat))).mean()).values
+    # ttest_fdr_res = ttest_fdr_control(ceres_ann, barra_c2_ann)
+    # plt_data['BARRA-C2 - CERES'] = plt_data['BARRA-C2 - CERES'].where(ttest_fdr_res, np.nan)
+    
+    # barpa_c_ann = regrid(barpa_c_mon_alltime['ann'].sel(time=slice(years, yeare)), ds_out=plt_data['CERES'])
+    # plt_data['BARPA-C - CERES'] = (barpa_c_ann.mean(dim='time') - plt_data['CERES']).compute()
+    # plt_rmse['BARPA-C - CERES'] = np.sqrt(np.square(plt_data['BARPA-C - CERES']).weighted(np.cos(np.deg2rad(plt_data['BARPA-C - CERES'].lat))).mean()).values
+    # ttest_fdr_res = ttest_fdr_control(ceres_ann, barpa_c_ann)
+    # plt_data['BARPA-C - CERES'] = plt_data['BARPA-C - CERES'].where(ttest_fdr_res, np.nan)
+    
+    
+    print(stats.describe(plt_data['CERES'].values, axis=None, nan_policy='omit'))
+    print(stats.describe(np.concatenate([plt_data[colname].values for colname in plt_colnames[1:]]), axis=None, nan_policy='omit'))
+    
+    cbar_label1 = f'{years}-{yeare} ' + era5_varlabels[var1]
+    cbar_label2 = f'Difference in ' + era5_varlabels[var1]
+    extend1 = 'both'
+    extend2 = 'both'
+    
+    if var1 in ['mtuwswrf']:
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=-150, cm_max=-50, cm_interval1=5, cm_interval2=20, cmap='viridis',)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10, cmap='BrBG')
+    elif var1 in ['mtuwswrfcs']:
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=-100, cm_max=0, cm_interval1=10, cm_interval2=10, cmap='viridis')
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10, cmap='BrBG')
+    elif var1 in ['mtuwswrfcl']:
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=-100, cm_max=0, cm_interval1=10, cm_interval2=10, cmap='viridis')
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10, cmap='BrBG')
+    elif var1 in ['mtnlwrf', 'mtnlwrfcs']:
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=-290, cm_max=-210, cm_interval1=5, cm_interval2=10, cmap='viridis',)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10, cmap='BrBG')
+    elif var1 in ['mtnlwrfcl']:
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=-20, cm_max=60, cm_interval1=5, cm_interval2=10, cmap='PRGn', asymmetric=True)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10, cmap='BrBG')
+    elif var1=='mtdwswrf':
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=310, cm_max=410, cm_interval1=5, cm_interval2=10, cmap='viridis_r',)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-1, cm_max=1, cm_interval1=0.2, cm_interval2=0.4, cmap='BrBG')
+    elif var1 in ['msdwswrf', 'msdwswrfcs']:
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=140, cm_max=270, cm_interval1=10, cm_interval2=40, cmap='viridis_r',)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10, cmap='BrBG')
+    elif var1 in ['msuwswrf', 'msuwswrfcs']:
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=-90, cm_max=0, cm_interval1=5, cm_interval2=20, cmap='viridis',)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10, cmap='BrBG')
+    elif var1 in ['msuwlwrf', 'msuwlwrfcs']:
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=-480, cm_max=-350, cm_interval1=10, cm_interval2=40, cmap='viridis',)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10, cmap='BrBG')
+    elif var1 in ['msdwlwrf', 'msdwlwrfcs']:
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=300, cm_max=430, cm_interval1=10, cm_interval2=40, cmap='viridis_r',)
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10, cmap='BrBG')
+    
+    nrow=1
+    ncol=len(plt_colnames)
+    fm_bottom=1.5/(4*nrow+1.5)
+    
+    fig, axs = plt.subplots(
+        nrow, ncol, figsize=np.array([4.4*ncol, 4*nrow + 1.5]) / 2.54,
+        subplot_kw={'projection': ccrs.PlateCarree(central_longitude=180)},
+        gridspec_kw={'hspace': 0.01, 'wspace': 0.01},)
+    
+    for jcol in range(ncol):
+        axs[jcol] = regional_plot(extent=[min_lon, max_lon, min_lat, max_lat], central_longitude=180, ax_org=axs[jcol])
+        if jcol==0:
+            plt_text = f'({string.ascii_lowercase[jcol]}) {plt_colnames[jcol]}, Mean: {np.round(plt_mean, 1)}'
+        elif jcol==1:
+            plt_text = f'({string.ascii_lowercase[jcol]}) {plt_colnames[jcol]}, RMSE: {np.round(plt_rmse[plt_colnames[jcol]], 1)}'
+        else:
+            plt_text = f'({string.ascii_lowercase[jcol]}) {plt_colnames[jcol]}, {np.round(plt_rmse[plt_colnames[jcol]], 1)}'
+        axs[jcol].text(0, 1.02, plt_text, ha='left', va='bottom', transform=axs[jcol].transAxes, size=9)
+    
+    plt_mesh1 = axs[0].pcolormesh(
+            plt_data[plt_colnames[0]].lon,
+            plt_data[plt_colnames[0]].lat,
+            plt_data[plt_colnames[0]].values,
+            norm=pltnorm1, cmap=pltcmp1, transform=ccrs.PlateCarree(),zorder=1)
+    for jcol in range(ncol-1):
+        plt_mesh2 = axs[jcol+1].pcolormesh(
+            plt_data[plt_colnames[jcol+1]].lon,
+            plt_data[plt_colnames[jcol+1]].lat,
+            plt_data[plt_colnames[jcol+1]].values,
+            norm=pltnorm2, cmap=pltcmp2, transform=ccrs.PlateCarree(),zorder=1)
+    # plt_mesh1 = axs[0].contourf(
+    #         plt_data[plt_colnames[0]].lon,
+    #         plt_data[plt_colnames[0]].lat,
+    #         plt_data[plt_colnames[0]].values,
+    #         norm=pltnorm1, cmap=pltcmp1, levels=pltlevel1, extend=extend1,
+    #         transform=ccrs.PlateCarree(),zorder=1)
+    # for jcol in range(ncol-1):
+    #     plt_mesh2 = axs[jcol+1].contourf(
+    #         plt_data[plt_colnames[jcol+1]].lon,
+    #         plt_data[plt_colnames[jcol+1]].lat,
+    #         plt_data[plt_colnames[jcol+1]].values,
+    #         norm=pltnorm2, cmap=pltcmp2, levels=pltlevel2, extend=extend2,
+    #         transform=ccrs.PlateCarree(),zorder=1)
+    
+    cbar1 = fig.colorbar(
+        plt_mesh1, #cm.ScalarMappable(norm=pltnorm1, cmap=pltcmp1), #
+        format=remove_trailing_zero_pos,
+        orientation="horizontal", ticks=pltticks1, extend=extend1,
+        cax=fig.add_axes([0.05, fm_bottom-0.05, 0.4, 0.05]))
+    cbar1.ax.set_xlabel(cbar_label1)
+    cbar2 = fig.colorbar(
+        plt_mesh2, #cm.ScalarMappable(norm=pltnorm2, cmap=pltcmp2), #
+        format=remove_trailing_zero_pos,
+        orientation="horizontal", ticks=pltticks2, extend=extend2,
+        cax=fig.add_axes([0.55, fm_bottom-0.05, 0.4, 0.05]))
+    cbar2.ax.set_xlabel(cbar_label2)
+    
+    fig.subplots_adjust(left=0.005, right=0.995, bottom=fm_bottom, top=0.95)
+    fig.savefig(f'figures/4_um/4.0_barra/4.0.0_whole region/4.0.0.1 ceres vs. era5 and barra_r2c2 am {var1}.png')
+    
+    del era5_sl_mon_alltime, barra_r2_mon_alltime, barra_c2_mon_alltime
+    # del barpa_c_mon_alltime
 
 
 '''

@@ -89,7 +89,7 @@ def std_units(ds, var):
     return(ds)
 
 
-for var2 in ['rlut', 'rsut', 'rsdt']:
+for var2 in ['rlutcl', 'rsutcl', 'rlutcs', 'rsutcs']:
     # ['rlut', 'rsut', 'rsdt', 'rlutcl', 'rsutcl', 'rlutcs', 'rsutcs']
     # var2 = 'rsut'
     var1 = cmip6_era5_var[var2]
