@@ -341,3 +341,45 @@ for ids in dss:
 '''
 # endregion
 
+
+# region plot hourlt cltype at Willis Island
+
+with open('/scratch/v46/qg8515/data/obs/jaxa/clp/cltype_count_alltime.pkl', 'rb') as f:
+    cltype_count_alltime = pickle.load(f)
+
+
+station = 'Willis Island'
+slat = -16.288
+slon = 149.965
+
+ISCCP_types = {'Clear': 0,
+               'Cirrus': 1, 'Cirrostratus': 2, 'Deep convection': 3,
+               'Altocumulus': 4, 'Altostratus': 5, 'Nimbostratus':6,
+               'Cumulus':7, 'Stratocumulus': 8, 'Stratus': 9,
+               'Unknown':10}
+
+plt_data = cltype_count_alltime['mon'].sel(time=slice('2020-03', '2021-02')).sel(lat=slat, lon=slon, method='nearest').sum(dim='time')[1:-1] / cltype_count_alltime['mon'].sel(time=slice('2020-03', '2021-02')).sel(lat=slat, lon=slon, method='nearest').sum(dim='time')[0] * 100
+
+opng = f'figures/4_um/4.0_barra/4.0.6_site_analysis/4.0.6.4 2020-03 to 2021-02 cltype in Himawari at {station}.png'
+
+fig, ax = plt.subplots(1, 1, figsize=np.array([10, 8]) / 2.54)
+
+sns.barplot(x = plt_data.values, y = plt_data.types.values)
+
+ax.xaxis.set_minor_locator(ticker.AutoMinorLocator(2))
+ax.grid(which='both', lw=0.5, alpha=0.5, ls='--')
+ax.set_xlabel(f'Himawari cloud frequency at {station} ' + r'[$\%$]', labelpad=2)
+fig.subplots_adjust(left=0.28, right=0.96, bottom=0.14, top=0.99)
+fig.savefig(opng)
+
+
+'''
+print(cltype_count_alltime['mon'].sel(time=slice('2020-03', '2021-02')).sel(lat=slat, lon=slon, method='nearest').sum(dim='time')[0] == cltype_count_alltime['mon'].sel(time=slice('2020-03', '2021-02')).sel(lat=slat, lon=slon, method='nearest').sum(dim='time')[1:-1].sum())
+
+
+with open('/scratch/v46/qg8515/data/obs/jaxa/clp/cltype_frequency_alltime.pkl', 'rb') as f:
+    cltype_frequency_alltime = pickle.load(f)
+print(((cltype_count_alltime['mon'].sel(time=slice('2020-03', '2021-02')).sel(lat=slat, lon=slon, method='nearest')[:, 1:] / cltype_count_alltime['mon'].sel(time=slice('2020-03', '2021-02')).sel(lat=slat, lon=slon, method='nearest')[:, 0] * 100).astype(np.float32).values == cltype_frequency_alltime['mon'].sel(time=slice('2020-03', '2021-02')).sel(lat=slat, lon=slon, method='nearest').values).all())
+'''
+# endregion
+

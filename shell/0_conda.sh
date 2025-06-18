@@ -48,6 +48,9 @@ mamba install intake-xarray -y
 mamba install easygems -y
 mamba install healpy -y
 mamba install satpy -y
+mamba install ipykernel -y
+mamba install iris -y
+pip install antspyx
 
 #-------------------------------- Other packages
 # mamba install numba -y
@@ -60,7 +63,6 @@ mamba install satpy -y
 # mamba install dask-gateway -y
 # mamba install xarrayutils -y
 # mamba install geopy -y
-# mamba install ipykernel -y
 # mamba install ipywidgets -y
 # mamba install pywavelets -y
 # mamba install pytables -y
@@ -68,7 +70,6 @@ mamba install satpy -y
 # mamba install pyfesom2 -y
 # mamba install radian -y
 # mamba install jupyterlab -y
-# mamba install iris -y
 # mamba install pytest -y
 # pytest -v --pyargs xesmf
 # pip install SkillMetrics

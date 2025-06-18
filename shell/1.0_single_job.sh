@@ -1,7 +1,7 @@
 #PBS -N qjob
 #PBS -q normal
 #PBS -l walltime=1:00:00
-#PBS -l mem=10GB
+#PBS -l mem=96GB
 #PBS -l jobfs=100MB
 #PBS -l ncpus=1
 #PBS -j oe
@@ -26,4 +26,4 @@ python ${HOME}/code/gbr_future/shell/0_runpy/run1.py
 # https://opus.nci.org.au/spaces/Help/pages/236881198/Queue+Limits...
 # nci_account -P v46 -v
 # nci_account -P gx60 -v
-# nci_account -P nf33 -v
+

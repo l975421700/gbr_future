@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -l walltime=4:00:00,ncpus=1,mem=60GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22
+# qsub -I -q normal -l walltime=3:00:00,ncpus=1,mem=20GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22
 
 
 # region import packages
@@ -107,152 +107,15 @@ from statistics0 import (
 # endregion
 
 
-# region plot cloud liquid/ice water
-
-extent = [110.58, 157.34, -43.69, -7.01]
-min_lon, max_lon, min_lat, max_lat = extent
-year, month, day, hour, minute = 2020, 6, 1, 0, 0
-ids = 'ERA5' # 'BARRA-R2' # 'BARRA-C2' #
-
-if ids == 'BARRA-C2':
-    clwvi = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/clwvi/latest/clwvi_AUST-04_ERA5_historical_hres_BOM_BARRA-C2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc').clwvi.sel(lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat))
-    clivi = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/clivi/latest/clivi_AUST-04_ERA5_historical_hres_BOM_BARRA-C2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc').clivi.sel(lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat))
-    # prw = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/prw/latest/prw_AUST-04_ERA5_historical_hres_BOM_BARRA-C2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc').prw.sel(lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat))
-elif ids == 'BARRA-R2':
-    clwvi = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/clwvi/latest/clwvi_AUS-11_ERA5_historical_hres_BOM_BARRA-R2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc').clwvi.sel(lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat))
-    clivi = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/clivi/latest/clivi_AUS-11_ERA5_historical_hres_BOM_BARRA-R2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc').clivi.sel(lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat))
-    # prw = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/prw/latest/prw_AUS-11_ERA5_historical_hres_BOM_BARRA-R2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc').prw.sel(lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat))
-elif ids == 'ERA5':
-    clwvi = xr.open_dataset(glob.glob(f'/g/data/rt52/era5/single-levels/reanalysis/tclw/{year}/tclw_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}??.nc')[0]).rename({'latitude': 'lat', 'longitude': 'lon'}).tclw.sel(lon=slice(min_lon, max_lon), lat=slice(max_lat, min_lat))
-    clivi = xr.open_dataset(glob.glob(f'/g/data/rt52/era5/single-levels/reanalysis/tciw/{year}/tciw_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}??.nc')[0]).rename({'latitude': 'lat', 'longitude': 'lon'}).tciw.sel(lon=slice(min_lon, max_lon), lat=slice(max_lat, min_lat))
-    # prw = xr.open_dataset(glob.glob(f'/g/data/rt52/era5/single-levels/reanalysis/tcwv/{year}/tcwv_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}??.nc')[0]).rename({'latitude': 'lat', 'longitude': 'lon'}).tcwv.sel(lon=slice(min_lon, max_lon), lat=slice(max_lat, min_lat))
-
-
-max_value = 0.5
-pltlevel = np.arange(0, max_value + 1e-4, 0.005)
-pltnorm = BoundaryNorm(pltlevel, ncolors=len(pltlevel)-1, clip=True)
-colors = np.ones((len(pltlevel)-1, 4))
-colors[:, 3] = np.linspace(0, 1, len(pltlevel)-1)
-pltcmp = ListedColormap(colors)
-
-
-opng = f'figures/4_um/4.0_barra/4.0.2_cloud image/4.0.2.0 {ids} total column water, cloud water and ice {year}{month:02d}{day:02d}{hour:02d}{minute:02d}.png'
-fig, ax = regional_plot(extent=extent, central_longitude=180,
-                        figsize = np.array([8.8, 7.8]) / 2.54)
-
-ax.pcolormesh(
-    clwvi.lon,
-    clwvi.lat,
-    clwvi.sel(time=datetime(year, month, day, hour, minute)) + clivi.sel(time=datetime(year, month, day, hour, minute)),
-    norm=pltnorm, cmap=pltcmp, transform=ccrs.PlateCarree())
-ax.text(0.5, -0.02, f'{year}-{month:02d}-{day:02d} {hour:02d}:{minute:02d} UTC\nCloud liquid&ice water in {ids} (white: >{max_value} ' + r'[$kg \; m^{-2}$])',
-        ha='center', va='top', transform=ax.transAxes, linespacing=1.3)
-
-img = Image.open(f'data/others/Blue Marble Next Generation w: Topography and Bathymetry/world.topo.bathy.2004{month:02d}.3x5400x2700.jpg')
-ax.imshow(img, extent=[-180, 180, -90, 90], transform=ccrs.PlateCarree(), zorder=0)
-
-fig.subplots_adjust(left=0.01, right=0.99, bottom=0.12, top=0.99)
-fig.savefig(opng)
-
-
-
-
-
-'''
-stats.describe(clwvi.sel(time=datetime(year, month, day, hour, minute)).values, axis=None)
-'''
-# endregion
-
-
-# region animate cloud liquid/ice water
-
-parser=argparse.ArgumentParser()
-parser.add_argument('-y', '--year', type=int, required=True,)
-parser.add_argument('-m', '--month', type=int, required=True,)
-args = parser.parse_args()
-
-year=args.year
-month=args.month
-# year=2020; month=6
-
-extent = [110.58, 157.34, -43.69, -7.01]
-min_lon, max_lon, min_lat, max_lat = extent
-ids = 'ERA5' # 'BARRA-R2' # 'BARRA-C2' #
-
-if ids == 'BARRA-C2':
-    clwvi = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/clwvi/latest/clwvi_AUST-04_ERA5_historical_hres_BOM_BARRA-C2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc').clwvi.sel(lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat))
-    clivi = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/clivi/latest/clivi_AUST-04_ERA5_historical_hres_BOM_BARRA-C2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc').clivi.sel(lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat))
-    # prw = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/prw/latest/prw_AUST-04_ERA5_historical_hres_BOM_BARRA-C2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc').prw.sel(lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat))
-elif ids == 'BARRA-R2':
-    clwvi = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/clwvi/latest/clwvi_AUS-11_ERA5_historical_hres_BOM_BARRA-R2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc').clwvi.sel(lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat))
-    clivi = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/clivi/latest/clivi_AUS-11_ERA5_historical_hres_BOM_BARRA-R2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc').clivi.sel(lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat))
-    # prw = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/prw/latest/prw_AUS-11_ERA5_historical_hres_BOM_BARRA-R2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc').prw.sel(lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat))
-elif ids == 'ERA5':
-    clwvi = xr.open_dataset(glob.glob(f'/g/data/rt52/era5/single-levels/reanalysis/tclw/{year}/tclw_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}??.nc')[0]).rename({'latitude': 'lat', 'longitude': 'lon'}).tclw.sel(lon=slice(min_lon, max_lon), lat=slice(max_lat, min_lat))
-    clivi = xr.open_dataset(glob.glob(f'/g/data/rt52/era5/single-levels/reanalysis/tciw/{year}/tciw_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}??.nc')[0]).rename({'latitude': 'lat', 'longitude': 'lon'}).tciw.sel(lon=slice(min_lon, max_lon), lat=slice(max_lat, min_lat))
-    # prw = xr.open_dataset(glob.glob(f'/g/data/rt52/era5/single-levels/reanalysis/tcwv/{year}/tcwv_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}??.nc')[0]).rename({'latitude': 'lat', 'longitude': 'lon'}).tcwv.sel(lon=slice(min_lon, max_lon), lat=slice(max_lat, min_lat))
-
-time_series = clwvi.time
-
-max_value = 0.5
-pltlevel = np.arange(0, max_value + 1e-4, 0.005)
-pltnorm = BoundaryNorm(pltlevel, ncolors=len(pltlevel)-1, clip=True)
-colors = np.ones((len(pltlevel)-1, 4))
-colors[:, 3] = np.linspace(0, 1, len(pltlevel)-1)
-pltcmp = ListedColormap(colors)
-
-
-omp4 = f'figures/4_um/4.0_barra/4.0.2_cloud image/4.0.2.0 {ids} total column water, cloud water and ice {year}{month:02d} trial.mp4'
-
-fig, ax = regional_plot(extent=extent, central_longitude=180,
-                        figsize = np.array([8.8, 7.8]) / 2.54)
-img = Image.open(f'data/others/Blue Marble Next Generation w: Topography and Bathymetry/world.topo.bathy.2004{month:02d}.3x5400x2700.jpg')
-ax.imshow(img, extent=[-180, 180, -90, 90], transform=ccrs.PlateCarree(), zorder=0)
-
-plt_objs = []
-def update_frames(itime):
-    # itime = 0
-    global plt_objs
-    for plt_obj in plt_objs:
-        plt_obj.remove()
-    plt_objs = []
-    
-    day = time_series[itime].dt.day.values
-    hour = time_series[itime].dt.hour.values
-    minute = time_series[itime].dt.minute.values
-    print(f'#-------------------------------- {year}-{month:02d}-{day:02d} {hour:02d}:{minute:02d}')
-    
-    plt_mesh = ax.pcolormesh(
-        clwvi.lon,
-        clwvi.lat,
-        clwvi.sel(time=datetime(year, month, day, hour, minute)) + clivi.sel(time=datetime(year, month, day, hour, minute)),
-        norm=pltnorm, cmap=pltcmp, transform=ccrs.PlateCarree())
-    plt_text = ax.text(0.5, -0.02, f'{year}-{month:02d}-{day:02d} {hour:02d}:{minute:02d} UTC\nCloud liquid&ice water in {ids} (white: >{max_value} ' + r'[$kg \; m^{-2}$])',
-        ha='center', va='top', transform=ax.transAxes, linespacing=1.3)
-    plt_objs = [plt_mesh, plt_text]
-    return(plt_objs)
-
-fig.subplots_adjust(left=0.01, right=0.99, bottom=0.12, top=0.99)
-ani = animation.FuncAnimation(
-    fig, update_frames, frames=len(time_series[:24]), interval=500, blit=False)
-if os.path.exists(omp4): os.remove(omp4)
-ani.save(omp4, progress_callback=lambda iframe, n: print(f'Frame {iframe}/{n}'))
-
-
-
-
-# endregion
-
-
 # region plot cloud liquid/ice water and himawari images
 
+time1 = time.perf_counter()
+
+year, month, day, hour, minute = 2020, 6, 2, 4, 0
 
 dss = ['Himawari', 'ERA5', 'BARRA-R2', 'BARRA-C2']
 extent = [110.58, 157.34, -43.69, -7.01]
 min_lon, max_lon, min_lat, max_lat = extent
-year, month, day, hour, minute = 2020, 6, 18, 4, 0
-start_day = pd.Timestamp(year, month, 1, 0, 0)
-end_day = start_day + pd.Timedelta(days=calendar.monthrange(year, month)[1])
 max_value = 0.5
 pltlevel = np.arange(0, max_value + 1e-4, 0.005)
 pltnorm = BoundaryNorm(pltlevel, ncolors=len(pltlevel)-1, clip=True)
@@ -261,14 +124,15 @@ colors[:, 3] = np.linspace(0, 1, len(pltlevel)-1)
 pltcmp = ListedColormap(colors)
 opng = f'figures/4_um/4.0_barra/4.0.2_cloud image/4.0.2.1 Himawari, ERA5, BARRA-R2, and BARRA-C2 total column cloud liquid and ice water {year}-{month:02d}-{day:02d} {hour:02d}:{minute:02d}.png'
 img = Image.open(f'data/others/Blue_Marble/world.2004{month:02d}.3x5400x2700.jpg')
+geolocation_df = pd.read_pickle(f'scratch/data/obs/CloudSat_CALIPSO/2B-CLDCLASS-LIDAR.P1_R05/{year}/geolocation_df.pkl')
+start_time = pd.Timestamp(year, month, day, hour, minute)
+end_time = start_time + pd.Timedelta(minutes=60)
+geolocation_df = geolocation_df.loc[((geolocation_df.date_time >= start_time) & (geolocation_df.date_time <= end_time) & (geolocation_df.lon >= min_lon) & (geolocation_df.lon <= max_lon) & (geolocation_df.lat >= min_lat) & (geolocation_df.lat <= max_lat))]
+gbr_shp = gpd.read_file('data/others/Great_Barrier_Reef_Marine_Park_Boundary/Great_Barrier_Reef_Marine_Park_Boundary.shp')
 dfolder = Path('/g/data/ra22/satellite-products/arc/obs/himawari-ahi/fldk/latest')
 # dfolder = Path('/g/data/ra22/satellite-products/nrt/obs/himawari-ahi/fldk/latest')
 nrow=1
 ncol=len(dss)
-
-
-geolocation_all = pd.read_pickle(f'scratch/data/obs/CloudSat_CALIPSO/2B-CLDCLASS-LIDAR.P1_R05/geolocation_all.pkl')
-geolocation_all = geolocation_all.loc[((geolocation_all.date_time >= start_day) & (geolocation_all.date_time <= end_day) & (geolocation_all.lon >= min_lon) & (geolocation_all.lon <= max_lon) & (geolocation_all.lat >= min_lat) & (geolocation_all.lat <= max_lat))]
 
 clwvi = {}
 clivi = {}
@@ -331,8 +195,11 @@ rgb2 = np.clip(rgb2, 0, 1, out=rgb2)
 rgb2 = np.kron(rgb2, np.ones((2, 2, 1)))
 
 luminance = 0.2126 * rgb1[..., 0] + 0.7152 * rgb1[..., 1] + 0.0722 * rgb1[..., 2]
-rgb = np.where((luminance > 0.15)[..., None], rgb1, rgb2)
+rgb = np.where((luminance > 0.15)[..., None], rgb1, rgb2).astype('float32')
 
+time2 = time.perf_counter()
+print(f'Execution time: {time2 - time1:.1f} s')
+time1 = time.perf_counter()
 
 fm_bottom=1.2/(4*nrow+1.2)
 fig, axs = plt.subplots(
@@ -341,39 +208,37 @@ fig, axs = plt.subplots(
     gridspec_kw={'hspace': 0.01, 'wspace': 0.01},)
 
 for jcol in range(ncol):
+    print(f'#---------------- {jcol}')
     axs[jcol] = regional_plot(extent=extent, central_longitude=180, ax_org=axs[jcol], lw=0.1, border_color='yellow')
+    gbr_shp.plot(ax=axs[jcol], ec='tab:blue', fc='none', lw=1, zorder=2, transform=ccrs.PlateCarree())
     if jcol!=0:
         axs[jcol].imshow(img, extent=[-180, 180, -90, 90], transform=ccrs.PlateCarree(), zorder=0)
     axs[jcol].text(0, 1.02, f'({string.ascii_lowercase[jcol]}) {dss[jcol]}', ha='left', va='bottom', transform=axs[jcol].transAxes)
-
-
-fig.text(0.5, fm_bottom+0.02, f'{year}-{month:02d}-{day:02d} {hour:02d}:{minute:02d} UTC', ha='center', va='top', linespacing=1.3)
-
-start_time = pd.Timestamp(year, month, day, hour, minute)
-end_time = start_time + pd.Timedelta(minutes=60)
-geolocation_subset = geolocation_all.loc[((geolocation_all.date_time >= start_time) & (geolocation_all.date_time <= end_time))]
-for jcol in range(ncol):
-    axs[jcol].scatter(geolocation_subset.lon, geolocation_subset.lat, s=1, c='tab:orange', lw=0, transform=ccrs.PlateCarree(), zorder=2)
+    # Plot Willis Island
+    axs[jcol].scatter(149.965, -16.288, s=4, ec='tab:red', fc='none', lw=1, transform=ccrs.PlateCarree(), zorder=2)
 
 axs[0].imshow(rgb, extent=[-5499500., 5499500., -5499500., 5499500.], transform=ccrs.Geostationary(central_longitude=140.7, satellite_height=35785863.0), interpolation='none', origin='upper', resample=False)
 
+for jcol in range(ncol):
+    axs[jcol].scatter(geolocation_df.lon, geolocation_df.lat, s=1, c='tab:orange', lw=0, transform=ccrs.PlateCarree(), zorder=2)
+
 for jcol in range(ncol-1):
     # jcol=0
+    print(f'#---------------- {jcol}')
     axs[jcol+1].pcolormesh(
         clwvi[dss[jcol+1]].lon,
         clwvi[dss[jcol+1]].lat,
         clwvi[dss[jcol+1]].sel(time=start_time) + clivi[dss[jcol+1]].sel(time=start_time),
         norm=pltnorm, cmap=pltcmp, transform=ccrs.PlateCarree())
 
-
+fig.text(0.5, fm_bottom+0.02, f'{year}-{month:02d}-{day:02d} {hour:02d}:{minute:02d} UTC', ha='center', va='top', linespacing=1.3)
 fig.text(0.5, 0.01, f'(a) True Color and Night Microphysics RGB and CloudSat-CALIPSO tracks in orange\n(b-d) Cloud liquid&ice water (opaque white: >={max_value} ' + r'[$kg \; m^{-2}$]) above NASA Blue Marble Earth image', ha='center', va='bottom', linespacing=1.3)
-
 fig.subplots_adjust(left=0.005, right=0.995, bottom=fm_bottom, top=0.95)
 fig.savefig(opng)
+plt.close()
 
-
-
-
+time2 = time.perf_counter()
+print(f'Execution time: {time2 - time1:.1f} s')
 
 # endregion
 
@@ -534,4 +399,144 @@ ani.save(omp4, progress_callback=lambda iframe, n: print(f'Frame {iframe}/{n}'))
 
 
 # endregion
+
+
+
+
+# region plot cloud liquid/ice water
+
+extent = [110.58, 157.34, -43.69, -7.01]
+min_lon, max_lon, min_lat, max_lat = extent
+year, month, day, hour, minute = 2020, 6, 1, 0, 0
+ids = 'ERA5' # 'BARRA-R2' # 'BARRA-C2' #
+
+if ids == 'BARRA-C2':
+    clwvi = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/clwvi/latest/clwvi_AUST-04_ERA5_historical_hres_BOM_BARRA-C2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc').clwvi.sel(lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat))
+    clivi = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/clivi/latest/clivi_AUST-04_ERA5_historical_hres_BOM_BARRA-C2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc').clivi.sel(lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat))
+    # prw = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/prw/latest/prw_AUST-04_ERA5_historical_hres_BOM_BARRA-C2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc').prw.sel(lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat))
+elif ids == 'BARRA-R2':
+    clwvi = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/clwvi/latest/clwvi_AUS-11_ERA5_historical_hres_BOM_BARRA-R2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc').clwvi.sel(lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat))
+    clivi = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/clivi/latest/clivi_AUS-11_ERA5_historical_hres_BOM_BARRA-R2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc').clivi.sel(lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat))
+    # prw = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/prw/latest/prw_AUS-11_ERA5_historical_hres_BOM_BARRA-R2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc').prw.sel(lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat))
+elif ids == 'ERA5':
+    clwvi = xr.open_dataset(glob.glob(f'/g/data/rt52/era5/single-levels/reanalysis/tclw/{year}/tclw_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}??.nc')[0]).rename({'latitude': 'lat', 'longitude': 'lon'}).tclw.sel(lon=slice(min_lon, max_lon), lat=slice(max_lat, min_lat))
+    clivi = xr.open_dataset(glob.glob(f'/g/data/rt52/era5/single-levels/reanalysis/tciw/{year}/tciw_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}??.nc')[0]).rename({'latitude': 'lat', 'longitude': 'lon'}).tciw.sel(lon=slice(min_lon, max_lon), lat=slice(max_lat, min_lat))
+    # prw = xr.open_dataset(glob.glob(f'/g/data/rt52/era5/single-levels/reanalysis/tcwv/{year}/tcwv_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}??.nc')[0]).rename({'latitude': 'lat', 'longitude': 'lon'}).tcwv.sel(lon=slice(min_lon, max_lon), lat=slice(max_lat, min_lat))
+
+
+max_value = 0.5
+pltlevel = np.arange(0, max_value + 1e-4, 0.005)
+pltnorm = BoundaryNorm(pltlevel, ncolors=len(pltlevel)-1, clip=True)
+colors = np.ones((len(pltlevel)-1, 4))
+colors[:, 3] = np.linspace(0, 1, len(pltlevel)-1)
+pltcmp = ListedColormap(colors)
+
+
+opng = f'figures/4_um/4.0_barra/4.0.2_cloud image/4.0.2.0 {ids} total column water, cloud water and ice {year}{month:02d}{day:02d}{hour:02d}{minute:02d}.png'
+fig, ax = regional_plot(extent=extent, central_longitude=180,
+                        figsize = np.array([8.8, 7.8]) / 2.54)
+
+ax.pcolormesh(
+    clwvi.lon,
+    clwvi.lat,
+    clwvi.sel(time=datetime(year, month, day, hour, minute)) + clivi.sel(time=datetime(year, month, day, hour, minute)),
+    norm=pltnorm, cmap=pltcmp, transform=ccrs.PlateCarree())
+ax.text(0.5, -0.02, f'{year}-{month:02d}-{day:02d} {hour:02d}:{minute:02d} UTC\nCloud liquid&ice water in {ids} (white: >{max_value} ' + r'[$kg \; m^{-2}$])',
+        ha='center', va='top', transform=ax.transAxes, linespacing=1.3)
+
+img = Image.open(f'data/others/Blue Marble Next Generation w: Topography and Bathymetry/world.topo.bathy.2004{month:02d}.3x5400x2700.jpg')
+ax.imshow(img, extent=[-180, 180, -90, 90], transform=ccrs.PlateCarree(), zorder=0)
+
+fig.subplots_adjust(left=0.01, right=0.99, bottom=0.12, top=0.99)
+fig.savefig(opng)
+
+
+
+
+
+'''
+stats.describe(clwvi.sel(time=datetime(year, month, day, hour, minute)).values, axis=None)
+'''
+# endregion
+
+
+# region animate cloud liquid/ice water
+
+parser=argparse.ArgumentParser()
+parser.add_argument('-y', '--year', type=int, required=True,)
+parser.add_argument('-m', '--month', type=int, required=True,)
+args = parser.parse_args()
+
+year=args.year
+month=args.month
+# year=2020; month=6
+
+extent = [110.58, 157.34, -43.69, -7.01]
+min_lon, max_lon, min_lat, max_lat = extent
+ids = 'ERA5' # 'BARRA-R2' # 'BARRA-C2' #
+
+if ids == 'BARRA-C2':
+    clwvi = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/clwvi/latest/clwvi_AUST-04_ERA5_historical_hres_BOM_BARRA-C2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc').clwvi.sel(lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat))
+    clivi = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/clivi/latest/clivi_AUST-04_ERA5_historical_hres_BOM_BARRA-C2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc').clivi.sel(lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat))
+    # prw = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/prw/latest/prw_AUST-04_ERA5_historical_hres_BOM_BARRA-C2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc').prw.sel(lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat))
+elif ids == 'BARRA-R2':
+    clwvi = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/clwvi/latest/clwvi_AUS-11_ERA5_historical_hres_BOM_BARRA-R2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc').clwvi.sel(lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat))
+    clivi = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/clivi/latest/clivi_AUS-11_ERA5_historical_hres_BOM_BARRA-R2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc').clivi.sel(lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat))
+    # prw = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/prw/latest/prw_AUS-11_ERA5_historical_hres_BOM_BARRA-R2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc').prw.sel(lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat))
+elif ids == 'ERA5':
+    clwvi = xr.open_dataset(glob.glob(f'/g/data/rt52/era5/single-levels/reanalysis/tclw/{year}/tclw_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}??.nc')[0]).rename({'latitude': 'lat', 'longitude': 'lon'}).tclw.sel(lon=slice(min_lon, max_lon), lat=slice(max_lat, min_lat))
+    clivi = xr.open_dataset(glob.glob(f'/g/data/rt52/era5/single-levels/reanalysis/tciw/{year}/tciw_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}??.nc')[0]).rename({'latitude': 'lat', 'longitude': 'lon'}).tciw.sel(lon=slice(min_lon, max_lon), lat=slice(max_lat, min_lat))
+    # prw = xr.open_dataset(glob.glob(f'/g/data/rt52/era5/single-levels/reanalysis/tcwv/{year}/tcwv_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}??.nc')[0]).rename({'latitude': 'lat', 'longitude': 'lon'}).tcwv.sel(lon=slice(min_lon, max_lon), lat=slice(max_lat, min_lat))
+
+time_series = clwvi.time
+
+max_value = 0.5
+pltlevel = np.arange(0, max_value + 1e-4, 0.005)
+pltnorm = BoundaryNorm(pltlevel, ncolors=len(pltlevel)-1, clip=True)
+colors = np.ones((len(pltlevel)-1, 4))
+colors[:, 3] = np.linspace(0, 1, len(pltlevel)-1)
+pltcmp = ListedColormap(colors)
+
+
+omp4 = f'figures/4_um/4.0_barra/4.0.2_cloud image/4.0.2.0 {ids} total column water, cloud water and ice {year}{month:02d} trial.mp4'
+
+fig, ax = regional_plot(extent=extent, central_longitude=180,
+                        figsize = np.array([8.8, 7.8]) / 2.54)
+img = Image.open(f'data/others/Blue Marble Next Generation w: Topography and Bathymetry/world.topo.bathy.2004{month:02d}.3x5400x2700.jpg')
+ax.imshow(img, extent=[-180, 180, -90, 90], transform=ccrs.PlateCarree(), zorder=0)
+
+plt_objs = []
+def update_frames(itime):
+    # itime = 0
+    global plt_objs
+    for plt_obj in plt_objs:
+        plt_obj.remove()
+    plt_objs = []
+    
+    day = time_series[itime].dt.day.values
+    hour = time_series[itime].dt.hour.values
+    minute = time_series[itime].dt.minute.values
+    print(f'#-------------------------------- {year}-{month:02d}-{day:02d} {hour:02d}:{minute:02d}')
+    
+    plt_mesh = ax.pcolormesh(
+        clwvi.lon,
+        clwvi.lat,
+        clwvi.sel(time=datetime(year, month, day, hour, minute)) + clivi.sel(time=datetime(year, month, day, hour, minute)),
+        norm=pltnorm, cmap=pltcmp, transform=ccrs.PlateCarree())
+    plt_text = ax.text(0.5, -0.02, f'{year}-{month:02d}-{day:02d} {hour:02d}:{minute:02d} UTC\nCloud liquid&ice water in {ids} (white: >{max_value} ' + r'[$kg \; m^{-2}$])',
+        ha='center', va='top', transform=ax.transAxes, linespacing=1.3)
+    plt_objs = [plt_mesh, plt_text]
+    return(plt_objs)
+
+fig.subplots_adjust(left=0.01, right=0.99, bottom=0.12, top=0.99)
+ani = animation.FuncAnimation(
+    fig, update_frames, frames=len(time_series[:24]), interval=500, blit=False)
+if os.path.exists(omp4): os.remove(omp4)
+ani.save(omp4, progress_callback=lambda iframe, n: print(f'Frame {iframe}/{n}'))
+
+
+
+
+# endregion
+
 

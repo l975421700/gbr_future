@@ -351,7 +351,7 @@ ISCCP_types = {'Clear': 0,
                'Cumulus':7, 'Stratocumulus': 8, 'Stratus': 9,
                'Unknown':10}
 
-year, month, day, hour, minute = 2020, 7, 1, 0, 0
+year, month, day, hour, minute = 2020, 6, 2, 4, 0
 
 ds_cltype = xr.open_dataset(f'/scratch/v46/qg8515/data/obs/jaxa/clp/{year}{month:02d}/{day:02d}/{hour:02d}/CLTYPE_{year}{month:02d}{day:02d}{hour:02d}{minute:02d}.nc').CLTYPE.squeeze()
 
@@ -419,6 +419,12 @@ fig.savefig(opng)
 plt.close()
 
 
+ds = xr.open_dataset('/home/563/qg8515/scratch/data/obs/jaxa/clp/202006/02/04/CLTYPE_202006020400.nc')
+station = 'Willis Island'
+slat = -16.288
+slon = 149.965
+
+ds.CLTYPE.sel(latitude=slat, longitude=slon, method='nearest')
 
 
 '''

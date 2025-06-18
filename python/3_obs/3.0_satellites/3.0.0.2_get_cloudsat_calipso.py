@@ -37,7 +37,7 @@ from matplotlib.colors import BoundaryNorm
 from matplotlib import cm
 import cartopy.crs as ccrs
 plt.rcParams['pcolor.shading'] = 'auto'
-mpl.rcParams['figure.dpi'] = 300
+mpl.rcParams['figure.dpi'] = 600
 mpl.rc('font', family='Times New Roman', size=10)
 mpl.rcParams['axes.linewidth'] = 0.2
 plt.rcParams.update({"mathtext.fontset": "stix"})
@@ -223,10 +223,11 @@ print((geolocation_all.date_time[idxs:(idxe+1)].values == geolocation_df.date_ti
 
 # region get CloudSat-CALIPSO data
 
-product_var = {'2B-CWC-RO.P1_R05': ['Height', 'RO_liq_water_content', 'RO_ice_water_content', 'LO_RO_liquid_water_content', 'IO_RO_ice_water_content'],
-          '2C-RAIN-PROFILE.P1_R05': ['precip_liquid_water', 'precip_ice_water', 'cloud_liquid_water'],
-          '2C-SNOW-PROFILE.P1_R05': ['snow_water_content', 'snowfall_rate'],
-          '2C-ICE.P1_R05': ['Temperature', 'IWC']}
+product_var = {
+    '2B-CWC-RO.P1_R05': ['Height', 'RO_liq_water_content', 'RO_ice_water_content', 'LO_RO_liquid_water_content', 'IO_RO_ice_water_content'],
+    '2C-RAIN-PROFILE.P1_R05': ['precip_liquid_water', 'precip_ice_water', 'cloud_liquid_water'],
+    '2C-SNOW-PROFILE.P1_R05': ['snow_water_content', 'snowfall_rate'],
+    '2C-ICE.P1_R05': ['Temperature', 'IWC']}
 
 year, month, day, hour = 2020, 6, 2, 4
 doy = datetime(year, month, day).timetuple().tm_yday

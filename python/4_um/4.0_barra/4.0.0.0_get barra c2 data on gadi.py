@@ -359,6 +359,58 @@ print((bbb.mean().values - dss['wap'].sel(pressure=iplev).isel(lon=ilon, lat=ila
 # endregion
 
 
+# region get BARRA-C2 alltime hourly pl data
+# Memory Used: 75.8GB; Walltime Used: 00:19:18
+
+years = 1979
+yeare = 2023
+
+for var in ['hur']:
+    print(f'#-------------------------------- {var}')
+    
+    fl = sorted([
+        file for iyear in np.arange(years, yeare+1, 1)
+        for file in glob.glob(f'scratch/data/sim/um/barra_c2/{var}/{var}_monthly_{iyear}??.nc')])
+    
+    barra_c2_pl_mon = xr.open_mfdataset(fl, parallel=True)[var]
+    barra_c2_pl_mon_alltime = mon_sea_ann(
+        var_monthly=barra_c2_pl_mon, lcopy=False,mm=True,sm=True,am=True)
+    
+    ofile = f'data/sim/um/barra_c2/barra_c2_pl_mon_alltime_{var}.pkl'
+    if os.path.exists(ofile): os.remove(ofile)
+    with open(ofile,'wb') as f:
+        pickle.dump(barra_c2_pl_mon_alltime, f)
+    
+    del barra_c2_pl_mon, barra_c2_pl_mon_alltime
+
+
+
+
+'''
+#-------------------------------- check
+years = 1979
+yeare = 2023
+itime = -1
+
+for var in ['hur', 'wap']:
+    # var = 'hur'
+    print(f'#-------------------------------- {var}')
+    
+    fl = sorted([
+        file for iyear in np.arange(years, yeare+1, 1)
+        for file in glob.glob(f'scratch/data/sim/um/barra_r2/{var}/{var}_monthly_{iyear}??.nc')])
+    
+    with open(f'data/sim/um/barra_r2/barra_r2_pl_mon_alltime_{var}.pkl','rb') as f:
+        barra_r2_pl_mon_alltime = pickle.load(f)
+    
+    ds = xr.open_dataset(fl[itime])[var].squeeze().values
+    ds1 = barra_r2_pl_mon_alltime['mon'].isel(time=itime).values
+    print((ds1[np.isfinite(ds1)] == ds[np.isfinite(ds)]).all())
+
+'''
+# endregion
+
+
 # region derive BARRA-C2 mon data
 
 

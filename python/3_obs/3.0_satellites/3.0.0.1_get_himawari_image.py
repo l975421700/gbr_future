@@ -198,7 +198,7 @@ Thresholds: https://user.eumetsat.int/resources/case-studies/night-time-fog-over
 
 start_time = time.perf_counter()
 
-year, month, day, hour, minute = 2020, 6, 1, 0, 10
+year, month, day, hour, minute = 2020, 6, 2, 4, 0
 dfolder = Path('/g/data/ra22/satellite-products/arc/obs/himawari-ahi/fldk/latest')
 # dfolder = Path('/g/data/ra22/satellite-products/nrt/obs/himawari-ahi/fldk/latest')
 
