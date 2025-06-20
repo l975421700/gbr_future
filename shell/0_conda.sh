@@ -5,12 +5,12 @@
 # source miniconda3/bin/activate lowclouds
 
 #--------------------------------
-# conda clean -a
 # conda env list
-# conda env remove -n rcm_gbr -y
+# conda env remove -n lowclouds -y
 # conda config --show channels
 # conda config --add channels conda-forge
 # conda config --set auto_activate_base False   # remove (base) (base)
+# conda update -n base -c defaults conda
 
 #-------------------------------- Primary packages
 conda install mamba -y
@@ -24,56 +24,37 @@ mamba install dask -y
 mamba install intake -y
 mamba install metpy -y
 mamba install xmip -y
-mamba install siphon -y
 mamba install scikit-image -y
 mamba install geopandas -y
-mamba install rioxarray -y
 mamba install mscorefonts -y
-mamba install statsmodels -y
 mamba install ffmpeg -y
-mamba install h5netcdf -y
 mamba install pyhdf -y
 mamba install seaborn -y
-mamba install fortls -y
-mamba install cdsapi -y
-mamba install mpl-scatter-density -y
-mamba install pingouin -y
-mamba install windrose -y
-mamba install pycircstat -y
 mamba install haversine -y
 mamba install zarr -y
-mamba install cfgrib -y
-mamba install requests aiohttp -y
-mamba install intake-xarray -y
-mamba install easygems -y
-mamba install healpy -y
-mamba install satpy -y
 mamba install ipykernel -y
-mamba install iris -y
-pip install antspyx
+mamba install h5netcdf -y
+conda clean -a
 
 #-------------------------------- Other packages
-# mamba install numba -y
-# pip install cdo
-# mamba install xskillscore -y
+# mamba install windrose -y
+# mamba install intake-xarray -y
+# mamba install cfgrib -y
+# mamba install statsmodels -y
+# mamba install pingouin -y
+# mamba install mpl-scatter-density -y
+# mamba install iris -y
+# mamba install satpy -y
+# mamba install easygems -y
+# mamba install healpy -y
+# mamba install pycircstat -y
+# mamba install cdsapi -y
+# mamba install rioxarray -y
+# mamba install siphon -y
 # mamba install rasterio -y
 # mamba install line_profiler -y
-# mamba install nose -y
-# mamba install intake-esm -y
-# mamba install dask-gateway -y
-# mamba install xarrayutils -y
-# mamba install geopy -y
-# mamba install ipywidgets -y
-# mamba install pywavelets -y
-# mamba install pytables -y
 # mamba install notebook -y
-# mamba install pyfesom2 -y
-# mamba install radian -y
 # mamba install jupyterlab -y
 # mamba install pytest -y
 # pytest -v --pyargs xesmf
-# pip install SkillMetrics
-# pip install findent
-# pip install f90nml
-# pip install igra
 

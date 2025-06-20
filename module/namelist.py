@@ -127,6 +127,7 @@ era5_varlabels = {
     'tclw': r'total column cloud liquid water [$kg \; m^{-2}$]',
     'e': r'evaporation [$mm \; day^{-1}$]',
     # 'z': r'orography [$m$]',
+    'orog': r'orography [$m$]',
     'mslhf': r'surface latent heat flux [$W \; m^{-2}$]',
     'msshf': r'surface sensible heat flux [$W \; m^{-2}$]',
     'tcw': r'total column water [$kg \; m^{-2}$]',
@@ -181,6 +182,7 @@ era5_varlabels = {
     'LTS': r'LTS [$K$]',
     'theta': r'potential temperature [$°C$]',
     'theta_e': r'equivalent potential temperature [$°C$]',
+    'blh': r'boundary layer height [$m$]'
 }
 
 era5_varlabels_sim = {
@@ -218,6 +220,7 @@ cmip6_era5_var = {
     'rsutcs': 'mtuwswrfcs',
     'sfcWind': 'si10',
     'tas': 't2m',
+    'das': 'd2m',
     'tos': 'sst',
     'sst': 'sst',
     'ts': 'skt',
@@ -254,6 +257,8 @@ cmip6_era5_var = {
     'zg': 'z',
     'theta': 'theta',
     'theta_e': 'theta_e',
+    'blh': 'blh',
+    'orog': 'orog',
     # 'wa',
 }
 # tcw = tcwv + tcsw + tcrw + tclw + tciw
