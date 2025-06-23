@@ -104,6 +104,8 @@ from statistics0 import (
 suite_res = {
     'u-dq700': ['d11km', 'd4p4km'],
     'u-dq788': ['d11km', 'd4p4kms'],
+    'u-dq911': ['d11km', 'd2p2km'],
+    'u-dq912': ['d11km', 'd4p4kml'],
 }
 year, month, day, hour = 2020, 6, 2, 4
 ntime = pd.Timestamp(year,month,day,hour) + pd.Timedelta('1h')
@@ -181,15 +183,20 @@ stash_var = {
     'clivi':    'STASH_m01s30i406',
     # 'pr':   'STASH_m01s00i348',
 }
-nrad_time = {'d11km': 'T1HR_MN_rad', 'd4p4km': 'T1HR_MN_rad_diag',
-             'd4p4kms': 'T1HR_MN_rad_diag', 'd1p1km': 'T1HR_MN_rad_diag'}
+nrad_time = {'d11km': 'T1HR_MN_rad',
+             'd4p4km': 'T1HR_MN_rad_diag',
+             'd4p4kms': 'T1HR_MN_rad_diag',
+             'd4p4kml': 'T1HR_MN_rad_diag',
+             'd1p1km': 'T1HR_MN_rad_diag',
+             'd2p2km': 'T1HR_MN_rad_diag',
+             }
 
 regridder = {}
-for isuite in ['u-dq700']:
+for isuite in ['u-dq700', 'u-dq911', 'u-dq912']:
     # ['u-dq700', 'u-dq788']
     print(f'#-------------------------------- {isuite}')
     
-    for var2 in ['orog', 'das', 'clwvi', 'clivi']:
+    for var2 in ['cll', 'rsut']:
         # var2 = 'orog'
         # ['cll', 'clm', 'clh', 'clt', 'prw', 'ts', 'tas', 'huss', 'hurs', 'hus', 'ta', 'ua', 'va', 'wa', 'wap', 'theta', 'qcf', 'qcl', 'qc', 'qs', 'qr', 'qg', 'qt', 'mv', 'mcl', 'mcf', 'mr', 'mg', 'mcf2', 'pa', 'hfls', 'hfss', 'rlut', 'rlds', 'rsut', 'rsdt', 'rsutcs', 'rsdscs', 'rsds', 'rlns', 'rlutcs', 'rldscs', 'psl', 'blh', 'iland', 'orog', 'ncloud', 'nrain', 'nice', 'nsnow', 'ngraupel', 'rlds2', 'rlu_t_s', 'das', 'blendingw', 'radar_reflectivity', 'clslw', 'CAPE', 'clwvi', 'clivi']
         var1 = cmip6_era5_var[var2]
@@ -564,8 +571,10 @@ for isuite in ['u-dq700']:
 
 # region check data
 
-year, month, day, hour = 2020, 6, 2, 4
-isuite = 'u-dq700'
+# year, month, day, hour = 2020, 6, 2, 4
+year, month, day, hour = 2020, 6, 1, 1
+# isuite = 'u-dq700'
+isuite = 'u-dq880'
 stash_var = {
     'cll':      'STASH_m01s09i203',
     'clm':      'STASH_m01s09i204',
@@ -635,6 +644,9 @@ var_stash = {stash_var[ikey]: ikey  for ikey in stash_var.keys()}
 ds = {}
 ds['d11km'] = xr.open_dataset(sorted(glob.glob(f'/home/563/qg8515/cylc-run/{isuite}/share/cycle/{year}{month:02d}{day:02d}T0000Z/Australia/d11km/*/um/umnsaa_pa000.nc'))[0])
 ds['d4p4km'] = xr.open_dataset(sorted(glob.glob(f'/home/563/qg8515/cylc-run/{isuite}/share/cycle/{year}{month:02d}{day:02d}T0000Z/Australia/d4p4km/*/um/umnsaa_pa000.nc'))[0])
+
+
+
 
 def preprocess_umoutput(ds_in):
     # ds_in = ds['d11km']
@@ -798,6 +810,11 @@ remove: 1, TOT PRECIP RATE AFTER TSTEP  KG/M2/S,
 
 
 '''
+for istash in ['STASH_m01s04i201', 'STASH_m01s04i202', 'STASH_m01s04i203', 'STASH_m01s04i204', 'STASH_m01s20i013']:
+    print(np.nanmax(ds['d4p4km'][istash]))
+
+
+
 #---------------- STASH_m01s00i271: qs
 #-------- d11km
 Warning: no variable

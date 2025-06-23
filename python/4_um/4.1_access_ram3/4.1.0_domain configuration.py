@@ -72,11 +72,13 @@ extent['d4p4km']    = [108.02,  159.9,   -5.01,  -45.69]
 extent['d4p4kms']   = [135.94,   159.9,   -5.01,  -30.01]
 extent['d1p1km']    = [135.94,   159.9,   -5.01,  -30.01]
 
+extent['d4p4kml']   = [95,   200,   5,  -50]
+
 grid_spacings = {'era5': 0.1, 'd11km': 0.1, 'd4p4km': 0.04,
-                 'd4p4kms': 0.04, 'd1p1km': 0.01}
+                 'd4p4kms': 0.04, 'd1p1km': 0.01, 'd4p4kml': 0.04}
 
 
-for ires in ['era5', 'd11km', 'd4p4km', 'd4p4kms', 'd1p1km']:
+for ires in ['era5', 'd11km', 'd4p4km', 'd4p4kms', 'd1p1km', 'd4p4kml']:
     # ires = 'd11km'
     print(f'#-------------------------------- {ires}')
     
