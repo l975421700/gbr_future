@@ -101,7 +101,7 @@ era5_gridarea = xr.open_dataset('data/obs/era5/era5_gridarea.nc').cell_area
 
 era5_sl_mon_alltime = {}
 for var in ['toa_albedo', 'toa_albedocs', 'toa_albedocl']:
-    # var = 'sst'
+    # var = 'toa_albedo'
     # 'msnrf', 'tp', 'msl', 'sst', 'hcc', 'mcc', 'lcc', 'tcc', 't2m', 'msnlwrf', 'msnswrf', 'mtdwswrf', 'mtnlwrf', 'mtnswrf', 'msdwlwrf', 'msdwswrf', 'msdwlwrfcs', 'msdwswrfcs', 'msnlwrfcs', 'msnswrfcs', 'mtnlwrfcs', 'mtnswrfcs', 'cbh', 'tciw', 'tclw', 'e', 'z', 'mslhf', 'msshf', 'tcw', 'tcwv', 'tcsw', 'tcrw', 'tcslw', 'si10', 'd2m', 'cp', 'lsp', 'deg0l', 'mper', 'pev', 'skt', 'u10', 'v10', 'u100', 'v100',    'msuwlwrf',  'msuwswrf',  'msuwlwrfcs',  'msuwswrfcs',  'msnlwrfcl', 'msnswrfcl', 'msdwlwrfcl', 'msdwswrfcl', 'msuwlwrfcl', 'msuwswrfcl',  'mtuwswrf',  'mtuwswrfcs',  'mtnlwrfcl', 'mtnswrfcl', 'mtuwswrfcl'
     print(f'#-------------------------------- {var}')
     with open(f'data/obs/era5/mon/era5_sl_mon_alltime_{var}.pkl', 'rb') as f:

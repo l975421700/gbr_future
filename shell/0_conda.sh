@@ -14,7 +14,7 @@
 
 #-------------------------------- Primary packages
 conda install mamba -y
-mamba install python=3.12.7 -y
+mamba install python -y
 mamba install xesmf -y
 mamba install python-cdo -y
 mamba install matplotlib -y
@@ -34,6 +34,7 @@ mamba install haversine -y
 mamba install zarr -y
 mamba install ipykernel -y
 mamba install h5netcdf -y
+mamba install fortls -y
 conda clean -a
 
 #-------------------------------- Other packages
