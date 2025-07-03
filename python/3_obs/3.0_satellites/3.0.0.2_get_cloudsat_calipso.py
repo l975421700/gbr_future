@@ -224,10 +224,19 @@ print((geolocation_all.date_time[idxs:(idxe+1)].values == geolocation_df.date_ti
 # region get CloudSat-CALIPSO data
 
 product_var = {
-    '2B-CWC-RO.P1_R05': ['Height', 'RO_liq_water_content', 'RO_ice_water_content', 'LO_RO_liquid_water_content', 'IO_RO_ice_water_content'],
-    '2C-RAIN-PROFILE.P1_R05': ['precip_liquid_water', 'precip_ice_water', 'cloud_liquid_water'],
-    '2C-SNOW-PROFILE.P1_R05': ['snow_water_content', 'snowfall_rate'],
-    '2C-ICE.P1_R05': ['Temperature', 'IWC']}
+    '2B-CWC-RO.P1_R05': [
+        'Height',
+        'RO_liq_water_content', 'RO_ice_water_content',
+        'LO_RO_liquid_water_content', 'IO_RO_ice_water_content',
+        'RO_liq_number_conc', 'RO_ice_number_conc',
+        'LO_RO_number_conc'],
+    '2C-RAIN-PROFILE.P1_R05': [
+        'precip_liquid_water', 'precip_ice_water',
+        'cloud_liquid_water'],
+    '2C-SNOW-PROFILE.P1_R05': [
+        'snow_water_content', 'snowfall_rate'],
+    '2C-ICE.P1_R05': [
+        'Temperature', 'IWC']}
 
 year, month, day, hour = 2020, 6, 2, 4
 doy = datetime(year, month, day).timetuple().tm_yday
@@ -284,7 +293,20 @@ for iproduct in product_var.keys():
 
 year, month, day, hour = 2020, 6, 2, 4
 doy = datetime(year, month, day).timetuple().tm_yday
-for iproduct in ['2B-CLDCLASS-LIDAR.P1_R05', '2B-CLDCLASS.P1_R05', '2B-CWC-RO.P1_R05', '2B-CWC-RVOD.P1_R05', '2B-FLXHR-LIDAR.P2_R05', '2B-GEOPROF-LIDAR.P2_R05', '2B-GEOPROF.P1_R05', '2C-PRECIP-COLUMN.P1_R05', '2C-RAIN-PROFILE.P1_R05', '2C-SNOW-PROFILE.P1_R05', '2B-TB94.P1_R05', '2C-ICE.P1_R05']:
+for iproduct in [
+    '2B-CLDCLASS-LIDAR.P1_R05',
+    '2B-CLDCLASS.P1_R05',
+    '2B-CWC-RO.P1_R05',
+    '2B-CWC-RVOD.P1_R05', # No file after 2017
+    '2B-FLXHR-LIDAR.P2_R05', # No file after 2017
+    '2B-GEOPROF-LIDAR.P2_R05',
+    '2B-GEOPROF.P1_R05',
+    '2C-ICE.P1_R05',
+    '2C-PRECIP-COLUMN.P1_R05',
+    '2C-RAIN-PROFILE.P1_R05',
+    '2C-SNOW-PROFILE.P1_R05',
+    '2B-TB94.P1_R05', # No file after 2011
+    ]:
     print(f'#-------------------------------- {iproduct}')
     fl = sorted(glob.glob(f'scratch/data/obs/CloudSat_CALIPSO/{iproduct}/{year}/{doy:03d}/{year}{doy}{hour:02d}*.hdf') + glob.glob(f'scratch/data/obs/CloudSat_CALIPSO/{iproduct}/{year}/{doy:03d}/{year}{doy}{hour-1:02d}*.hdf'))
     if len(fl) > 0:

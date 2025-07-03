@@ -39,6 +39,8 @@ nci_ds = {
     'AGCD': '/g/data/ct11/access-nri/replicas/esmvaltool/obsdata-v2/Tier2/AGCD',
     'CALIOP': '/g/data/ct11/access-nri/replicas/esmvaltool/obsdata-v2/Tier1/CALIOP',
     'ESACCI-CLOUD': '/g/data/ct11/access-nri/replicas/esmvaltool/obsdata-v2/Tier2/ESACCI-CLOUD',
+    'IMERG': '/g/data/ia39/aus-ref-clim-data-nci/frogs/data/1DD_V1/IMERG_V07B_FC',
+    'AuRa': '/g/data/rq0',
 }
 
 # endregion

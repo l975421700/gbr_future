@@ -1014,7 +1014,7 @@ barra_r2_mon_alltime = {}
 barra_c2_mon_alltime = {}
 
 for var2 in ['clwvi', 'clivi', 'prw']:
-    # var2='clwvi'
+    # var2='cll'
     # 'clwvi', 'clivi', 'prw', 'pr', 'clh', 'clm', 'cll', 'clt', 'evspsbl', 'hfls', 'hfss', 'psl', 'rlds', 'rldscs', 'rlus', 'rluscs', 'rlut', 'rlutcs', 'rsds', 'rsdscs', 'rsdt', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'sfcWind', 'tas', 'ts', 'evspsblpot', 'uas', 'vas', 'rlns',  'rsns',  'rlnscs', 'rsnscs',  'rlnscl', 'rsnscl', 'rldscl', 'rsdscl',  'rluscl', 'rsuscl',  'rsnt',  'rsntcs',  'rlutcl', 'rsntcl', 'rsutcl'
     var1 = cmip6_era5_var[var2]
     print(f'#-------------------------------- {var1} in ERA5 vs. {var2} in BARRA-R2/C2')

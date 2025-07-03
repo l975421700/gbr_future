@@ -1,6 +1,6 @@
 
 
-# qsub -I -q copyq -P nf33 -l walltime=3:00:00,ncpus=1,mem=40GB,jobfs=100MB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22
+# qsub -I -q normal -P v46 -l walltime=3:00:00,ncpus=1,mem=40GB,jobfs=100MB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22
 
 
 # region import packages
@@ -42,7 +42,7 @@ from metplot import si2reflectance, si2radiance
 # region plot MODIS Terra and Aqua 1KM
 
 
-year, month, day, hour = 2020, 6, 2, 4
+year, month, day, hour = 2020, 6, 2, 3
 doy = datetime(year, month, day).timetuple().tm_yday
 
 fl = {}
@@ -54,12 +54,15 @@ for iproduct in ['MOD021KM', 'MYD021KM']:
 sat_product = {'Terra': 'MOD021KM', 'Aqua':  'MYD021KM'}
 
 
-# fig, ax = globe_plot(figsize=np.array([88, 44]) / 2.54, lw=1)
+fig, ax = globe_plot(figsize=np.array([88, 44]) / 2.54, lw=1)
 
-for isat in ['Terra', 'Aqua']:
+for isat in ['Aqua']:
     # isat = 'Terra'
+    # ['Terra', 'Aqua']
+    print(f'#-------------------------------- {isat}')
     for ifile in fl[sat_product[isat]]:
         # ifile = fl[sat_product[isat]][0]
+        print(f'#---- {ifile}')
         
         hdf = SD(ifile, SDC.READ)
         scn = Scene(filenames={'modis_l1b': [ifile]})
@@ -111,12 +114,13 @@ for isat in ['Terra', 'Aqua']:
         # rgb = np.dstack([red_radiance, green_radiance, blue_radiance])
         # color_tuples = rgb.reshape(-1, 3)
         
-        fig, ax = globe_plot(figsize=np.array([88, 44]) / 2.54, lw=1)
+        # fig, ax = globe_plot(figsize=np.array([88, 44]) / 2.54, lw=1)
         ax.pcolormesh(lon, lat, np.zeros_like(lat), color=color_tuples,
                       transform=ccrs.PlateCarree())
-        fig.savefig('figures/test.png')
+        # fig.savefig('figures/test.png')
 
 # fig.savefig('figures/test1.png')
+fig.savefig('figures/test2.png')
 
 
 
