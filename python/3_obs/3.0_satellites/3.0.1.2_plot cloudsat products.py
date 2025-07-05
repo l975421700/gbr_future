@@ -99,49 +99,96 @@ from calculations import (
 # region check data
 
 year, month, day, hour = 2020, 6, 2, 4
-min_lon, max_lon, min_lat, max_lat = 110.58, 157.34, -43.69, -7.01
+# min_lon, max_lon, min_lat, max_lat = 110.58, 157.34, -43.69, -7.01
+# up to Willis Island:
+min_lon, max_lon, min_lat, max_lat = 110.58, 157.34, -16.2876, -7.01
+max_altitude = 12000
 
 cs_info = {
-    '2B-GEOPROF.P1_R05': {
-        'CPR_Cloud_mask': {
-            'factor': 1, 'offset': 0, 'valid_range': [0, 40]},
-        'Gaseous_Attenuation':  {
-            'factor': 100, 'offset': 0, 'valid_range': [0, 1000]},
-        'Radar_Reflectivity':   {
-            'factor': 100, 'offset': 0, 'valid_range': [-4000, 5000]},
-        },
+    '2B-CLDCLASS-LIDAR.P1_R05': {},
     '2B-CLDCLASS.P1_R05': {},
     '2B-CWC-RO.P1_R05': {
+        'RO_liq_effective_radius': {
+            'factor': 10,   'offset': 0,    'valid_range': [0, 10000],
+            'label': r'liquid effective radius [$um$]'},
+        'RO_ice_effective_radius': {
+            'factor': 10,   'offset': 0,    'valid_range': [0, 30000],
+            'label': r'ice effective radius [$um$]'},
         'RO_liq_number_conc': {
-            'factor': 10,   'offset': 0,    'valid_range': [0, 30000]},
+            'factor': 10,   'offset': 0,    'valid_range': [0, 30000],
+            'label': r'liquid number concentration [$cm^{-3}$]'},
         'RO_ice_number_conc': {
-            'factor': 10,   'offset': 0,    'valid_range': [0, 30000]},
+            'factor': 10,   'offset': 0,    'valid_range': [0, 30000],
+            'label': r'ice number concentration [$cm^{-3}$]'},
+        'RO_liq_distrib_width_param': {
+            'factor': 1000,   'offset': 0,    'valid_range': [0, 5000],
+            'label': r'liquid distribution width parameter [$-$]'},
+        'RO_ice_distrib_width_param': {
+            'factor': 1000,   'offset': 0,    'valid_range': [0, 5000],
+            'label': r'ice distribution width parameter [$-$]'},
         'RO_liq_water_content': {
-            'factor': 1,    'offset': 0,    'valid_range': [0.0, 15000.0]},
+            'factor': 1,    'offset': 0,    'valid_range': [0.0, 15000.0],
+            'label': r'liquid water content [$mg \; m^{-3}$]'},
         'RO_ice_water_content': {
-            'factor': 1,    'offset': 0,    'valid_range': [0.0, 10000.0]},
+            'factor': 1,    'offset': 0,    'valid_range': [0.0, 10000.0],
+            'label': r'ice water content [$mg \; m^{-3}$]'},
         'RO_ice_phase_fraction': {
-            'factor': 1000, 'offset': 0,    'valid_range': [0, 1000]},
+            'factor': 1000, 'offset': 0,    'valid_range': [0, 1000],
+            'label': r'ice phase fraction [$\%$]'},
+        'LO_RO_effective_radius': {
+            'factor': 10,   'offset': 0,    'valid_range': [0, 10000],
+            'label': r'liquid-only effective radius [$um$]'},
         'LO_RO_number_conc': {
-            'factor': 10,   'offset': 0,    'valid_range': [0, 30000]},
+            'factor': 10,   'offset': 0,    'valid_range': [0, 30000],
+            'label': r'liquid-only number concentration [$cm^{-3}$]'},
+        'LO_RO_distrib_width_param': {
+            'factor': 1000,   'offset': 0,    'valid_range': [0, 5000],
+            'label': r'liquid-only distribution width parameter [$-$]'},
         'LO_RO_liquid_water_content': {
-            'factor': 1,    'offset': 0,    'valid_range': [0.0, 15000.0]},
+            'factor': 1,    'offset': 0,    'valid_range': [0.0, 15000.0],
+            'label': r'liquid-only liquid water content [$mg \; m^{-3}$]'},
+        'IO_RO_effective_radius': {
+            'factor': 10,   'offset': 0,    'valid_range': [0, 30000],
+            'label': r'ice-only effective radius [$um$]'},
         'IO_RO_log_number_conc': {
-            'factor': 1000,    'offset': 0, 'valid_range': [-3000, 5000]},
+            'factor': 1000,    'offset': 0, 'valid_range': [-3000, 5000],
+            'label': r'ice-only log(number concentration) [$log(L^{-1})$]'},
+        'IO_RO_distrib_width_param': {
+            'factor': 1000,   'offset': 0,    'valid_range': [0, 5000],
+            'label': r'ice-only distribution width parameter [$-$]'},
         'IO_RO_ice_water_content': {
-            'factor': 1,    'offset': 0,    'valid_range': [0.0, 10000.0]},
+            'factor': 1,    'offset': 0,    'valid_range': [0.0, 10000.0],
+            'label': r'ice-only ice water content [$mg \; m^{-3}$]'},
+        },
+    '2B-GEOPROF-LIDAR.P2_R05': {
+        'CloudFraction': {
+            'factor': 1, 'offset': 0, 'valid_range': [0, 100],
+            'label': r'cloud fraction [$-$]'},
+        },
+    '2B-GEOPROF.P1_R05': {
+        'CPR_Cloud_mask': {
+            'factor': 1, 'offset': 0, 'valid_range': [0, 40],
+            'label': r'CPR cloud mask [$-$]'},
+        'Gaseous_Attenuation':  {
+            'factor': 100, 'offset': 0, 'valid_range': [0, 1000],
+            'label': r'gaseous attenuation [$dBZe$]'},
+        'Radar_Reflectivity':   {
+            'factor': 100, 'offset': 0, 'valid_range': [-4000, 5000],
+            'label': r'radar reflectivity [$dBZe$]'},
         },
     }
 
 
 for iproduct in [
-    '2B-GEOPROF.P1_R05',
-    '2B-CLDCLASS.P1_R05',
+    # '2B-CLDCLASS-LIDAR.P1_R05',
+    # '2B-CLDCLASS.P1_R05',
     '2B-CWC-RO.P1_R05',
+    # '2B-GEOPROF-LIDAR.P2_R05',
+    # '2B-GEOPROF.P1_R05',
     ]:
-    # iproduct = '2B-GEOPROF.P1_R05'
     # iproduct = '2B-CLDCLASS.P1_R05'
     # iproduct = '2B-CWC-RO.P1_R05'
+    # iproduct = '2B-GEOPROF.P1_R05'
     print(f'#-------------------------------- {iproduct}')
     
     doy = datetime(year, month, day).timetuple().tm_yday
@@ -171,39 +218,76 @@ for iproduct in [
     date_time = np.array([date + timedelta(seconds=s) for s in seconds])
     height = hdf_sd.select('Height').get().astype(float)
     height[height==-9999] = np.nan
-    lat_2d  = np.tile(lat[:, np.newaxis], (1, height.shape[1]))
+    lat_2d = np.tile(lat[:, np.newaxis], (1, height.shape[1]))
     
     for ivar in hdf_sd.datasets().keys():
+        # ivar = 'CPR_Cloud_mask'
+        # ivar = 'Radar_Reflectivity'
         # ivar = 'RO_liq_number_conc'
         # print(f'#---------------- {ivar}')
         if ivar in cs_info[iproduct].keys():
             print(f'#---------------- {ivar}')
-            print(cs_info[iproduct][ivar]['valid_range'])
+            # print(cs_info[iproduct][ivar]['valid_range'])
         else:
             continue
+        
+        if ivar == 'RO_liq_number_conc':
+            pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+                cm_min=0, cm_max=160, cm_interval1=10, cm_interval2=20,
+                cmap='viridis_r',)
+            extend = 'max'
+        else:
+            continue
+        
+        if str(date_time[mask][0])[:10] == str(date_time[mask][-1])[:10]:
+            time_se = f'{str(date_time[mask][0])[:10]} {str(date_time[mask][0])[11:16]} to {str(date_time[mask][-1])[11:16]} UTC'
+        else:
+            time_se = f'{str(date_time[mask][0])[:16]} to {str(date_time[mask][-1])[:16]} UTC'
+        
+        opng = f'figures/3_satellites/3.1_CloudSat_CALIPSO/3.1.0_vertical profiles/3.1.0.0 {iproduct} {ivar} {time_se} {min_lon}_{max_lon}_{min_lat}_{max_lat} below {max_altitude} m.png'
         
         cs_data = hdf_sd.select(ivar).get().astype(float)
         cs_data[(cs_data < cs_info[iproduct][ivar]['valid_range'][0]) | \
             (cs_data > cs_info[iproduct][ivar]['valid_range'][1])] = np.nan
         cs_data = (cs_data - cs_info[iproduct][ivar]['offset']) / \
             cs_info[iproduct][ivar]['factor']
-        print(stats.describe(cs_data, axis=None, nan_policy='omit'))
+        # print(stats.describe(cs_data, axis=None, nan_policy='omit'))
         
-        fig, ax = plt.subplots(1, 1, figsize=np.array([12, 8]) / 2.54)
-        ax.pcolormesh(lat_2d[mask, :], height[mask, :], radar_reflectivity[mask, :], cmap='viridis', shading='nearest')
-        ax.set_ylim(0, 10000)
-        fig.savefig('figures/test.png')
-
-
-# radar_reflectivity[(cpr_cloud_mask != 30) & (cpr_cloud_mask != 40)] = np.nan
-
-
+        fm_bottom = 0.35
+        fig, ax = plt.subplots(1, 1, figsize=np.array([8.8, 8.8]) / 2.54)
+        plt_mesh = ax.pcolormesh(
+            lat_2d[mask, :], height[mask, :], cs_data[mask, :],
+            norm=pltnorm, cmap=pltcmp,)
+        
+        ax.xaxis.set_major_formatter(LatitudeFormatter(degree_symbol='° '))
+        ax.xaxis.set_minor_locator(AutoMinorLocator(2))
+        
+        ax.set_ylabel(f'Altitude [$km$]')
+        ax.set_yticks(np.arange(0, max_altitude+1e-4, 2000))
+        ax.set_yticklabels(np.arange(0, max_altitude/1000+1e-4, 2).astype(int))
+        ax.set_ylim(0, max_altitude)
+        ax.yaxis.set_minor_locator(AutoMinorLocator(2))
+        
+        ax.grid(True, which='both', lw=0.5, c='gray', alpha=0.5, linestyle='--',)
+        
+        cbar = fig.colorbar(
+            plt_mesh, #cm.ScalarMappable(norm=pltnorm, cmap=pltcmp), #
+            format=remove_trailing_zero_pos,
+            orientation="horizontal", ticks=pltticks, extend=extend,
+            cax=fig.add_axes([0.05, fm_bottom-0.12, 0.9, 0.03]))
+        cbar.ax.set_xlabel(f'{time_se}\n{cs_info[iproduct][ivar]['label']}\n{iproduct.replace('.P1_R05', '').replace('.P2_R05', '')}', linespacing=1.5)
+        
+        fig.subplots_adjust(left=0.14,right=0.99,bottom=fm_bottom,top=0.97)
+        fig.savefig(opng)
 
 
 
 
 
 '''
+# radar_reflectivity[(cpr_cloud_mask != 30) & (cpr_cloud_mask != 40)] = np.nan
+
+
 RO_liq_number_conc = hdf_sd.select('RO_liq_number_conc').get().astype(float)
 LO_RO_number_conc = hdf_sd.select('LO_RO_number_conc').get().astype(float)
 

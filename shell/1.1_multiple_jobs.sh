@@ -1,20 +1,22 @@
-for idx in $(seq 1 10); do
+for idx in $(seq 2006 2020); do
     qsub -v idx=$idx <<EOF
 #PBS -N qjob$idx
-#PBS -q normal
+#PBS -q copyq
 #PBS -l walltime=10:00:00
-#PBS -l mem=36GB
+#PBS -l mem=4GB
 #PBS -l jobfs=100MB
 #PBS -l ncpus=1
 #PBS -j oe
 #PBS -l storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+gdata/zv2+gdata/ra22+gdata/py18
-#PBS -P nf33
+#PBS -P v46
 #PBS -r y
 
-cd ${HOME}
+/home/563/qg8515/code/gbr_future/shell/2.2_get_cloudsat.sh $idx 2B-GEOPROF.P1_R05 #2B-CWC-RO.P1_R05 #2B-GEOPROF-LIDAR.P2_R05 #
 
-source ${HOME}/miniconda3/bin/activate lowclouds
-python ${HOME}/code/gbr_future/shell/0_runpy/run${idx}.py
+# cd ${HOME}
+
+# source ${HOME}/miniconda3/bin/activate lowclouds
+# python ${HOME}/code/gbr_future/shell/0_runpy/run${idx}.py
 # python ${HOME}/code/gbr_future/shell/0_runpy/run1.py -y $idx
 
 # module load python3/3.12.1

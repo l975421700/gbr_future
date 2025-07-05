@@ -136,3 +136,34 @@ var2stash_gal = {stash2var_gal[ikey]: ikey  for ikey in stash2var_gal.keys()}
 var2stash_ral = {stash2var_ral[ikey]: ikey  for ikey in stash2var_ral.keys()}
 
 # endregion
+
+
+# region suite_res
+
+suite_res = {
+    'u-dq700': ['d11km', 'd4p4km'],
+    'u-dq788': ['d11km', 'd4p4kms'],
+    'u-dq799': ['d11km', 'd1p1km'],
+    'u-dq911': ['d11km', 'd2p2km'],
+    'u-dq912': ['d11km', 'd4p4kml'],
+    'u-dq987': ['d11km', 'd4p4km'],
+    'u-dr040': ['d11km', 'd4p4km'],
+    'u-dr041': ['d11km', 'd4p4km'],
+    'u-dr091': ['d11km', 'd1p1kmsa'],
+    'u-dr093': ['d11km', 'd2p2kmsa'],
+    'u-dr095': ['d11km', 'd4p4kmsa'],
+    'u-dr105': ['d11km', 'd4p4km'],
+    'u-dr107': ['d11km', 'd4p4km'],
+    'u-dr108': ['d11km', 'd4p4km'],
+    'u-dr109': ['d11km', 'd4p4km'],
+    'u-dr144': ['d11km', 'd4p4kms'],
+    'u-dr145': ['d11km', 'd1p1km'],
+    'u-dr146': ['d11km', 'd2p2km'],
+    'u-dr147': ['d11km', 'd1p1kmsa'],
+    'u-dr148': ['d11km', 'd2p2kmsa'],
+    'u-dr149': ['d11km', 'd4p4kmsa'],
+}
+
+
+# endregion
+
