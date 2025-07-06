@@ -1,16 +1,21 @@
 
 
-# qsub -I -q normal -P v46 -l walltime=3:00:00,ncpus=1,mem=40GB,jobfs=100MB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22
+# qsub -I -q normal -P v46 -l walltime=3:00:00,ncpus=1,mem=192GB,jobfs=100MB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22
 
 
 # region import packages
 
 # data analysis
 import numpy as np
+import numpy.ma as ma
 import glob
-from datetime import datetime
+from datetime import datetime, timedelta
 from pyhdf.SD import SD, SDC
+from pyhdf.HDF import HDF
+from pyhdf.VS import VS
+from pyhdf.error import HDF4Error
 from satpy.scene import Scene
+from skimage.measure import block_reduce
 
 # plot
 import matplotlib as mpl
@@ -32,14 +37,158 @@ process = psutil.Process()
 # self defined
 from mapplot import (
     globe_plot,
+    regional_plot,
+    ticks_labels,
+    scale_bar,
+    plot_maxmin_points,
+    remove_trailing_zero,
+    remove_trailing_zero_pos,
+    )
+
+from namelist import (
+    month_jan,
+    monthini,
+    seasons,
+    seconds_per_d,
+    zerok,
+    panel_labels,
+    )
+
+from component_plot import (
+    rainbow_text,
+    change_snsbar_width,
+    cplot_wind_vectors,
+    cplot_lon180,
+    cplot_lon180_ctr,
+    plt_mesh_pars,
+    plot_loc,
+    draw_polygon,
+)
+
+from calculations import (
+    find_ilat_ilon,
     )
 
 from metplot import si2reflectance, si2radiance
 
+
 # endregion
 
 
-# region plot MODIS Terra and Aqua 1KM
+# region plot 'MOD02HKM', 'MYD02HKM': Calibrated Radiances
+
+year, month, day, hour = 2020, 6, 2, 5
+doy = datetime(year, month, day).timetuple().tm_yday
+
+for iproduct in ['MOD021KM', 'MYD021KM', 'MOD02HKM', 'MYD02HKM']:
+    # iproduct = 'MYD02HKM'
+    print(f'#-------------------------------- {iproduct}')
+    fl = sorted(glob.glob(f'scratch/data/obs/MODIS/{iproduct}/{year}/{doy:03d}/*.{hour:02d}??.061.*.hdf'))
+    
+    lat = []
+    lon = []
+    rgb = []
+    for ifile in fl:
+        # ifile = fl[0]
+        print(ifile)
+        hdf_sd = SD(ifile, SDC.READ)
+        # for ivar in hdf_sd.datasets().keys():
+        #     print(f'#---------------- {ivar}')
+        # lat.append(hdf_sd.select('Latitude')[:])
+        # lon.append(hdf_sd.select('Longitude')[:])
+        scn = Scene(filenames={'modis_l1b': [ifile]})
+        scn.load(["longitude", "latitude"])
+        lon.append(scn["longitude"].values)
+        lat.append(scn["latitude"].values)
+        
+        # red
+        try:
+            EV_RefSB = hdf_sd.select('EV_250_Aggr1km_RefSB')
+        except HDF4Error:
+            EV_RefSB = hdf_sd.select('EV_250_Aggr500_RefSB')
+        red_reflectance = si2reflectance(
+            EV_RefSB[0],
+            scales=EV_RefSB.attributes()['reflectance_scales'][0],
+            offsets=EV_RefSB.attributes()['reflectance_offsets'][0])
+        
+        # green and blue
+        try:
+            EV_RefSB = hdf_sd.select('EV_500_Aggr1km_RefSB')
+        except HDF4Error:
+            EV_RefSB = hdf_sd.select('EV_500_RefSB')
+        green_reflectance = si2reflectance(
+            EV_RefSB[1],
+            scales=EV_RefSB.attributes()['reflectance_scales'][1],
+            offsets=EV_RefSB.attributes()['reflectance_offsets'][1])
+        blue_reflectance = si2reflectance(
+            EV_RefSB[0],
+            scales=EV_RefSB.attributes()['reflectance_scales'][0],
+            offsets=EV_RefSB.attributes()['reflectance_offsets'][0])
+        
+        rgb.append(np.dstack([red_reflectance, green_reflectance, blue_reflectance]))
+    
+    lat = np.concatenate(lat, axis=0)
+    lon = np.concatenate(lon, axis=0)
+    rgb = np.concatenate(rgb, axis=0)
+    
+    if lat.shape[0] == 2 * rgb.shape[0]:
+        lat = block_reduce(lat, block_size=(2, 2), func=np.min)
+        lon = block_reduce(lon, block_size=(2, 2), func=np.min)
+    
+    fig, ax = globe_plot(figsize=np.array([88, 44]) / 2.54, lw=1,
+                         projections = ccrs.Robinson(central_longitude=180))
+    ax.pcolormesh(lon, lat, rgb, transform=ccrs.PlateCarree(), alpha=0.5)
+    fig.savefig('figures/test1.png')
+
+
+
+
+
+
+
+
+'''
+    # not necessary
+    lon = lon % 360
+    
+    # does not work
+    import pyproj
+    lont, latt = pyproj.transform('epsg:4326', ccrs.Mollweide(central_longitude=180), lon, lat, always_xy=True)
+    ax.pcolormesh(lont, latt, rgb, transform=ccrs.Mollweide(central_longitude=180))
+    
+    # does not work
+    mask = lon>180
+    rgbcopy = rgb.copy()
+    rgbcopy[np.broadcast_to(mask[:, :, np.newaxis], rgb.shape)] = np.nan
+    ax.pcolormesh(lon, lat, rgbcopy, transform=ccrs.PlateCarree())
+    
+    # mask = lat>60 # works
+    mask = lon<=0 # does not work with default/'nearest'/'gouraud' shading
+    rgbcopy = rgb.copy()
+    rgbcopy[np.broadcast_to(mask[:, :, np.newaxis], rgb.shape)] = np.nan
+    ax.pcolormesh(lon, lat, rgbcopy, transform=ccrs.PlateCarree())
+    
+    #---- works ugly
+    # , projections = ccrs.PlateCarree(central_longitude=180),
+    # not working:
+    # projections = ccrs.Mollweide(central_longitude=-180)
+    
+    #---- not working
+    # ax.pcolormesh(lon, lat, np.zeros_like(lat), color=rgb.reshape(-1, 3),
+    #               transform=ccrs.PlateCarree())
+    
+    
+        hdf_vs = HDF(fl[0]).vstart()
+        for ivdata in hdf_vs.vdatainfo():
+            print(f'#---------------- {ivdata}')
+        scn = Scene(filenames={'modis_l1b': [ifile]})
+        for ids in scn.available_dataset_names():
+            print(f'#---------------- {ids}')
+'''
+# endregion
+
+
+# region plot 'MOD021KM' 'MYD021KM': Calibrated Radiances
 
 
 year, month, day, hour = 2020, 6, 2, 3
@@ -143,6 +292,106 @@ Band 29: 8.400 - 8.700
         # ax.pcolormesh(lon, lat, np.zeros_like(lat), color=image.reshape(-1, 3),
         #               transform=ccrs.PlateCarree())
         
+'''
+# endregion
+
+
+# region plot L2 products
+
+year, month, day, hour = 2020, 6, 2, 3
+doy = datetime(year, month, day).timetuple().tm_yday
+regions = ['global', 'BARRA-C2']
+
+for iproduct in ['MYD06_L2']:
+    print(f'#-------------------------------- {iproduct}')
+    
+    fl = sorted(glob.glob(f'scratch/data/obs/MODIS/{iproduct}/{year}/{doy:03d}/*.{hour:02d}??.061.*.hdf'))
+    hdf_sd = SD(fl[0], SDC.READ)
+    
+    for ivar in hdf_sd.datasets().keys():
+        # ivar = 'Cloud_Fraction'
+        if ivar == 'Cloud_Fraction':
+            pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+                cm_min=0, cm_max=100, cm_interval1=10, cm_interval2=10,
+                cmap='Blues',)
+            extend = 'neither'
+        else:
+            continue
+        print(f'#---------------- {ivar}')
+        
+        lat = []
+        lon = []
+        time = []
+        var_data = []
+        for ifile in fl:
+            # ifile = fl[1]
+            print(ifile)
+            hdf_sd = SD(ifile, SDC.READ)
+            lat.append(hdf_sd.select('Latitude')[:])
+            lon.append(hdf_sd.select('Longitude')[:])
+            time.append(np.datetime64('1993-01-01T00:00:00') + hdf_sd.select('Scan_Start_Time')[:].astype('timedelta64[s]'))
+            var_data.append(hdf_sd.select(ivar)[:])
+        
+        lat = np.concatenate(lat, axis=0)
+        lon = np.concatenate(lon, axis=0)
+        time = np.concatenate(time, axis=0)
+        var_data = np.concatenate(var_data, axis=0)
+        
+        for iregion in regions:
+            # iregion = 'global'
+            print(f'#-------- {iregion}')
+            
+            if iregion == 'global':
+                min_lon, max_lon, min_lat, max_lat = [-180, 180, -90, 90]
+                fig, ax = globe_plot(figsize=np.array([88, 44]) / 2.54, lw=1)
+                fm_bottom = 0.2
+            elif iregion == 'BARRA-C2':
+                min_lon, max_lon, min_lat, max_lat = [110.58, 157.34, -43.69, -7.01]
+                fig, ax = regional_plot(extent=[min_lon, max_lon, min_lat, max_lat], central_longitude=180)
+            
+            mask = (lon >= min_lon) & (lon <= max_lon) & (lat >= min_lat) & (lat <= max_lat)
+            lon = ma.masked_where(~mask, lon)
+            lat = ma.masked_where(~mask, lat)
+            var_data = ma.masked_where(~mask, var_data)
+            
+            plt_mesh = ax.pcolormesh(
+                lon, lat, var_data,
+                norm=pltnorm, cmap=pltcmp, transform=ccrs.PlateCarree())
+            
+            cbar = fig.colorbar(
+                plt_mesh, #cm.ScalarMappable(norm=pltnorm, cmap=pltcmp), #
+                format=remove_trailing_zero_pos,
+                orientation="horizontal", ticks=pltticks, extend=extend,
+                cax=fig.add_axes([0.05, fm_bottom-0.12, 0.9, 0.03]))
+            cbar.ax.set_xlabel(f'{iproduct} {ivar}', linespacing=1.5)
+            fig.savefig('figures/test.png')
+
+
+
+
+'''
+        # np.concatenate([SD(fl[0], SDC.READ).select('Latitude')[:], SD(fl[1], SDC.READ).select('Latitude')[:]], axis=0)
+
+
+    # 'MOD021KM' 'MYD021KM': Calibrated Radiances
+    # 'MOD03' 'MYD03':       Geolocation Fields
+    # 'MOD04_L2' 'MYD04_L2': Aerosol Product
+    # 'MOD05_L2' 'MYD05_L2': Total Precipitable Water
+    # 'MOD06_L2' 'MYD06_L2': Cloud Product
+    # 'MOD07_L2' 'MYD07_L2': Atmospheric Profiles
+    # 'MOD35_L2' 'MYD35_L2': Cloud Mask
+
+
+    hdf_vs = HDF(fl[0]).vstart()
+    for ivdata in hdf_vs.vdatainfo():
+        print(f'#---------------- {ivdata}')
+    try:
+        scn = Scene(filenames={'modis_l1b': [fl[0]]})
+    except ValueError:
+        scn = Scene(filenames={'modis_l2': [fl[0]]})
+    for ids in scn.available_dataset_names():
+        print(f'#---------------- {ids}')
+    print(scn.available_composite_ids())
 '''
 # endregion
 
@@ -284,7 +533,5 @@ for iproduct in ['MOD02QKM', 'MYD02QKM', 'MOD02HKM', 'MYD02HKM']:
 
 '''
 # endregion
-
-
 
 

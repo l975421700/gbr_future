@@ -224,6 +224,7 @@ for iproduct in [
         # ivar = 'CPR_Cloud_mask'
         # ivar = 'Radar_Reflectivity'
         # ivar = 'RO_liq_number_conc'
+        # ivar = 'LO_RO_number_conc'
         # print(f'#---------------- {ivar}')
         if ivar in cs_info[iproduct].keys():
             print(f'#---------------- {ivar}')
@@ -231,9 +232,14 @@ for iproduct in [
         else:
             continue
         
-        if ivar == 'RO_liq_number_conc':
+        if ivar in ['RO_liq_number_conc', 'LO_RO_number_conc']:
             pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
                 cm_min=0, cm_max=160, cm_interval1=10, cm_interval2=20,
+                cmap='viridis_r',)
+            extend = 'max'
+        elif ivar == 'RO_ice_number_conc':
+            pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+                cm_min=0, cm_max=240, cm_interval1=15, cm_interval2=30,
                 cmap='viridis_r',)
             extend = 'max'
         else:
