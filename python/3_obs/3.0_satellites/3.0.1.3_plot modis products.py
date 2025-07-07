@@ -7,6 +7,7 @@
 
 # data analysis
 import numpy as np
+import pandas as pd
 import numpy.ma as ma
 import glob
 from datetime import datetime, timedelta
@@ -69,7 +70,7 @@ from calculations import (
     find_ilat_ilon,
     )
 
-from metplot import si2reflectance, si2radiance
+from metplot import get_modis_latlonrgbs
 
 
 # endregion
@@ -77,73 +78,65 @@ from metplot import si2reflectance, si2radiance
 
 # region plot 'MOD02HKM', 'MYD02HKM': Calibrated Radiances
 
-year, month, day, hour = 2020, 6, 2, 5
-doy = datetime(year, month, day).timetuple().tm_yday
+product_sat = {
+    'MOD021KM': 'Terra', 'MYD021KM': 'Aqua',
+    'MOD02HKM': 'Terra', 'MYD02HKM': 'Aqua',
+}
 
-for iproduct in ['MOD021KM', 'MYD021KM', 'MOD02HKM', 'MYD02HKM']:
-    # iproduct = 'MYD02HKM'
-    print(f'#-------------------------------- {iproduct}')
-    fl = sorted(glob.glob(f'scratch/data/obs/MODIS/{iproduct}/{year}/{doy:03d}/*.{hour:02d}??.061.*.hdf'))
+starttime = datetime(2020, 6, 2, 6)
+endtime = datetime(2020, 6, 2, 6)
+timeseries = pd.date_range(start=starttime, end=endtime, freq='h')
+products = ['MOD021KM', 'MYD021KM'] # ['MOD021KM', 'MYD021KM', 'MOD02HKM', 'MYD02HKM']
+regions = ['global'] # ['global', 'BARRA-C2']
+
+for itime in timeseries:
+    print(f'#-------------------------------- {itime}')
     
-    lat = []
-    lon = []
-    rgb = []
-    for ifile in fl:
-        # ifile = fl[0]
-        print(ifile)
-        hdf_sd = SD(ifile, SDC.READ)
-        # for ivar in hdf_sd.datasets().keys():
-        #     print(f'#---------------- {ivar}')
-        # lat.append(hdf_sd.select('Latitude')[:])
-        # lon.append(hdf_sd.select('Longitude')[:])
-        scn = Scene(filenames={'modis_l1b': [ifile]})
-        scn.load(["longitude", "latitude"])
-        lon.append(scn["longitude"].values)
-        lat.append(scn["latitude"].values)
+    year, month, day, hour = itime.year, itime.month, itime.day, itime.hour
+    doy = datetime(year, month, day).timetuple().tm_yday
+    
+    for iproduct in products:
+        print(f'#---------------- {iproduct}')
+        fl = sorted(glob.glob(f'scratch/data/obs/MODIS/{iproduct}/{year}/{doy:03d}/*.{hour:02d}??.061.*.hdf'))
+        lats, lons, rgbs = get_modis_latlonrgbs(fl)
         
-        # red
-        try:
-            EV_RefSB = hdf_sd.select('EV_250_Aggr1km_RefSB')
-        except HDF4Error:
-            EV_RefSB = hdf_sd.select('EV_250_Aggr500_RefSB')
-        red_reflectance = si2reflectance(
-            EV_RefSB[0],
-            scales=EV_RefSB.attributes()['reflectance_scales'][0],
-            offsets=EV_RefSB.attributes()['reflectance_offsets'][0])
+        if lats.shape[0] == 2 * rgbs.shape[0]:
+            lats = block_reduce(lats, block_size=(2, 2), func=np.min)
+            lons = block_reduce(lons, block_size=(2, 2), func=np.min)
         
-        # green and blue
-        try:
-            EV_RefSB = hdf_sd.select('EV_500_Aggr1km_RefSB')
-        except HDF4Error:
-            EV_RefSB = hdf_sd.select('EV_500_RefSB')
-        green_reflectance = si2reflectance(
-            EV_RefSB[1],
-            scales=EV_RefSB.attributes()['reflectance_scales'][1],
-            offsets=EV_RefSB.attributes()['reflectance_offsets'][1])
-        blue_reflectance = si2reflectance(
-            EV_RefSB[0],
-            scales=EV_RefSB.attributes()['reflectance_scales'][0],
-            offsets=EV_RefSB.attributes()['reflectance_offsets'][0])
+        # # trim nan values
+        # row_mask = np.all(np.isfinite(lons), axis=1) & np.all(np.isfinite(lats), axis=1)
+        # col_mask = np.all(np.isfinite(lons), axis=0) & np.all(np.isfinite(lats), axis=0)
+        # lons = lons[:, col_mask][row_mask]
+        # lats = lats[:, col_mask][row_mask]
+        # rgbs = rgbs[:, col_mask, :][row_mask]
         
-        rgb.append(np.dstack([red_reflectance, green_reflectance, blue_reflectance]))
-    
-    lat = np.concatenate(lat, axis=0)
-    lon = np.concatenate(lon, axis=0)
-    rgb = np.concatenate(rgb, axis=0)
-    
-    if lat.shape[0] == 2 * rgb.shape[0]:
-        lat = block_reduce(lat, block_size=(2, 2), func=np.min)
-        lon = block_reduce(lon, block_size=(2, 2), func=np.min)
-    
-    fig, ax = globe_plot(figsize=np.array([88, 44]) / 2.54, lw=1,
-                         projections = ccrs.Robinson(central_longitude=180))
-    ax.pcolormesh(lon, lat, rgb, transform=ccrs.PlateCarree(), alpha=0.5)
-    fig.savefig('figures/test1.png')
-
-
-
-
-
+        for iregion in regions:
+            print(f'#-------- {iregion}')
+            
+            opng = f'figures/3_satellites/3.2_modis/3.2.0_images/3.2.0.0 {iproduct} {iregion} {str(itime)[:13]} UTC.png'
+            label = f'MODIS {product_sat[iproduct]} {iproduct} {str(itime)[:16]} UTC'
+            if iregion == 'global':
+                fig, ax = globe_plot(
+                    figsize=np.array([24, 13]) / 2.54, lw=0.1,
+                    projections = ccrs.Robinson(central_longitude=180))
+                ax.pcolormesh(lons, lats, rgbs, transform=ccrs.PlateCarree())
+                fig.text(0.5, 0.01, label, ha='center', va='bottom')
+                fig.subplots_adjust(left=0.01,right=0.99,bottom=0.05,top=0.99)
+            elif iregion == 'BARRA-C2':
+                min_lon, max_lon, min_lat, max_lat = [110.58, 157.34, -43.69, -7.01]
+                mask = (lons>=min_lon) & (lons<=max_lon) & (lats>=min_lat) & (lats<=max_lat)
+                rgbscopy = rgbs.copy()
+                rgbscopy[np.broadcast_to(~mask[:, :, np.newaxis], rgbs.shape)] = np.nan
+                fig, ax = regional_plot(
+                    extent=[min_lon, max_lon, min_lat, max_lat],
+                    central_longitude=180,
+                    figsize = np.array([8.8, 7.4]) / 2.54)
+                ax.pcolormesh(lons, lats, rgbscopy, transform=ccrs.PlateCarree())
+                fig.text(0.5, 0.01, label, ha='center', va='bottom')
+                fig.subplots_adjust(left=0.01,right=0.99,bottom=0.06,top=0.99)
+            
+            fig.savefig(opng, dpi=1200)
 
 
 
@@ -176,14 +169,6 @@ for iproduct in ['MOD021KM', 'MYD021KM', 'MOD02HKM', 'MYD02HKM']:
     #---- not working
     # ax.pcolormesh(lon, lat, np.zeros_like(lat), color=rgb.reshape(-1, 3),
     #               transform=ccrs.PlateCarree())
-    
-    
-        hdf_vs = HDF(fl[0]).vstart()
-        for ivdata in hdf_vs.vdatainfo():
-            print(f'#---------------- {ivdata}')
-        scn = Scene(filenames={'modis_l1b': [ifile]})
-        for ids in scn.available_dataset_names():
-            print(f'#---------------- {ids}')
 '''
 # endregion
 

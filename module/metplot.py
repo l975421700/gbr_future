@@ -1,6 +1,6 @@
 
 
-# region si2reflectance
+# region si2reflectance, si2radiance, get_modis_latlonrgb
 
 def si2reflectance(scaled_integers, scales, offsets, gamma = 2.2):
     import numpy as np
@@ -24,6 +24,81 @@ def si2radiance(scaled_integers, scales, offsets):
     radiance = scales * (si - offsets)
     return radiance
 
+
+def get_modis_latlonrgb(ifile):
+    import numpy as np
+    from pyhdf.SD import SD, SDC
+    from pyhdf.HDF import HDF
+    from pyhdf.VS import VS
+    from pyhdf.error import HDF4Error
+    from satpy.scene import Scene
+    
+    hdf_sd = SD(ifile, SDC.READ)
+    scn = Scene(filenames={'modis_l1b': [ifile]})
+    
+    scn.load(["longitude", "latitude"])
+    lon = scn["longitude"].values
+    lat = scn["latitude"].values
+    
+    try:
+        EV_RefSB = hdf_sd.select('EV_250_Aggr1km_RefSB')
+    except HDF4Error:
+        EV_RefSB = hdf_sd.select('EV_250_Aggr500_RefSB')
+    red_reflectance = si2reflectance(
+        EV_RefSB[0],
+        scales=EV_RefSB.attributes()['reflectance_scales'][0],
+        offsets=EV_RefSB.attributes()['reflectance_offsets'][0])
+    
+    try:
+        EV_RefSB = hdf_sd.select('EV_500_Aggr1km_RefSB')
+    except HDF4Error:
+        EV_RefSB = hdf_sd.select('EV_500_RefSB')
+    green_reflectance = si2reflectance(
+        EV_RefSB[1],
+        scales=EV_RefSB.attributes()['reflectance_scales'][1],
+        offsets=EV_RefSB.attributes()['reflectance_offsets'][1])
+    blue_reflectance = si2reflectance(
+        EV_RefSB[0],
+        scales=EV_RefSB.attributes()['reflectance_scales'][0],
+        offsets=EV_RefSB.attributes()['reflectance_offsets'][0])
+    
+    rgb = np.dstack([red_reflectance, green_reflectance, blue_reflectance])
+    
+    return(lat, lon, rgb)
+
+
+def get_modis_latlonrgbs(fl):
+    import numpy as np
+    lats = []
+    lons = []
+    rgbs = []
+    for ifile in fl:
+        print(ifile)
+        lat, lon, rgb = get_modis_latlonrgb(ifile)
+        lats.append(lat)
+        lons.append(lon)
+        rgbs.append(rgb)
+    
+    lats = np.concatenate(lats, axis=0)
+    lons = np.concatenate(lons, axis=0)
+    rgbs = np.concatenate(rgbs, axis=0)
+    return(lats, lons, rgbs)
+
+
+'''
+        for ivar in hdf_sd.datasets().keys():
+            print(f'#---------------- {ivar}')
+        # lat.append(hdf_sd.select('Latitude')[:])
+        # lon.append(hdf_sd.select('Longitude')[:])
+
+        hdf_vs = HDF(fl[0]).vstart()
+        for ivdata in hdf_vs.vdatainfo():
+            print(f'#---------------- {ivdata}')
+        scn = Scene(filenames={'modis_l1b': [ifile]})
+        for ids in scn.available_dataset_names():
+            print(f'#---------------- {ids}')
+
+'''
 
 # endregion
 

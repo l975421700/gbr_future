@@ -164,6 +164,29 @@ suite_res = {
     'u-dr149': ['d11km', 'd4p4kmsa'],
 }
 
+suite_label = {
+    'u-dq700': r'$control$',
+    'u-dq788': r'$NE4p4$',
+    'u-dq799': r'$NE1p1$',
+    'u-dq911': r'$NE2p2$',
+    'u-dq912': r'$LD4p4$',
+    'u-dq987': r'$CN150$',
+    'u-dr040': r'$CN100$',
+    'u-dr041': r'$CN50$',
+    'u-dr091': r'$SA1p1$',
+    'u-dr093': r'$SA2p2$',
+    'u-dr095': r'$SA4p4$',
+    'u-dr105': r'$Lev120$',
+    'u-dr107': r'$Lev140$',
+    'u-dr108': r'$RAL2M$',
+    'u-dr109': r'$RAL2T$',
+    'u-dr144': r'$NE4p4_CN50$',
+    'u-dr145': r'$NE1p1_CN50$',
+    'u-dr146': r'$NE2p2_CN50$',
+    'u-dr147': r'$SA1p1_CN50$',
+    'u-dr148': r'$SA2p2_CN50$',
+    'u-dr149': r'$SA4p4_CN50$',
+}
 
 # endregion
 
