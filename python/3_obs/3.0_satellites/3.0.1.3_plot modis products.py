@@ -70,7 +70,7 @@ from calculations import (
     find_ilat_ilon,
     )
 
-from metplot import get_modis_latlonrgbs
+from metplot import si2reflectance, si2radiance, get_modis_latlonrgbs
 
 
 # endregion

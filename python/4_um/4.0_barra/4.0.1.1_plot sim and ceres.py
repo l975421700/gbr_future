@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -P nf33 -l walltime=5:00:00,ncpus=1,mem=60GB,jobfs=100MB,storage=gdata/v46+gdata/rt52+gdata/ob53+gdata/zv2+scratch/v46
+# qsub -I -q normal -P v46 -l walltime=5:00:00,ncpus=1,mem=60GB,jobfs=100MB,storage=gdata/v46+gdata/rt52+gdata/ob53+gdata/zv2+scratch/v46
 
 
 # region import packages
@@ -1174,7 +1174,7 @@ stats.describe(plt_data[plt_colnames[3]].values, axis=None, nan_policy='omit')
 
 # region plot CERES, ERA5, BARRA-R2, BARRA-C2, am
 
-years = '2001'
+years = '2016'
 yeare = '2023'
 
 # TOA
@@ -1211,8 +1211,9 @@ mpl.rc('font', family='Times New Roman', size=8)
 plt_colnames = ['CERES', 'ERA5 - CERES', 'BARRA-R2 - CERES', 'BARRA-C2 - CERES']
 min_lon, max_lon, min_lat, max_lat = [110.58, 157.34, -43.69, -7.01]
 
-for var2 in ['rsut', 'rsutcs', 'rsutcl']:
+for var2 in ['rsut']:
     # var2='rsut'
+    # ['rsut', 'rsutcs', 'rsutcl']
     var1 = cmip6_era5_var[var2]
     print(f'#-------------------------------- {var1} and {var2}')
     
@@ -1235,27 +1236,26 @@ for var2 in ['rsut', 'rsutcs', 'rsutcl']:
     era5_ann = regrid(era5_sl_mon_alltime['ann'].sel(time=slice(years, yeare)), ds_out=plt_data['CERES'])
     plt_data['ERA5 - CERES'] = (era5_ann.mean(dim='time') - plt_data['CERES']).compute()
     plt_rmse['ERA5 - CERES'] = np.sqrt(np.square(plt_data['ERA5 - CERES']).weighted(np.cos(np.deg2rad(plt_data['ERA5 - CERES'].lat))).mean()).values
-    # ttest_fdr_res = ttest_fdr_control(ceres_ann, era5_ann)
-    # plt_data['ERA5 - CERES'] = plt_data['ERA5 - CERES'].where(ttest_fdr_res, np.nan)
+    ttest_fdr_res = ttest_fdr_control(ceres_ann, era5_ann)
+    plt_data['ERA5 - CERES'] = plt_data['ERA5 - CERES'].where(ttest_fdr_res, np.nan)
     
     barra_r2_ann = regrid(barra_r2_mon_alltime['ann'].sel(time=slice(years, yeare)), ds_out=plt_data['CERES'])
     plt_data['BARRA-R2 - CERES'] = (barra_r2_ann.mean(dim='time') - plt_data['CERES']).compute()
     plt_rmse['BARRA-R2 - CERES'] = np.sqrt(np.square(plt_data['BARRA-R2 - CERES']).weighted(np.cos(np.deg2rad(plt_data['BARRA-R2 - CERES'].lat))).mean()).values
-    # ttest_fdr_res = ttest_fdr_control(ceres_ann, barra_r2_ann)
-    # plt_data['BARRA-R2 - CERES'] = plt_data['BARRA-R2 - CERES'].where(ttest_fdr_res, np.nan)
+    ttest_fdr_res = ttest_fdr_control(ceres_ann, barra_r2_ann)
+    plt_data['BARRA-R2 - CERES'] = plt_data['BARRA-R2 - CERES'].where(ttest_fdr_res, np.nan)
     
     barra_c2_ann = regrid(barra_c2_mon_alltime['ann'].sel(time=slice(years, yeare)), ds_out=plt_data['CERES'])
     plt_data['BARRA-C2 - CERES'] = (barra_c2_ann.mean(dim='time') - plt_data['CERES']).compute()
     plt_rmse['BARRA-C2 - CERES'] = np.sqrt(np.square(plt_data['BARRA-C2 - CERES']).weighted(np.cos(np.deg2rad(plt_data['BARRA-C2 - CERES'].lat))).mean()).values
-    # ttest_fdr_res = ttest_fdr_control(ceres_ann, barra_c2_ann)
-    # plt_data['BARRA-C2 - CERES'] = plt_data['BARRA-C2 - CERES'].where(ttest_fdr_res, np.nan)
+    ttest_fdr_res = ttest_fdr_control(ceres_ann, barra_c2_ann)
+    plt_data['BARRA-C2 - CERES'] = plt_data['BARRA-C2 - CERES'].where(ttest_fdr_res, np.nan)
     
     # barpa_c_ann = regrid(barpa_c_mon_alltime['ann'].sel(time=slice(years, yeare)), ds_out=plt_data['CERES'])
     # plt_data['BARPA-C - CERES'] = (barpa_c_ann.mean(dim='time') - plt_data['CERES']).compute()
     # plt_rmse['BARPA-C - CERES'] = np.sqrt(np.square(plt_data['BARPA-C - CERES']).weighted(np.cos(np.deg2rad(plt_data['BARPA-C - CERES'].lat))).mean()).values
     # ttest_fdr_res = ttest_fdr_control(ceres_ann, barpa_c_ann)
     # plt_data['BARPA-C - CERES'] = plt_data['BARPA-C - CERES'].where(ttest_fdr_res, np.nan)
-    
     
     print(stats.describe(plt_data['CERES'].values, axis=None, nan_policy='omit'))
     print(stats.describe(np.concatenate([plt_data[colname].values for colname in plt_colnames[1:]]), axis=None, nan_policy='omit'))

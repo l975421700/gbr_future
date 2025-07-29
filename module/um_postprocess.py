@@ -180,12 +180,12 @@ suite_label = {
     'u-dr107': r'$Lev140$',
     'u-dr108': r'$RAL2M$',
     'u-dr109': r'$RAL2T$',
-    'u-dr144': r'$NE4p4_CN50$',
-    'u-dr145': r'$NE1p1_CN50$',
-    'u-dr146': r'$NE2p2_CN50$',
-    'u-dr147': r'$SA1p1_CN50$',
-    'u-dr148': r'$SA2p2_CN50$',
-    'u-dr149': r'$SA4p4_CN50$',
+    'u-dr144': r'$NE4p4\_CN50$',
+    'u-dr145': r'$NE1p1\_CN50$',
+    'u-dr146': r'$NE2p2\_CN50$',
+    'u-dr147': r'$SA1p1\_CN50$',
+    'u-dr148': r'$SA2p2\_CN50$',
+    'u-dr149': r'$SA4p4\_CN50$',
 }
 
 # endregion

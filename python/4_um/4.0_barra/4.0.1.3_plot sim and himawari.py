@@ -1,6 +1,6 @@
 
 
-# qsub -I -q express -l walltime=5:00:00,ncpus=1,mem=192GB,jobfs=100MB,storage=gdata/v46+gdata/rt52+gdata/ob53+gdata/zv2+scratch/v46
+# qsub -I -q normal -l walltime=2:00:00,ncpus=1,mem=192GB,jobfs=100MB,storage=gdata/v46+gdata/rt52+gdata/ob53+gdata/zv2+scratch/v46
 
 
 # region import packages
@@ -106,8 +106,9 @@ mpl.rc('font', family='Times New Roman', size=8)
 plt_colnames = ['Himawari', 'ERA5 - Himawari', 'BARRA-R2 - Himawari', 'BARRA-C2 - Himawari']
 min_lon, max_lon, min_lat, max_lat = [110.58, 157.34, -43.69, -7.01]
 
-for var2 in ['cll', 'clm', 'clh', 'clt']:
+for var2 in ['cll']:
     # var2='cll'
+    # ['cll', 'clm', 'clh', 'clt']
     var1 = cmip6_era5_var[var2]
     print(f'#-------------------------------- {var1} and {var2}')
     
@@ -155,13 +156,19 @@ for var2 in ['cll', 'clm', 'clh', 'clt']:
     print(stats.describe(np.concatenate([plt_data[colname].values for colname in plt_colnames[1:]]), axis=None, nan_policy='omit'))
     
     cbar_label1 = '2016-2023 ' + era5_varlabels[var1]
-    cbar_label2 = 'Difference in 2016-2023 ' + era5_varlabels[var1]
-    extend1 = 'neither'
+    cbar_label2 = 'Difference in ' + era5_varlabels[var1]
     extend2 = 'both'
     
-    if var2 in ['clh', 'clm', 'cll', 'clt']:
+    if var2 in ['clt']:
         pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
             cm_min=0, cm_max=100, cm_interval1=10, cm_interval2=10, cmap='viridis_r',)
+        extend1 = 'neither'
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-30, cm_max=30, cm_interval1=5, cm_interval2=10, cmap='BrBG_r',)
+    elif var2 in ['clh', 'clm', 'cll']:
+        pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+            cm_min=0, cm_max=60, cm_interval1=5, cm_interval2=10, cmap='Blues_r',)
+        extend1 = 'max'
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
             cm_min=-30, cm_max=30, cm_interval1=5, cm_interval2=10, cmap='BrBG_r',)
     

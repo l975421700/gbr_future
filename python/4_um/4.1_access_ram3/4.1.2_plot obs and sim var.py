@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -P gx60 -l walltime=3:00:00,ncpus=1,mem=20GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/qx55
+# qsub -I -q normal -P v46 -l walltime=3:00:00,ncpus=1,mem=20GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/qx55
 
 
 # region import packages
@@ -533,8 +533,38 @@ for isuite in suites:
 # region compare sensitivity tests
 
 year, month, day, hour = 2020, 6, 2, 4
-dss = [('CERES', ''), ('ERA5', ''), ('u-dq700', 0), ('u-dq700', 1)]
-var2s = ['rsut']
+dsss = [
+    # [('CERES',''),('ERA5',''),('BARRA-R2',''),('BARRA-C2','')], # original
+    # [('CERES',''),('BARRA-R2',''),('u-dq700',0)], # original
+    # [('CERES',''),('BARRA-C2',''),('u-dq700',1)], # original
+    # [('CERES',''),('ERA5',''),('u-dq700',0),('u-dq700',1)], # control
+    # [('CERES',''),('u-dq700',1),('u-dq788',1),('u-dq912',1)], # BF
+    # [('CERES',''),('u-dq700',1),('u-dr105',1),('u-dr107',1)], # Levs
+    # [('CERES',''),('u-dq788',1),('u-dq911',1),('u-dq799',1)], # res
+    # [('CERES',''),('u-dq700',1),('u-dr040',1),('u-dr041',1)], # CDNC
+    # [('CERES',''),('u-dr095',1),('u-dr093',1),('u-dr091',1)], # SA res
+    # [('CERES',''),('u-dq700',1),('u-dr095',1),('u-dq912',1)], # BF
+    # [('CERES',''),('u-dq700',1),('u-dq799',1),('u-dr041',1),('u-dr145',1)],
+    # [('CERES',''),('u-dq700',1),('u-dr091',1),('u-dr041',1),('u-dr147',1)],
+    
+    # [('CERES',''),('u-dq700',1),('u-dr108',1),('u-dr109',1)], # param
+    # [('CERES',''),('u-dq700',1),('u-dq987',1)], # branches
+    # [('CERES',''),('u-dq987',1),('u-dr040',1),('u-dr041',1)], # CDNC
+    
+    [('ERA5',''),('BARRA-R2',''),('BARRA-C2','')], # original
+    [('ERA5',''),('BARRA-R2',''),('u-dq700',0)], # original
+    [('ERA5',''),('BARRA-C2',''),('u-dq700',1)], # original
+    [('ERA5',''),('u-dq700',0),('u-dq700',1)], # control
+    [('ERA5',''),('u-dq700',1),('u-dq788',1),('u-dq912',1)], # BF
+    [('ERA5',''),('u-dq700',1),('u-dr105',1),('u-dr107',1)], # Levs
+    [('ERA5',''),('u-dq788',1),('u-dq911',1),('u-dq799',1)], # res
+    [('ERA5',''),('u-dq700',1),('u-dr040',1),('u-dr041',1)], # CDNC
+    [('ERA5',''),('u-dr095',1),('u-dr093',1),('u-dr091',1)], # SA res
+    [('ERA5',''),('u-dq700',1),('u-dr095',1),('u-dq912',1)], # BF
+    [('ERA5',''),('u-dq700',1),('u-dq799',1),('u-dr041',1),('u-dr145',1)],
+    [('ERA5',''),('u-dq700',1),('u-dr091',1),('u-dr041',1),('u-dr147',1)],
+]
+var2s = ['cll', 'clwvi']
 modes = ['org', 'diff']
 
 ntime = pd.Timestamp(year,month,day,hour) + pd.Timedelta('1h')
@@ -548,10 +578,13 @@ pwidth  = 6.6
 nrow = 1
 regridder = {}
 
-for var2 in var2s:
+for dss in dsss:
+  # dss = [('CERES',''),('ERA5',''),('u-dq700',0),('u-dq700',1)] # control
+  print(f'#-------------------------------- {dss}')
+  for var2 in var2s:
     # var2 = 'rsut'
     var1 = cmip6_era5_var[var2]
-    print(f'#-------------------------------- {var1} vs. {var2}')
+    print(f'#---------------- {var1} vs. {var2}')
     
     if var2 == 'prw':
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
@@ -835,6 +868,43 @@ for var2 in var2s:
                 extentl[1] = np.max((extentl[1], ds[ilabel].lon[-1].values))
                 extentl[2] = np.min((extentl[2], ds[ilabel].lat[0].values))
                 extentl[3] = np.max((extentl[3], ds[ilabel].lat[-1].values))
+        elif ids[0] == 'BARRA-R2':
+            if var2 in ['psl', 'uas', 'vas', 'prw', 'clwvi', 'clivi', 'sfcWind', 'tas', 'huss', 'hurs']:
+                ds['BARRA-R2'] = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/{var2}/latest/{var2}_AUS-11_ERA5_historical_hres_BOM_BARRA-R2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')[var2].sel(time=pd.Timestamp(year,month,day,hour))
+            elif var2 in ['cll', 'clm', 'clh', 'clt', 'pr', 'evspsbl', 'evspsblpot', 'hfls', 'hfss', 'rsut', 'rlut']:
+                ds['BARRA-R2'] = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/{var2}/latest/{var2}_AUS-11_ERA5_historical_hres_BOM_BARRA-R2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')[var2].sel(time=pd.Timestamp(year,month,day,hour) + pd.Timedelta('30min'))
+        elif ids[0] == 'BARRA-C2':
+            if var2 in ['psl', 'uas', 'vas', 'prw', 'clwvi', 'clivi', 'sfcWind', 'tas', 'huss', 'hurs']:
+                ds['BARRA-C2'] = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/{var2}/latest/{var2}_AUST-04_ERA5_historical_hres_BOM_BARRA-C2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')[var2].sel(time=pd.Timestamp(year,month,day,hour))
+            elif var2 in ['cll', 'clm', 'clh', 'clt', 'pr', 'evspsbl', 'evspsblpot', 'hfls', 'hfss', 'rsut', 'rlut']:
+                ds['BARRA-C2'] = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/{var2}/latest/{var2}_AUST-04_ERA5_historical_hres_BOM_BARRA-C2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')[var2].sel(time=pd.Timestamp(year,month,day,hour) + pd.Timedelta('30min'))
+        
+        if ids[0] in ['BARRA-R2', 'BARRA-C2']:
+            if var2 in ['pr', 'evspsbl', 'evspsblpot']:
+                ds[ids[0]] *= seconds_per_d / 24
+            elif var2 in ['tas', 'ts']:
+                ds[ids[0]] -= zerok
+            elif var2 in ['rlus', 'rluscs', 'rlut', 'rlutcs', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'hfls', 'hfss']:
+                ds[ids[0]] *= (-1)
+            elif var2 in ['psl']:
+                ds[ids[0]] /= 100
+            elif var2 in ['huss']:
+                ds[ids[0]] *= 1000
+            
+            if len(extents)==0:
+                extents = [ds[ids[0]].lon[0].values, ds[ids[0]].lon[-1].values,
+                           ds[ids[0]].lat[0].values, ds[ids[0]].lat[-1].values]
+                extentl = [ds[ids[0]].lon[0].values, ds[ids[0]].lon[-1].values,
+                           ds[ids[0]].lat[0].values, ds[ids[0]].lat[-1].values]
+            else:
+                extents[0] = np.max((extents[0], ds[ids[0]].lon[0].values))
+                extents[1] = np.min((extents[1], ds[ids[0]].lon[-1].values))
+                extents[2] = np.max((extents[2], ds[ids[0]].lat[0].values))
+                extents[3] = np.min((extents[3], ds[ids[0]].lat[-1].values))
+                extentl[0] = np.min((extentl[0], ds[ids[0]].lon[0].values))
+                extentl[1] = np.max((extentl[1], ds[ids[0]].lon[-1].values))
+                extentl[2] = np.min((extentl[2], ds[ids[0]].lat[0].values))
+                extentl[3] = np.max((extentl[3], ds[ids[0]].lat[-1].values))
     
     min_lons, max_lons, min_lats, max_lats = extents
     min_lonl, max_lonl, min_latl, max_latl = extentl
@@ -876,12 +946,15 @@ for var2 in var2s:
                     norm=pltnorm, cmap=pltcmp,
                     transform=ccrs.PlateCarree(), zorder=1)
                 mean = ds[ids1].sel(lon=slice(min_lons, max_lons), lat=slice(min_lats, max_lats)).weighted(np.cos(np.deg2rad(ds[ids1].sel(lon=slice(min_lons, max_lons), lat=slice(min_lats, max_lats)).lat))).mean().values
-                plt_colnames[jcol] = f'{plt_colnames[jcol]}, Mean: {str(np.round(mean, 1))}'
+                if jcol==0:
+                    plt_colnames[jcol] = f'{plt_colnames[jcol]}, Mean: {str(np.round(mean, 1))}'
+                else:
+                    plt_colnames[jcol] = f'{plt_colnames[jcol]}, {str(np.round(mean, 1))}'
                 cbar = fig.colorbar(
                     plt_mesh, #cm.ScalarMappable(norm=pltnorm1, cmap=pltcmp1), #
                     format=remove_trailing_zero_pos,
                     orientation="horizontal", ticks=pltticks, extend=extend,
-                    cax=fig.add_axes([1/3, fm_bottom-0.115, 1/3, 0.03]))
+                    cax=fig.add_axes([1/3, fm_bottom-0.1, 1/3, 0.03]))
                 cbar.ax.set_xlabel(era5_varlabels[var1].replace('day^{-1}', 'hour^{-1}'), fontsize=9, labelpad=1)
                 cbar.ax.tick_params(labelsize=9, pad=1)
         elif imode=='diff':
@@ -904,7 +977,10 @@ for var2 in var2s:
                         method='bilinear')
                 plt_data = regridder[f'{ids1} - {ids2}'](ds[ids1]) - ds[ids2].sel(lon=slice(ds[ids1].lon[0], ds[ids1].lon[-1]), lat=slice(ds[ids1].lat[0], ds[ids1].lat[-1]))
                 rmse = np.sqrt(np.square(plt_data.sel(lon=slice(min_lons, max_lons), lat=slice(min_lats, max_lats))).weighted(np.cos(np.deg2rad(plt_data.sel(lon=slice(min_lons, max_lons), lat=slice(min_lats, max_lats)).lat))).mean()).values
-                plt_colnames[jcol] = f'{plt_colnames[jcol]}, RMSE: {str(np.round(rmse, 1))}'
+                if jcol==1:
+                    plt_colnames[jcol] = f'{plt_colnames[jcol]}, RMSE: {str(np.round(rmse, 1))}'
+                else:
+                    plt_colnames[jcol] = f'{plt_colnames[jcol]}, {str(np.round(rmse, 1))}'
                 plt_mesh2 = axs[jcol].pcolormesh(
                     plt_data.lon, plt_data.lat, plt_data,
                     norm=pltnorm2, cmap=pltcmp2,
@@ -913,21 +989,21 @@ for var2 in var2s:
                 plt_mesh, #cm.ScalarMappable(norm=pltnorm1, cmap=pltcmp1), #
                 format=remove_trailing_zero_pos,
                 orientation="horizontal", ticks=pltticks, extend=extend,
-                cax=fig.add_axes([0.05, fm_bottom-0.115, 0.4, 0.03]))
+                cax=fig.add_axes([0.05, fm_bottom-0.1, 0.4, 0.03]))
             cbar.ax.set_xlabel(era5_varlabels[var1].replace('day^{-1}', 'hour^{-1}'), fontsize=9, labelpad=1)
             cbar.ax.tick_params(labelsize=9, pad=1)
             cbar2 = fig.colorbar(
                 plt_mesh2, #cm.ScalarMappable(norm=pltnorm2, cmap=pltcmp2), #
                 format=remove_trailing_zero_pos,
                 orientation="horizontal", ticks=pltticks2, extend=extend2,
-                cax=fig.add_axes([0.55, fm_bottom-0.115, 0.4, 0.03]))
+                cax=fig.add_axes([0.55, fm_bottom-0.1, 0.4, 0.03]))
             cbar2.ax.set_xlabel(f"Difference in {era5_varlabels[var1].replace('day^{-1}', 'hour^{-1}')}", fontsize=9, labelpad=1)
             cbar2.ax.tick_params(labelsize=9, pad=1)
         
         for jcol in range(ncol):
             axs[jcol].text(0, 1.02, f'({string.ascii_lowercase[jcol]}) {plt_colnames[jcol]}', ha='left', va='bottom', transform=axs[jcol].transAxes)
         
-        fig.text(0.5, fm_bottom-0.02, f'{year}-{month:02d}-{day:02d} {hour:02d}:00 UTC', ha='center', va='top')
+        fig.text(0.5, fm_bottom-0.01, f'{year}-{month:02d}-{day:02d} {hour:02d}:00 UTC', ha='center', va='top')
         fig.subplots_adjust(left=0.005, right=0.995, bottom=fm_bottom, top=fm_top)
         fig.savefig(opng)
     
@@ -938,6 +1014,18 @@ for var2 in var2s:
 
 
 '''
+dss = [('CERES',''),('ERA5',''),('u-dq700',0),('u-dq700',1)] # control
+dss = [('CERES',''),('u-dq700',1),('u-dq788',1),('u-dq912',1)] # BF
+dss = [('CERES',''),('u-dq700',1),('u-dr105',1),('u-dr107',1)] # Levs
+dss = [('CERES',''),('u-dq788',1),('u-dq911',1),('u-dq799',1)] # res
+dss = [('CERES',''),('u-dq700',1),('u-dq987',1)] # branches
+dss = [('CERES',''),('u-dq987',1),('u-dr040',1),('u-dr041',1)] # CDNC
+dss = [('CERES',''),('u-dq700',1),('u-dr040',1),('u-dr041',1)] # CDNC
+dss = [('CERES',''),('u-dr095',1),('u-dr093',1),('u-dr091',1)] # SA res
+dss = [('CERES',''),('u-dq700',1),('u-dr095',1),('u-dq912',1)] # BF
+dss = [('CERES',''),('u-dq700',1),('u-dr108',1),('u-dr109',1)] # param
+dss = [('CERES',''),('u-dq700',1),('u-dq799',1),('u-dr041',1),('u-dr145',1)]
+dss = [('CERES',''),('u-dq700',1),('u-dr091',1),('u-dr041',1),('u-dr147',1)]
 
 '''
 # endregion
