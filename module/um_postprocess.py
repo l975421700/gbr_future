@@ -162,6 +162,7 @@ suite_res = {
     'u-dr147': ['d11km', 'd1p1kmsa'],
     'u-dr148': ['d11km', 'd2p2kmsa'],
     'u-dr149': ['d11km', 'd4p4kmsa'],
+    'u-dr789': ['d11km', 'd4p4km'],
 }
 
 suite_label = {
@@ -186,6 +187,7 @@ suite_label = {
     'u-dr147': r'$SA1p1\_CN50$',
     'u-dr148': r'$SA2p2\_CN50$',
     'u-dr149': r'$SA4p4\_CN50$',
+    'u-dr789': r'$cl\_inhomo0p5$',
 }
 
 # endregion

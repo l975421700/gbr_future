@@ -28,3 +28,4 @@ python ${HOME}/code/gbr_future/shell/0_runpy/run1.py
 # nci_account -P gx60 -v
 # nci_account -P gb02 -v
 
+# cp -aruvP /home/563/qg8515/scratch/data /g/data/gx60/qg8515/ &

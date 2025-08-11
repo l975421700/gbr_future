@@ -546,25 +546,26 @@ dsss = [
     # [('CERES',''),('u-dq700',1),('u-dr095',1),('u-dq912',1)], # BF
     # [('CERES',''),('u-dq700',1),('u-dq799',1),('u-dr041',1),('u-dr145',1)],
     # [('CERES',''),('u-dq700',1),('u-dr091',1),('u-dr041',1),('u-dr147',1)],
+    # [('CERES',''),('ERA5',''),('u-dq700',1),('u-dr789',1)], # cloud inhomo
     
     # [('CERES',''),('u-dq700',1),('u-dr108',1),('u-dr109',1)], # param
     # [('CERES',''),('u-dq700',1),('u-dq987',1)], # branches
     # [('CERES',''),('u-dq987',1),('u-dr040',1),('u-dr041',1)], # CDNC
     
-    [('ERA5',''),('BARRA-R2',''),('BARRA-C2','')], # original
-    [('ERA5',''),('BARRA-R2',''),('u-dq700',0)], # original
-    [('ERA5',''),('BARRA-C2',''),('u-dq700',1)], # original
-    [('ERA5',''),('u-dq700',0),('u-dq700',1)], # control
-    [('ERA5',''),('u-dq700',1),('u-dq788',1),('u-dq912',1)], # BF
-    [('ERA5',''),('u-dq700',1),('u-dr105',1),('u-dr107',1)], # Levs
-    [('ERA5',''),('u-dq788',1),('u-dq911',1),('u-dq799',1)], # res
-    [('ERA5',''),('u-dq700',1),('u-dr040',1),('u-dr041',1)], # CDNC
+    # [('ERA5',''),('BARRA-R2',''),('BARRA-C2','')], # original
+    # [('ERA5',''),('BARRA-R2',''),('u-dq700',0)], # original
+    # [('ERA5',''),('BARRA-C2',''),('u-dq700',1)], # original
+    # [('ERA5',''),('u-dq700',0),('u-dq700',1)], # control
+    # [('ERA5',''),('u-dq700',1),('u-dq788',1),('u-dq912',1)], # BF
+    # [('ERA5',''),('u-dq700',1),('u-dr105',1),('u-dr107',1)], # Levs
+    # [('ERA5',''),('u-dq788',1),('u-dq911',1),('u-dq799',1)], # res
+    # [('ERA5',''),('u-dq700',1),('u-dr040',1),('u-dr041',1)], # CDNC
     [('ERA5',''),('u-dr095',1),('u-dr093',1),('u-dr091',1)], # SA res
-    [('ERA5',''),('u-dq700',1),('u-dr095',1),('u-dq912',1)], # BF
-    [('ERA5',''),('u-dq700',1),('u-dq799',1),('u-dr041',1),('u-dr145',1)],
-    [('ERA5',''),('u-dq700',1),('u-dr091',1),('u-dr041',1),('u-dr147',1)],
+    # [('ERA5',''),('u-dq700',1),('u-dr095',1),('u-dq912',1)], # BF
+    # [('ERA5',''),('u-dq700',1),('u-dq799',1),('u-dr041',1),('u-dr145',1)],
+    # [('ERA5',''),('u-dq700',1),('u-dr091',1),('u-dr041',1),('u-dr147',1)],
 ]
-var2s = ['cll', 'clwvi']
+var2s = ['pr']
 modes = ['org', 'diff']
 
 ntime = pd.Timestamp(year,month,day,hour) + pd.Timedelta('1h')
@@ -835,8 +836,13 @@ for dss in dsss:
                 ds[ilabel] = xr.open_dataset(sorted(glob.glob(f'/home/563/qg8515/cylc-run/{isuite}/share/cycle/{year}{month:02d}{day:02d}T0000Z/Australia/{ires}/*/um/umnsaa_pa000.nc'))[0]).pipe(preprocess_umoutput)[var2stash[var2]]
             elif var2 in ['ts', 'blh', 'tas', 'huss', 'hurs', 'das', 'clslw', 'psl', 'CAPE', 'prw']:
                 ds[ilabel] = xr.open_dataset(sorted(glob.glob(f'/home/563/qg8515/cylc-run/{isuite}/share/cycle/{year}{month:02d}{day:02d}T0000Z/Australia/{ires}/*/um/umnsaa_pa000.nc'))[0]).pipe(preprocess_umoutput)[var2stash[var2]].sel(time=pd.Timestamp(year,month,day,hour))
-            elif var2 in ['rlds', 'rlu_t_s', 'rsut', 'rsdt', 'rsutcs', 'rsdscs', 'rsds', 'rlns', 'rlut', 'rlutcs', 'rldscs', 'hfss', 'hfls', 'rain', 'snow', 'pr', 'cll', 'clm', 'clh', 'clt', 'clwvi', 'clivi']:
+            elif var2 in ['rlds', 'rlu_t_s', 'rsut', 'rsdt', 'rsutcs', 'rsdscs', 'rsds', 'rlns', 'rlut', 'rlutcs', 'rldscs', 'hfss', 'hfls', 'rain', 'snow', 'cll', 'clm', 'clh', 'clt', 'clwvi', 'clivi']:
                 ds[ilabel] = xr.open_dataset(sorted(glob.glob(f'/home/563/qg8515/cylc-run/{isuite}/share/cycle/{year1}{month1:02d}{day1:02d}T0000Z/Australia/{ires}/*/um/umnsaa_pa000.nc'))[0]).pipe(preprocess_umoutput)[var2stash[var2]].sel(time=pd.Timestamp(year1,month1,day1,hour1))
+            elif var2 in ['pr']:
+                try:
+                    ds[ilabel] = xr.open_dataset(sorted(glob.glob(f'/home/563/qg8515/cylc-run/{isuite}/share/cycle/{year1}{month1:02d}{day1:02d}T0000Z/Australia/{ires}/*/um/umnsaa_pa000.nc'))[0]).pipe(preprocess_umoutput)[var2stash_gal[var2]].sel(time=pd.Timestamp(year1,month1,day1,hour1))
+                except KeyError:
+                    ds[ilabel] = xr.open_dataset(sorted(glob.glob(f'/home/563/qg8515/cylc-run/{isuite}/share/cycle/{year1}{month1:02d}{day1:02d}T0000Z/Australia/{ires}/*/um/umnsaa_pa000.nc'))[0]).pipe(preprocess_umoutput)[var2stash_ral['rain']].sel(time=pd.Timestamp(year1,month1,day1,hour1)) + xr.open_dataset(sorted(glob.glob(f'/home/563/qg8515/cylc-run/{isuite}/share/cycle/{year1}{month1:02d}{day1:02d}T0000Z/Australia/{ires}/*/um/umnsaa_pa000.nc'))[0]).pipe(preprocess_umoutput)[var2stash_ral['snow']].sel(time=pd.Timestamp(year1,month1,day1,hour1))
             else:
                 print(f'Warning: no var in {ilabel}')
             
