@@ -17,6 +17,7 @@ from pyhdf.VS import VS
 from pyhdf.error import HDF4Error
 from satpy.scene import Scene
 from skimage.measure import block_reduce
+import xarray as xr
 
 # plot
 import matplotlib as mpl
@@ -53,6 +54,9 @@ from namelist import (
     seconds_per_d,
     zerok,
     panel_labels,
+    month_days,
+    era5_varlabels,
+    cmip6_era5_var,
     )
 
 from component_plot import (
@@ -378,6 +382,63 @@ for iproduct in ['MYD06_L2']:
         print(f'#---------------- {ids}')
     print(scn.available_composite_ids())
 '''
+# endregion
+
+
+# region plot 'MOD08_M3', 'MYD08_M3': total column  q, qcl, qcf
+
+products = ['MOD08_M3', 'MYD08_M3']
+vars = ['prw', 'clivi', 'clwvi']
+years = '2000'; yeare = '2024'
+
+for iproduct in products:
+    # iproduct = 'MOD08_M3'
+    print(f'#---------------- {iproduct}')
+    
+    dss = xr.open_dataset(f'scratch/data/obs/MODIS/{iproduct}/{'_'.join(vars)}.nc').sel(time=slice(years, yeare))
+    
+    for ivar in vars:
+        # ivar = vars[1]
+        print(f'#-------- {ivar}')
+        
+        plt_data = np.average(
+            dss[ivar].groupby('time.month').mean('time', skipna=True),
+            axis=0,
+            weights=month_days)
+        plt_data_gm = np.average(
+            plt_data[np.isfinite(plt_data)],
+            weights=np.cos(np.deg2rad(np.repeat(dss.lat.values[:, np.newaxis], len(dss.lon), axis=1)))[np.isfinite(plt_data)])
+        
+        # print(np.nanmean(plt_data))
+        
+        cbar_label = f'{iproduct} annual mean ({years}-{yeare}) {era5_varlabels[cmip6_era5_var[ivar]]}\nglobal mean: {str(np.round(plt_data_gm, 2))}'
+        
+        if ivar=='clivi':
+            pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+                cm_min=0, cm_max=140, cm_interval1=10, cm_interval2=20, cmap='viridis_r',)
+        elif ivar=='clwvi':
+            pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+                cm_min=0, cm_max=500, cm_interval1=50, cm_interval2=50, cmap='viridis_r',)
+        elif ivar in ['prw']:
+            pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+                cm_min=0, cm_max=60, cm_interval1=3, cm_interval2=6, cmap='viridis_r',)
+        else:
+            print(f'Warning unspecified colorbar for {ivar}')
+        
+        fig, ax = globe_plot(figsize=np.array([12, 8]) / 2.54, fm_bottom=0.13)
+        plt_mesh1 = ax.pcolormesh(
+            dss.lon, dss.lat, plt_data,
+            norm=pltnorm, cmap=pltcmp,transform=ccrs.PlateCarree(),zorder=1,)
+        cbar = fig.colorbar(
+            plt_mesh1, ax=ax, aspect=40, format=remove_trailing_zero_pos,
+            orientation="horizontal", shrink=0.8, ticks=pltticks, extend='max',
+            pad=0.02, fraction=0.13,)
+        cbar.ax.set_xlabel(cbar_label, ha='center', linespacing=1.3, labelpad=4)
+        fig.savefig(f'figures/3_satellites/3.2_modis/3.2.1_cloud_properties/3.2.1.0 {iproduct} {ivar} global am.png')
+
+
+
+
 # endregion
 
 

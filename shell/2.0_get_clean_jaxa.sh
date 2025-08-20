@@ -54,7 +54,7 @@ fi
 
 # wget -r -nH --cut-dirs=5 --continue --no-remove-listing --ftp-user='gaoqg229_gmail.com' --ftp-password='SP+wari8' ftp://ftp.ptree.jaxa.jp/pub/himawari/L2/CLP/010/2016\${month}/* -P /scratch/v46/qg8515/data/obs/jaxa/clp
 
-# wget -r -nH --cut-dirs=5 --continue --no-remove-listing --ftp-user='gaoqg229_gmail.com' --ftp-password='SP+wari8' ftp://ftp.ptree.jaxa.jp/pub/himawari/L2/CLP/010/201601/03/01/NC_H08_20160103_0140_L2CLP010_FLDK.02401_02401.nc -P /home/563/qg8515/data/obs/jaxa/clp
+# wget -r -nH --cut-dirs=5 --continue --no-remove-listing --ftp-user='gaoqg229_gmail.com' --ftp-password='SP+wari8' ftp://ftp.ptree.jaxa.jp/pub/himawari/L2/CLP/010/202006/02/04/NC_H08_20200602_0400_L2CLP010_FLDK.02401_02401.nc -P /home/563/qg8515/data/obs/jaxa/clp
 
 # lftp -u gaoqg229_gmail.com,SP+wari8 ftp.ptree.jaxa.jp
 # ls /pub/himawari/L2/CLP/010

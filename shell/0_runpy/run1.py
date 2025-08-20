@@ -1,91 +1,129 @@
 
 
-# qsub -I -q express -P nf33 -l walltime=3:00:00,ncpus=1,mem=192GB,jobfs=100MB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22
+# qsub -I -q normal -P v46 -l walltime=3:00:00,ncpus=1,mem=20GB,jobfs=100MB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22
 
 
 # region import packages
 
 # data analysis
 import numpy as np
+import pandas as pd
+import numpy.ma as ma
+import glob
+from datetime import datetime, timedelta
+from pyhdf.SD import SD, SDC
+from pyhdf.HDF import HDF
+from pyhdf.VS import VS
+from pyhdf.error import HDF4Error
+from satpy.scene import Scene
+from skimage.measure import block_reduce
 import xarray as xr
-import dask
-dask.config.set({"array.slicing.split_large_chunks": True})
-from dask.diagnostics import ProgressBar
-pbar = ProgressBar()
-pbar.register()
-import joblib
-import argparse
-from metpy.calc import specific_humidity_from_dewpoint, relative_humidity_from_dewpoint, vertical_velocity_pressure, mixing_ratio_from_specific_humidity, relative_humidity_from_specific_humidity
-from metpy.units import units
-import time
+
+# plot
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import cartopy.crs as ccrs
+mpl.rcParams['figure.dpi'] = 600
+mpl.rc('font', family='Times New Roman', size=10)
+mpl.rcParams['axes.linewidth'] = 0.2
+plt.rcParams.update({"mathtext.fontset": "stix"})
 
 # management
 import os
 import sys  # print(sys.path)
 sys.path.append(os.getcwd() + '/code/gbr_future/module')
-import glob
-import pickle
-import datetime
-# import psutil
-# process = psutil.Process()
+import psutil
+process = psutil.Process()
 # print(process.memory_info().rss / 2**30)
 
-from calculations import (
-    mon_sea_ann,
+# self defined
+from mapplot import (
+    globe_plot,
+    regional_plot,
+    ticks_labels,
+    scale_bar,
+    plot_maxmin_points,
+    remove_trailing_zero,
+    remove_trailing_zero_pos,
     )
 
-from namelist import zerok, seconds_per_d
+from namelist import (
+    month_jan,
+    monthini,
+    seasons,
+    seconds_per_d,
+    zerok,
+    panel_labels,
+    )
+
+from component_plot import (
+    rainbow_text,
+    change_snsbar_width,
+    cplot_wind_vectors,
+    cplot_lon180,
+    cplot_lon180_ctr,
+    plt_mesh_pars,
+    plot_loc,
+    draw_polygon,
+)
+
+from calculations import (
+    find_ilat_ilon,
+    )
+
+from metplot import si2reflectance, si2radiance, get_modis_latlonrgbs
+
 
 # endregion
 
 
-# region get BARRA-C2 alltime hourly pl data
+# region get 'MOD08_M3', 'MYD08_M3': total column q, qcl, qcf
 
-years = 1979
-yeare = 2023
+products = ['MOD08_M3']
+vars = {'Atmospheric_Water_Vapor_Mean_Mean': 'prw',
+        'Cloud_Water_Path_Ice_Mean_Mean': 'clivi',
+        'Cloud_Water_Path_Liquid_Mean_Mean': 'clwvi'}
 
-for var in ['hur']:
-    print(f'#-------------------------------- {var}')
+for iproduct in products:
+    # iproduct = 'MOD08_M3'
+    print(f'#---------------- {iproduct}')
+    fl = sorted(glob.glob(f'scratch/data/obs/MODIS/{iproduct}/????/???/*.hdf'))
+    das = []
+    lon = SD(fl[0], SDC.READ).select('XDim')[:]
+    lat = SD(fl[0], SDC.READ).select('YDim')[:]
     
-    fl = sorted([
-        file for iyear in np.arange(years, yeare+1, 1)
-        for file in glob.glob(f'scratch/data/sim/um/barra_c2/{var}/{var}_monthly_{iyear}??.nc')])
+    for ifile in fl:
+        # ifile = fl[0]
+        print(f'#-------- {ifile}')
+        
+        hdf_sd = SD(ifile, SDC.READ)
+        year = ifile.split('/')[-3]
+        doy  = ifile.split('/')[-2]
+        date = datetime.strptime(f'{year}{doy}', '%Y%j')
+        
+        for ivar in vars.keys():
+            # ivar = list(vars.keys())[0]
+            # print(f'#-------- {ivar}')
+            
+            ds = hdf_sd.select(ivar)[:].astype(float)
+            ds_attr = hdf_sd.select(ivar).attributes()
+            
+            ds[(ds < ds_attr['valid_range'][0]) | (ds > ds_attr['valid_range'][1]) | (ds == ds_attr['_FillValue'])] = np.nan
+            ds = ds_attr['scale_factor'] * (ds - ds_attr['add_offset'])
+            if ivar == 'Atmospheric_Water_Vapor_Mean_Mean': ds *= 10
+            # print(np.nanmean(ds))
+            
+            da = xr.DataArray(
+                ds[None, ], dims=('time', 'lat', 'lon'),
+                coords={'time': [date], 'lat': lat, 'lon': lon},
+                name=vars[ivar])
+            das.append(da)
+        hdf_sd.end()
     
-    barra_c2_pl_mon = xr.open_mfdataset(fl, parallel=True)[var]
-    barra_c2_pl_mon_alltime = mon_sea_ann(
-        var_monthly=barra_c2_pl_mon, lcopy=False,mm=True,sm=True,am=True)
-    
-    ofile = f'data/sim/um/barra_c2/barra_c2_pl_mon_alltime_{var}.pkl'
+    dss = xr.merge(das)
+    ofile = f'scratch/data/obs/MODIS/{iproduct}/{'_'.join(vars.values())}.nc'
     if os.path.exists(ofile): os.remove(ofile)
-    with open(ofile,'wb') as f:
-        pickle.dump(barra_c2_pl_mon_alltime, f)
-    
-    del barra_c2_pl_mon, barra_c2_pl_mon_alltime
+    dss.to_netcdf(ofile)
 
 
-
-
-'''
-#-------------------------------- check
-years = 1979
-yeare = 2023
-itime = -1
-
-for var in ['hur', 'wap']:
-    # var = 'hur'
-    print(f'#-------------------------------- {var}')
-    
-    fl = sorted([
-        file for iyear in np.arange(years, yeare+1, 1)
-        for file in glob.glob(f'scratch/data/sim/um/barra_r2/{var}/{var}_monthly_{iyear}??.nc')])
-    
-    with open(f'data/sim/um/barra_r2/barra_r2_pl_mon_alltime_{var}.pkl','rb') as f:
-        barra_r2_pl_mon_alltime = pickle.load(f)
-    
-    ds = xr.open_dataset(fl[itime])[var].squeeze().values
-    ds1 = barra_r2_pl_mon_alltime['mon'].isel(time=itime).values
-    print((ds1[np.isfinite(ds1)] == ds[np.isfinite(ds)]).all())
-
-'''
-# endregion
 

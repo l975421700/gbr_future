@@ -37,13 +37,13 @@ mamba install h5netcdf -y
 mamba install fortls -y
 mamba install easygems -y
 mamba install healpy -y
-mamba install windrose -y
-mamba install pycircstat -y
-# mamba install satpy -y
-# mamba install geopandas -y
+mamba install satpy -y
+mamba install geopandas -y
 conda clean -a -y -y -y -y -y
 
 #-------------------------------- Other packages
+# mamba install windrose -y
+# mamba install pycircstat -y
 # mamba install intake-xarray -y
 # mamba install cfgrib -y
 # mamba install statsmodels -y

@@ -218,7 +218,7 @@ for isuite in ['u-dq700', 'u-dq788', 'u-dq799', 'u-dq911', 'u-dq912', 'u-dq987',
     # ['u-dq700', 'u-dq788', 'u-dq799', 'u-dq911', 'u-dq912', 'u-dq987', 'u-dr040', 'u-dr041', 'u-dr091', 'u-dr093', 'u-dr095']
     print(f'#-------------------------------- {isuite}')
     
-    for var2 in ['clwvi']:
+    for var2 in ['clm', 'clh', 'clt']:
         # var2 = 'orog'
         # ['cll', 'clm', 'clh', 'clt', 'prw', 'ts', 'tas', 'huss', 'hurs', 'hus', 'ta', 'ua', 'va', 'wa', 'wap', 'theta', 'qcf', 'qcl', 'qc', 'qs', 'qr', 'qg', 'qt', 'mv', 'mcl', 'mcf', 'mr', 'mg', 'mcf2', 'pa', 'hfls', 'hfss', 'rlut', 'rlds', 'rsut', 'rsdt', 'rsutcs', 'rsdscs', 'rsds', 'rlns', 'rlutcs', 'rldscs', 'psl', 'blh', 'iland', 'orog', 'ncloud', 'nrain', 'nice', 'nsnow', 'ngraupel', 'rlds2', 'rlu_t_s', 'das', 'blendingw', 'radar_reflectivity', 'clslw', 'CAPE', 'clwvi', 'clivi']
         var1 = cmip6_era5_var[var2]

@@ -1,9 +1,9 @@
-for idx in $(seq 2006 2020); do
+for idx in $(seq 1 2); do
     qsub -v idx=$idx <<EOF
 #PBS -N qjob$idx
-#PBS -q copyq
-#PBS -l walltime=10:00:00
-#PBS -l mem=4GB
+#PBS -q normal
+#PBS -l walltime=3:00:00
+#PBS -l mem=192GB
 #PBS -l jobfs=100MB
 #PBS -l ncpus=1
 #PBS -j oe
@@ -11,22 +11,15 @@ for idx in $(seq 2006 2020); do
 #PBS -P v46
 #PBS -r y
 
-/home/563/qg8515/code/gbr_future/shell/2.2_get_cloudsat.sh $idx 2B-GEOPROF.P1_R05 #2B-CWC-RO.P1_R05 #2B-GEOPROF-LIDAR.P2_R05 #
+cd ${HOME}
+source miniconda3/bin/activate lowclouds
 
-# cd ${HOME}
+python code/gbr_future/shell/0_runpy/run${idx}.py
 
-# source ${HOME}/miniconda3/bin/activate lowclouds
-# python ${HOME}/code/gbr_future/shell/0_runpy/run${idx}.py
-# python ${HOME}/code/gbr_future/shell/0_runpy/run1.py -y $idx
-
-# module load python3/3.12.1
-# /apps/python3/3.12.1/bin/python3 ${HOME}/code/gbr_future/shell/0_runpy/run${idx}.py
-
-# ${HOME}/code/gbr_future/shell/2.1_check_jaxa.sh $idx
-
-# Memory Used: 1.1GB; Walltime Used: 04:08:33
-# sftp -ar gaoqg229ATgmail.com@www.cloudsat.cira.colostate.edu:Data/2B-CLDCLASS-LIDAR.P1_R05/${idx} /home/563/qg8515/scratch/data/obs/CloudSat_CALIPSO/2B-CLDCLASS-LIDAR.P1_R05
-
+# code/gbr_future/shell/2.2_get_cloudsat.sh $idx 2B-GEOPROF.P1_R05 #2B-CWC-RO.P1_R05 #2B-GEOPROF-LIDAR.P2_R05
+# python code/gbr_future/shell/0_runpy/run1.py -y $idx
+# code/gbr_future/shell/2.1_check_jaxa.sh $idx
+# sftp -ar gaoqg229ATgmail.com@www.cloudsat.cira.colostate.edu:Data/2B-CLDCLASS-LIDAR.P1_R05/${idx} scratch/data/obs/CloudSat_CALIPSO/2B-CLDCLASS-LIDAR.P1_R05 # Memory Used: 1.1GB; Walltime Used: 04:08:33
 EOF
 done
 

@@ -1,147 +1,129 @@
 
 
+# qsub -I -q normal -P v46 -l walltime=3:00:00,ncpus=1,mem=20GB,jobfs=100MB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22
+
+
 # region import packages
 
 # data analysis
 import numpy as np
+import pandas as pd
+import numpy.ma as ma
+import glob
+from datetime import datetime, timedelta
+from pyhdf.SD import SD, SDC
+from pyhdf.HDF import HDF
+from pyhdf.VS import VS
+from pyhdf.error import HDF4Error
+from satpy.scene import Scene
+from skimage.measure import block_reduce
 import xarray as xr
-import dask
-dask.config.set({"array.slicing.split_large_chunks": True})
-from dask.diagnostics import ProgressBar
-pbar = ProgressBar()
-pbar.register()
-from cdo import Cdo
-cdo=Cdo()
-import tempfile
-import argparse
-from metpy.calc import specific_humidity_from_dewpoint, relative_humidity_from_dewpoint, vertical_velocity_pressure, mixing_ratio_from_specific_humidity, relative_humidity_from_specific_humidity
-from metpy.units import units
-import time
+
+# plot
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import cartopy.crs as ccrs
+mpl.rcParams['figure.dpi'] = 600
+mpl.rc('font', family='Times New Roman', size=10)
+mpl.rcParams['axes.linewidth'] = 0.2
+plt.rcParams.update({"mathtext.fontset": "stix"})
 
 # management
 import os
 import sys  # print(sys.path)
 sys.path.append(os.getcwd() + '/code/gbr_future/module')
-import glob
-import pickle
-import datetime
-from calculations import (
-    mon_sea_ann,
+import psutil
+process = psutil.Process()
+# print(process.memory_info().rss / 2**30)
+
+# self defined
+from mapplot import (
+    globe_plot,
+    regional_plot,
+    ticks_labels,
+    scale_bar,
+    plot_maxmin_points,
+    remove_trailing_zero,
+    remove_trailing_zero_pos,
     )
 
-from namelist import cmip6_units, zerok, seconds_per_d
+from namelist import (
+    month_jan,
+    monthini,
+    seasons,
+    seconds_per_d,
+    zerok,
+    panel_labels,
+    )
+
+from component_plot import (
+    rainbow_text,
+    change_snsbar_width,
+    cplot_wind_vectors,
+    cplot_lon180,
+    cplot_lon180_ctr,
+    plt_mesh_pars,
+    plot_loc,
+    draw_polygon,
+)
+
+from calculations import (
+    find_ilat_ilon,
+    )
+
+from metplot import si2reflectance, si2radiance, get_modis_latlonrgbs
+
 
 # endregion
 
 
-# region derive BARRA-R2 hourly pl data
-# wap:24min; hur:14min
+# region get 'MOD08_M3', 'MYD08_M3': total column q, qcl, qcf
 
-time1 = time.perf_counter()
-var = 'hur' # ['hur', 'wap']
-print(f'#-------------------------------- {var}')
-odir = f'scratch/data/sim/um/barra_r2/{var}'
-os.makedirs(odir, exist_ok=True)
+products = ['MYD08_M3']
+vars = {'Atmospheric_Water_Vapor_Mean_Mean': 'prw',
+        'Cloud_Water_Path_Ice_Mean_Mean': 'clivi',
+        'Cloud_Water_Path_Liquid_Mean_Mean': 'clwvi'}
 
-
-def std_func(ds_in, var):
-    ds = ds_in.expand_dims(dim='pressure', axis=1)
-    varname = [varname for varname in ds.data_vars if varname.startswith(var)][0]
-    ds = ds.rename({varname: var})
-    ds = ds.chunk(chunks={'time': len(ds.time), 'pressure': 1, 'lat': len(ds.lat), 'lon': len(ds.lon)})
-    ds = ds.astype('float32')
-    # if var == 'hus':
-    #     ds = ds * 1000
-    # elif var == 'ta':
-    #     ds = ds - zerok
-    return(ds)
-
-
-parser=argparse.ArgumentParser()
-parser.add_argument('-y', '--year', type=int, required=True,)
-parser.add_argument('-m', '--month', type=int, required=True,)
-args = parser.parse_args()
-
-year=args.year
-month=args.month
-# year=2020; month=6
-print(f'#---------------- {year} {month:02d}')
-
-if var=='wap':
-    vars = ['hus', 'wa', 'ta']
-elif var=='hur':
-    vars = ['hus', 'ta']
-
-dss = {}
-
-for ivar in vars:
-    print(f'#-------- {ivar}')
-    dss[ivar] = xr.open_mfdataset(sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/{ivar}[0-9]*[!m]/latest/{ivar}[0-9]*_AUS-11_ERA5_historical_hres_BOM_BARRA-R2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')), parallel=True, preprocess=lambda ds: std_func(ds, var=ivar))[ivar]
-
-if var=='wap':
-    dss['mixr'] = mixing_ratio_from_specific_humidity(dss['hus'].sel(pressure=dss['wa'].pressure) * units('kg/kg')).compute()
-    dss['wap'] = vertical_velocity_pressure(
-        dss['wa'] * units('m/s'),
-        dss['wa'].pressure * units.hPa,
-        dss['ta'].sel(pressure=dss['wa'].pressure) * units.K,
-        dss['mixr']).metpy.dequantify().astype('float32').compute()
-elif var=='hur':
-    dss['hur'] = (relative_humidity_from_specific_humidity(
-        dss['hus'].pressure * units.hPa,
-        dss['ta'] * units.K,
-        dss['hus'] * units('kg/kg')).metpy.dequantify().astype('float32') * 100).compute()
-
-# ofile1 = f'{odir}/{var}_hourly_{year}{month:02d}.nc'
-ofile2 = f'{odir}/{var}_monthly_{year}{month:02d}.nc'
-# if os.path.exists(ofile1): os.remove(ofile1)
-if os.path.exists(ofile2): os.remove(ofile2)
-
-# dss[var].to_netcdf(ofile1)
-dss[var].resample({'time': '1MS'}).mean().compute().rename(var).to_netcdf(ofile2)
-time2 = time.perf_counter()
-print(f'Execution time: {time2 - time1:.1f} s')
+for iproduct in products:
+    # iproduct = 'MOD08_M3'
+    print(f'#---------------- {iproduct}')
+    fl = sorted(glob.glob(f'scratch/data/obs/MODIS/{iproduct}/????/???/*.hdf'))
+    das = []
+    lon = SD(fl[0], SDC.READ).select('XDim')[:]
+    lat = SD(fl[0], SDC.READ).select('YDim')[:]
+    
+    for ifile in fl:
+        # ifile = fl[0]
+        print(f'#-------- {ifile}')
+        
+        hdf_sd = SD(ifile, SDC.READ)
+        year = ifile.split('/')[-3]
+        doy  = ifile.split('/')[-2]
+        date = datetime.strptime(f'{year}{doy}', '%Y%j')
+        
+        for ivar in vars.keys():
+            # ivar = list(vars.keys())[0]
+            # print(f'#-------- {ivar}')
+            
+            ds = hdf_sd.select(ivar)[:].astype(float)
+            ds_attr = hdf_sd.select(ivar).attributes()
+            
+            ds[(ds < ds_attr['valid_range'][0]) | (ds > ds_attr['valid_range'][1]) | (ds == ds_attr['_FillValue'])] = np.nan
+            ds = ds_attr['scale_factor'] * (ds - ds_attr['add_offset'])
+            if ivar == 'Atmospheric_Water_Vapor_Mean_Mean': ds *= 10
+            # print(np.nanmean(ds))
+            
+            da = xr.DataArray(
+                ds[None, ], dims=('time', 'lat', 'lon'),
+                coords={'time': [date], 'lat': lat, 'lon': lon},
+                name=vars[ivar])
+            das.append(da)
+        hdf_sd.end()
+    
+    dss = xr.merge(das)
+    ofile = f'scratch/data/obs/MODIS/{iproduct}/{'_'.join(vars.values())}.nc'
+    if os.path.exists(ofile): os.remove(ofile)
+    dss.to_netcdf(ofile)
 
 
 
-'''
-#-------------------------------- check
-def std_func(ds_in, var):
-    ds = ds_in.expand_dims(dim='pressure', axis=1)
-    varname = [varname for varname in ds.data_vars if varname.startswith(var)][0]
-    ds = ds.rename({varname: var})
-    ds = ds.chunk(chunks={'time': len(ds.time), 'pressure': 1, 'lat': len(ds.lat), 'lon': len(ds.lon)})
-    ds = ds.astype('float32')
-    return(ds)
-
-year=2020; month=6
-dss = {}
-for ivar in ['hus', 'wa', 'ta']:
-    print(f'#-------- {ivar}')
-    dss[ivar] = xr.open_mfdataset(sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/{ivar}[0-9]*[!m]/latest/{ivar}[0-9]*_AUS-11_ERA5_historical_hres_BOM_BARRA-R2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')), parallel=True, preprocess=lambda ds: std_func(ds, var=ivar))[ivar]
-
-dss['hur'] = xr.open_dataset(f'scratch/data/sim/um/barra_r2/hur/hur_monthly_{year}{month:02d}.nc')['truediv-73f9a6e0c3963a102f2b79317c444192']
-dss['wap'] = xr.open_dataset(f'scratch/data/sim/um/barra_r2/wap/wap_monthly_{year}{month:02d}.nc')['mul-e27a74eafc6d099887e585bc8b6ff4da']
-
-ilat = 100
-ilon = 100
-iplev = 500
-
-aaa = (relative_humidity_from_specific_humidity(
-        iplev * units.hPa,
-        dss['ta'].sel(pressure=iplev).isel(lon=ilat, lat=ilat) * units.K,
-        dss['hus'].sel(pressure=iplev).isel(lon=ilat, lat=ilat) * units('kg/kg')).metpy.dequantify().astype('float32') * 100).compute()
-print((aaa.mean().values - dss['hur'].sel(pressure=iplev).isel(lon=ilat, lat=ilat).squeeze().values) / dss['hur'].sel(pressure=iplev).isel(lon=ilat, lat=ilat).squeeze().values)
-
-bbb = vertical_velocity_pressure(
-    dss['wa'].sel(pressure=iplev).isel(lon=ilat, lat=ilat) * units('m/s'),
-    iplev * units.hPa,
-    dss['ta'].sel(pressure=iplev).isel(lon=ilat, lat=ilat) * units.K,
-    mixing_ratio_from_specific_humidity(
-        dss['hus'].sel(pressure=iplev).isel(lon=ilat, lat=ilat) * units('kg/kg')
-        ).compute()
-    ).metpy.dequantify().astype('float32').compute()
-
-print((bbb.mean().values - dss['wap'].sel(pressure=iplev).isel(lon=ilat, lat=ilat).squeeze().values) / dss['wap'].sel(pressure=iplev).isel(lon=ilat, lat=ilat).squeeze().values)
-
-'''
-# endregion

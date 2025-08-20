@@ -554,18 +554,18 @@ dsss = [
     
     # [('ERA5',''),('BARRA-R2',''),('BARRA-C2','')], # original
     # [('ERA5',''),('BARRA-R2',''),('u-dq700',0)], # original
-    # [('ERA5',''),('BARRA-C2',''),('u-dq700',1)], # original
-    # [('ERA5',''),('u-dq700',0),('u-dq700',1)], # control
-    # [('ERA5',''),('u-dq700',1),('u-dq788',1),('u-dq912',1)], # BF
-    # [('ERA5',''),('u-dq700',1),('u-dr105',1),('u-dr107',1)], # Levs
-    # [('ERA5',''),('u-dq788',1),('u-dq911',1),('u-dq799',1)], # res
-    # [('ERA5',''),('u-dq700',1),('u-dr040',1),('u-dr041',1)], # CDNC
+    [('ERA5',''),('BARRA-C2',''),('u-dq700',1)], # original
+    [('ERA5',''),('u-dq700',0),('u-dq700',1)], # control
+    [('ERA5',''),('u-dq700',1),('u-dq788',1),('u-dq912',1)], # BF
+    [('ERA5',''),('u-dq700',1),('u-dr105',1),('u-dr107',1)], # Levs
+    [('ERA5',''),('u-dq788',1),('u-dq911',1),('u-dq799',1)], # res
+    [('ERA5',''),('u-dq700',1),('u-dr040',1),('u-dr041',1)], # CDNC
     [('ERA5',''),('u-dr095',1),('u-dr093',1),('u-dr091',1)], # SA res
-    # [('ERA5',''),('u-dq700',1),('u-dr095',1),('u-dq912',1)], # BF
-    # [('ERA5',''),('u-dq700',1),('u-dq799',1),('u-dr041',1),('u-dr145',1)],
-    # [('ERA5',''),('u-dq700',1),('u-dr091',1),('u-dr041',1),('u-dr147',1)],
+    [('ERA5',''),('u-dq700',1),('u-dr095',1),('u-dq912',1)], # BF
+    [('ERA5',''),('u-dq700',1),('u-dq799',1),('u-dr041',1),('u-dr145',1)],
+    [('ERA5',''),('u-dq700',1),('u-dr091',1),('u-dr041',1),('u-dr147',1)],
 ]
-var2s = ['pr']
+var2s = ['clm', 'clh', 'clt', 'clivi']
 modes = ['org', 'diff']
 
 ntime = pd.Timestamp(year,month,day,hour) + pd.Timedelta('1h')
@@ -786,22 +786,27 @@ for dss in dsss:
                 era5_t2m = xr.open_dataset(f'/g/data/rt52/era5/single-levels/reanalysis/2t/{year}/2t_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')['t2m'].sel(time=pd.Timestamp(year,month,day,hour))
                 era5_d2m = xr.open_dataset(f'/g/data/rt52/era5/single-levels/reanalysis/2d/{year}/2d_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')['d2m'].sel(time=pd.Timestamp(year,month,day,hour))
                 ds['ERA5'] = relative_humidity_from_dewpoint(era5_t2m * units.K, era5_d2m * units.K) * 100
+                del era5_t2m, era5_d2m
             elif var1=='q2m':
                 era5_sp = xr.open_dataset(f'/g/data/rt52/era5/single-levels/reanalysis/sp/{year}/sp_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')['sp'].sel(time=pd.Timestamp(year,month,day,hour))
                 era5_d2m = xr.open_dataset(f'/g/data/rt52/era5/single-levels/reanalysis/2d/{year}/2d_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')['d2m'].sel(time=pd.Timestamp(year,month,day,hour))
                 ds['ERA5'] = specific_humidity_from_dewpoint(era5_sp * units.Pa, era5_d2m * units.K) * 1000
+                del era5_sp, era5_d2m
             elif var1=='mtuwswrf':
                 era5_mtnswrf = xr.open_dataset(f'/g/data/rt52/era5/single-levels/reanalysis/mtnswrf/{year1}/mtnswrf_era5_oper_sfc_{year1}{month1:02d}01-{year1}{month1:02d}{calendar.monthrange(year1, month1)[1]}.nc')['mtnswrf'].sel(time=pd.Timestamp(year1,month1,day1,hour1))
                 era5_mtdwswrf = xr.open_dataset(f'/g/data/rt52/era5/single-levels/reanalysis/mtdwswrf/{year1}/mtdwswrf_era5_oper_sfc_{year1}{month1:02d}01-{year1}{month1:02d}{calendar.monthrange(year1, month1)[1]}.nc')['mtdwswrf'].sel(time=pd.Timestamp(year1,month1,day1,hour1))
                 ds['ERA5'] = era5_mtnswrf - era5_mtdwswrf
+                del era5_mtnswrf, era5_mtdwswrf
             elif var1=='mtuwswrfcs':
                 era5_mtnswrfcs = xr.open_dataset(f'/g/data/rt52/era5/single-levels/reanalysis/mtnswrfcs/{year1}/mtnswrfcs_era5_oper_sfc_{year1}{month1:02d}01-{year1}{month1:02d}{calendar.monthrange(year1, month1)[1]}.nc')['mtnswrfcs'].sel(time=pd.Timestamp(year1,month1,day1,hour1))
                 era5_mtdwswrf = xr.open_dataset(f'/g/data/rt52/era5/single-levels/reanalysis/mtdwswrf/{year1}/mtdwswrf_era5_oper_sfc_{year1}{month1:02d}01-{year1}{month1:02d}{calendar.monthrange(year1, month1)[1]}.nc')['mtdwswrf'].sel(time=pd.Timestamp(year1,month1,day1,hour1))
                 ds['ERA5'] = era5_mtnswrfcs - era5_mtdwswrf
+                del era5_mtnswrfcs, era5_mtdwswrf
             elif var1=='si10':
                 era5_u10 = xr.open_dataset(f'/g/data/rt52/era5/single-levels/reanalysis/10u/{year}/10u_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')['u10'].sel(time=pd.Timestamp(year,month,day,hour))
                 era5_v10 = xr.open_dataset(f'/g/data/rt52/era5/single-levels/reanalysis/10v/{year}/10v_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')['v10'].sel(time=pd.Timestamp(year,month,day,hour))
                 ds['ERA5'] = (era5_u10**2 + era5_v10**2)**0.5
+                del era5_u10, era5_v10
             elif var1 in ['tp', 'e', 'pev', 'mslhf', 'msshf', 'mtnlwrf', 'msdwlwrf', 'mtdwswrf', 'msdwswrfcs', 'msdwswrf', 'msnlwrf', 'mtnlwrfcs', 'msdwlwrfcs', ]:
                 ds['ERA5'] = xr.open_dataset(f'/g/data/rt52/era5/single-levels/reanalysis/{var1}/{year1}/{var1}_era5_oper_sfc_{year1}{month1:02d}01-{year1}{month1:02d}{calendar.monthrange(year1, month1)[1]}.nc')[var1].sel(time=pd.Timestamp(year1,month1,day1,hour1))
             elif var1 in ['skt', 'blh', 'msl', 'tcwv', 'hcc', 'mcc', 'lcc', 'tcc', 'tclw', 'tciw']:
