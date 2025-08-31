@@ -70,7 +70,6 @@ from namelist import (
     seasons,
     seconds_per_d,
     zerok,
-    panel_labels,
     era5_varlabels,
     cmip6_era5_var,
     )
@@ -86,6 +85,8 @@ from component_plot import (
 
 from calculations import (
     mon_sea_ann,
+    time_weighted_mean,
+    coslat_weighted_mean,
     regrid,
     cdo_regrid,)
 
@@ -97,24 +98,33 @@ from statistics0 import (
 
 # region plot global era5 am data
 
-era5_gridarea = xr.open_dataset('data/obs/era5/era5_gridarea.nc').cell_area
+# era5_gridarea = xr.open_dataset('data/obs/era5/era5_gridarea.nc').cell_area
+years = '2016'
+yeare = '2023'
 
 era5_sl_mon_alltime = {}
-for var in ['toa_albedo', 'toa_albedocs', 'toa_albedocl']:
-    # var = 'toa_albedo'
-    # 'msnrf', 'tp', 'msl', 'sst', 'hcc', 'mcc', 'lcc', 'tcc', 't2m', 'msnlwrf', 'msnswrf', 'mtdwswrf', 'mtnlwrf', 'mtnswrf', 'msdwlwrf', 'msdwswrf', 'msdwlwrfcs', 'msdwswrfcs', 'msnlwrfcs', 'msnswrfcs', 'mtnlwrfcs', 'mtnswrfcs', 'cbh', 'tciw', 'tclw', 'e', 'z', 'mslhf', 'msshf', 'tcw', 'tcwv', 'tcsw', 'tcrw', 'tcslw', 'si10', 'd2m', 'cp', 'lsp', 'deg0l', 'mper', 'pev', 'skt', 'u10', 'v10', 'u100', 'v100',    'msuwlwrf',  'msuwswrf',  'msuwlwrfcs',  'msuwswrfcs',  'msnlwrfcl', 'msnswrfcl', 'msdwlwrfcl', 'msdwswrfcl', 'msuwlwrfcl', 'msuwswrfcl',  'mtuwswrf',  'mtuwswrfcs',  'mtnlwrfcl', 'mtnswrfcl', 'mtuwswrfcl'
+for var in ['tciw', 'tclw']:
+    # var = 'tclw'
+    # 'msnrf', 'tp', 'msl', 'sst', 'hcc', 'mcc', 'lcc', 'tcc', 't2m', 'msnlwrf', 'msnswrf', 'mtdwswrf', 'mtnlwrf', 'mtnswrf', 'msdwlwrf', 'msdwswrf', 'msdwlwrfcs', 'msdwswrfcs', 'msnlwrfcs', 'msnswrfcs', 'mtnlwrfcs', 'mtnswrfcs', 'cbh', 'tciw', 'tclw', 'e', 'z', 'mslhf', 'msshf', 'tcw', 'tcwv', 'tcsw', 'tcrw', 'tcslw', 'si10', 'd2m', 'cp', 'lsp', 'deg0l', 'mper', 'pev', 'skt', 'u10', 'v10', 'u100', 'v100',    'msuwlwrf',  'msuwswrf',  'msuwlwrfcs',  'msuwswrfcs',  'msnlwrfcl', 'msnswrfcl', 'msdwlwrfcl', 'msdwswrfcl', 'msuwlwrfcl', 'msuwswrfcl',  'mtuwswrf',  'mtuwswrfcs',  'mtnlwrfcl', 'mtnswrfcl', 'mtuwswrfcl', 'toa_albedo', 'toa_albedocs', 'toa_albedocl'
     print(f'#-------------------------------- {var}')
     with open(f'data/obs/era5/mon/era5_sl_mon_alltime_{var}.pkl', 'rb') as f:
         era5_sl_mon_alltime[var] = pickle.load(f)
     
-    plt_data = era5_sl_mon_alltime[var]['am'].squeeze()
-    # print(stats.describe(plt_data.values, axis=None, nan_policy='omit'))
-    # del era5_sl_mon_alltime[var]
-    plt_data_gm = np.average(
-        plt_data.values.ravel()[np.isfinite(plt_data.values.ravel())],
-        weights=era5_gridarea.values.ravel()[np.isfinite(plt_data.values.ravel())])
+    plt_data = era5_sl_mon_alltime[var]['ann'].sel(time=slice(years, yeare)).pipe(time_weighted_mean)
+    if var in ['tciw', 'tclw']: plt_data *= 1000
+    plt_data_gm = plt_data.pipe(coslat_weighted_mean)
     
-    cbar_label = 'ERA5 annual mean (1979-2023) ' + era5_varlabels[var] + '\nglobal mean: ' + str(np.round(plt_data_gm, 2))
+    # if var in ['tciw', 'tclw']:
+    #     plt_data = era5_sl_mon_alltime[var]['am'].squeeze()
+    # else:
+    #     plt_data = era5_sl_mon_alltime[var]['am'].squeeze()
+    #     # print(stats.describe(plt_data.values, axis=None, nan_policy='omit'))
+    #     # del era5_sl_mon_alltime[var]
+    #     plt_data_gm = np.average(
+    #         plt_data.values.ravel()[np.isfinite(plt_data.values.ravel())],
+    #         weights=era5_gridarea.values.ravel()[np.isfinite(plt_data.values.ravel())])
+    
+    cbar_label = f'ERA5 annual mean ({years}-{yeare}) ' + era5_varlabels[var] + '\nglobal mean: ' + str(np.round(plt_data_gm, 2))
     
     if var in ['tp', 'tciw', 'tclw', 'z', 'tcw', 'tcwv', 'tcsw', 'tcrw', 'tcslw', 'cp', 'lsp']:
         extend = 'max'
@@ -169,10 +179,10 @@ for var in ['toa_albedo', 'toa_albedocs', 'toa_albedocl']:
             cm_min=0, cm_max=7600, cm_interval1=200, cm_interval2=800, cmap='viridis_r',)
     elif var=='tciw':
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=0, cm_max=0.14, cm_interval1=0.01, cm_interval2=0.02, cmap='viridis_r',)
+            cm_min=0, cm_max=240, cm_interval1=10, cm_interval2=20, cmap='viridis',)
     elif var=='tclw':
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=0, cm_max=0.5, cm_interval1=0.05, cm_interval2=0.05, cmap='viridis_r',)
+            cm_min=0, cm_max=160, cm_interval1=10, cm_interval2=20, cmap='viridis',)
     elif var in ['e', 'mper', 'pev']:
         pltlevel = np.array([-0.1, 0, 0.1, 0.2, 0.5, 1, 2, 4, 6, 8, 10])
         pltticks = np.array([-0.1, 0, 0.1, 0.2, 0.5, 1, 2, 4, 6, 8, 10])

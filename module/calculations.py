@@ -1,5 +1,18 @@
 
 
+# region coslat_weighted_mean, coslat_weighted_rmsd
+
+def coslat_weighted_mean(dataarray):
+    import numpy as np
+    return(dataarray.weighted(np.cos(np.deg2rad(dataarray.lat))).mean().values)
+
+def coslat_weighted_rmsd(da_diff):
+    import numpy as np
+    return(np.sqrt(np.square(da_diff).weighted(np.cos(np.deg2rad(da_diff.lat))).mean()).values)
+
+# endregion
+
+
 # region time_weighted_mean
 
 def time_weighted_mean(ds):

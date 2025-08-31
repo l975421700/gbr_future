@@ -11,6 +11,7 @@
 # conda config --add channels conda-forge
 # conda config --set auto_activate_base False   # remove (base) (base)
 # conda update -n base -c defaults conda
+# conda init
 
 #-------------------------------- Primary packages
 conda install mamba -y

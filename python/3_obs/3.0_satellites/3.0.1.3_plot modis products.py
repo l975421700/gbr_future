@@ -53,7 +53,6 @@ from namelist import (
     seasons,
     seconds_per_d,
     zerok,
-    panel_labels,
     month_days,
     era5_varlabels,
     cmip6_era5_var,
@@ -389,7 +388,7 @@ for iproduct in ['MYD06_L2']:
 
 products = ['MOD08_M3', 'MYD08_M3']
 vars = ['prw', 'clivi', 'clwvi']
-years = '2000'; yeare = '2024'
+years = '2016'; yeare = '2023'
 
 for iproduct in products:
     # iproduct = 'MOD08_M3'
@@ -397,8 +396,8 @@ for iproduct in products:
     
     dss = xr.open_dataset(f'scratch/data/obs/MODIS/{iproduct}/{'_'.join(vars)}.nc').sel(time=slice(years, yeare))
     
-    for ivar in vars:
-        # ivar = vars[1]
+    for ivar in ['clivi', 'clwvi']:
+        # ivar = vars[2]
         print(f'#-------- {ivar}')
         
         plt_data = np.average(
@@ -415,13 +414,13 @@ for iproduct in products:
         
         if ivar=='clivi':
             pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-                cm_min=0, cm_max=140, cm_interval1=10, cm_interval2=20, cmap='viridis_r',)
+                cm_min=0, cm_max=240, cm_interval1=10, cm_interval2=20, cmap='viridis',)
         elif ivar=='clwvi':
             pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-                cm_min=0, cm_max=500, cm_interval1=50, cm_interval2=50, cmap='viridis_r',)
+                cm_min=0, cm_max=160, cm_interval1=10, cm_interval2=20, cmap='viridis',)
         elif ivar in ['prw']:
             pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-                cm_min=0, cm_max=60, cm_interval1=3, cm_interval2=6, cmap='viridis_r',)
+                cm_min=0, cm_max=60, cm_interval1=3, cm_interval2=6, cmap='viridis',)
         else:
             print(f'Warning unspecified colorbar for {ivar}')
         

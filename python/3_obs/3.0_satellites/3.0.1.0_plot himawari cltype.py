@@ -1,6 +1,6 @@
 
 
-# qsub -I -q express -l walltime=4:00:00,ncpus=1,mem=192GB,jobfs=100MB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22
+# qsub -I -q normal -l walltime=4:00:00,ncpus=1,mem=192GB,jobfs=100MB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22
 
 
 # region import packages
@@ -70,7 +70,6 @@ from namelist import (
     seasons,
     seconds_per_d,
     zerok,
-    panel_labels,
     era5_varlabels,
     ds_color,
     cmip6_era5_var,
@@ -349,7 +348,8 @@ ISCCP_types = {'Clear': 0,
                'Cirrus': 1, 'Cirrostratus': 2, 'Deep convection': 3,
                'Altocumulus': 4, 'Altostratus': 5, 'Nimbostratus':6,
                'Cumulus':7, 'Stratocumulus': 8, 'Stratus': 9,
-               'Unknown':10}
+            #    'Unknown':10,
+               }
 
 year, month, day, hour, minute = 2020, 6, 2, 4, 0
 
@@ -361,21 +361,21 @@ opng = f'figures/3_satellites/3.0_hamawari/3.0.1_cltype/3.0.1.1 himawari ISCCP c
 extent = [-5499500., 5499500., -5499500., 5499500.]
 transform = ccrs.Geostationary(central_longitude=140.7, satellite_height=35785863.0)
 
-plt_text = f'{year}-{month:02d}-{day:02d} {hour:02d}:{minute:02d} UTC\nISCCP Cloud Types Himawari 8/9'
+plt_text = f'{year}-{month:02d}-{day:02d} {hour:02d}:{minute:02d} UTC\nHimawari ISCCP cloud types'
 
 fig, ax = plt.subplots(figsize=np.array([7+2.5, 7+1])/2.54, subplot_kw={'projection': transform})
 
 coastline = cfeature.NaturalEarthFeature(
-    'physical', 'coastline', '10m', edgecolor='yellow',
+    'physical', 'coastline', '10m', edgecolor='k',
     facecolor='none', lw=0.1)
 ax.add_feature(coastline, zorder=2, alpha=0.75)
 borders = cfeature.NaturalEarthFeature(
     'cultural', 'admin_0_boundary_lines_land', '10m',
-    edgecolor='yellow', facecolor='none', lw=0.1)
+    edgecolor='k', facecolor='none', lw=0.1)
 ax.add_feature(borders, zorder=2, alpha=0.75)
 gl = ax.gridlines(
     crs=ccrs.PlateCarree(), lw=0.1, zorder=2, alpha=0.35,
-    color='yellow', linestyle='--',)
+    color='k', linestyle='--',)
 gl.xlocator = mticker.FixedLocator(np.arange(0, 360 + 1e-4, 10))
 gl.ylocator = mticker.FixedLocator(np.arange(-90, 90 + 1e-4, 10))
 plt.text(0.5, -0.03, plt_text, transform=ax.transAxes, fontsize=8,
@@ -392,7 +392,7 @@ colors = {
     'Cumulus': plt.cm.colors.to_rgba('tab:blue'),
     'Stratocumulus': plt.cm.colors.to_rgba('deepskyblue'),
     'Stratus': plt.cm.colors.to_rgba('cyan'),
-    'Unknown': (0, 0, 0, 1),
+    # 'Unknown': (0, 0, 0, 1),
 }
 pltcmp = ListedColormap([colors[itype] for itype in ISCCP_types])
 pltlevel = np.arange(len(ISCCP_types) + 1) - 0.5
@@ -419,6 +419,8 @@ fig.savefig(opng)
 plt.close()
 
 
+'''
+# check cltype at Willis Island at 2020-06-02 04:00
 ds = xr.open_dataset('/home/563/qg8515/scratch/data/obs/jaxa/clp/202006/02/04/CLTYPE_202006020400.nc')
 station = 'Willis Island'
 slat = -16.288
@@ -427,18 +429,11 @@ slon = 149.965
 ds.CLTYPE.sel(latitude=slat, longitude=slon, method='nearest')
 
 
-'''
 colors = plt.get_cmap('viridis', len(ISCCP_types))
 pltcmp = {key: colors(i) for i, key in enumerate(ISCCP_types.keys())}
 bounds = np.arange(len(ISCCP_types) + 1) - 0.5
 pltnorm = plt.Normalize(vmin=0, vmax=len(ISCCP_types) - 1)
 '''
-# endregion
-
-
-# region animate ISCCP classification
-
-
 # endregion
 
 
