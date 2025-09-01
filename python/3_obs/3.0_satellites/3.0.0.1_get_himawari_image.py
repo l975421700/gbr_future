@@ -313,6 +313,85 @@ print(f"Execution time: {end_time - start_time:.1f} seconds")
 # endregion
 
 
+# region plot himawari true color and night microphysics over c2_domain
+
+# options
+year, month, day, hour, minute = 2020, 6, 2, 4, 0
+dfolder = Path('/g/data/ra22/satellite-products/arc/obs/himawari-ahi/fldk/latest')
+# dfolder = Path('/g/data/ra22/satellite-products/nrt/obs/himawari-ahi/fldk/latest')
+plt_region = 'c2_domain'
+
+# settings
+extent = [110.58, 157.34, -43.69, -7.01]
+min_lon, max_lon, min_lat, max_lat = extent
+opng = f'figures/3_satellites/3.0_hamawari/3.0.0_image/3.0.0.1 Himawari image {plt_region} {year}-{month:02d}-{day:02d} {hour:02d}:{minute:02d}.png'
+
+# get data: to make it a function
+bands=['B03', 'B02', 'B01', 'B07', 'B13', 'B15']
+channels = {}
+for iband in bands:
+    # iband='B07'
+    print(f'#-------------------------------- {iband}')
+    
+    ifile = sorted(Path(dfolder/f'{year}/{month:02d}/{day:02d}/{hour:02d}{minute:02d}').glob(f'*OBS_{iband}*'))
+    if not ifile:
+        print('Warning: No file found')
+        continue
+    
+    channels[iband] = Dataset(ifile[-1], 'r')
+    var_name = next(var for var in channels[iband].variables if var.startswith("channel_00"))
+    # print(f'#---------------- {var_name}')
+    channels[iband] = np.squeeze(channels[iband].variables[var_name][:])
+    
+    if iband in ['B03', 'B02', 'B01']:
+        channels[iband] = channels[iband].filled(0)
+    
+    if iband == 'B03':
+        channels[iband] = block_reduce(channels[iband], block_size=(2, 2), func=np.mean)
+
+channels['B15-B13'] = channels['B15']-channels['B13']
+channels['B13-B07'] = channels['B13']-channels['B07']
+
+channels['B15-B13'] = (channels['B15-B13'] + 4) / (2 + 4)
+channels['B13-B07'] = (channels['B13-B07'] + 0) / (10 + 0)
+channels['B13'] = (channels['B13'] - 243) / (293 - 243)
+
+for iband in ['B15-B13', 'B13-B07', 'B13']:
+    channels[iband] = channels[iband].filled(0)
+
+rgb1 = np.zeros(channels['B03'].shape + (3,), dtype=np.float32)
+for idx, iband in enumerate(['B03', 'B02', 'B01']):
+    rgb1[:, :, idx] = channels[iband]
+rgb1 = np.clip(rgb1, 0, 1, out=rgb1)
+rgb1 **= (1 / 2.2)
+
+rgb2 = np.zeros(channels['B15-B13'].shape + (3,), dtype=np.float32)
+for idx, iband in enumerate(['B15-B13', 'B13-B07', 'B13']):
+    rgb2[:, :, idx] = channels[iband]
+rgb2 = np.clip(rgb2, 0, 1, out=rgb2)
+rgb2 = np.kron(rgb2, np.ones((2, 2, 1)))
+
+luminance = 0.2126 * rgb1[..., 0] + 0.7152 * rgb1[..., 1] + 0.0722 * rgb1[..., 2]
+rgb = np.where((luminance > 0.15)[..., None], rgb1, rgb2).astype('float32')
+
+fig, ax = regional_plot(
+    figsize = np.array([6.6, 6]) / 2.54,
+    extent=[110.58, 157.34, -43.69, -7.01], central_longitude=180,
+    lw=0.1, border_color='yellow')
+ax.imshow(
+    rgb, extent=[-5499500., 5499500., -5499500., 5499500.],
+    transform=ccrs.Geostationary(central_longitude=140.7, satellite_height=35785863.0),
+    interpolation='none', origin='upper', resample=False)
+fig.text(0.5, 0.01, f'{year}-{month:02d}-{day:02d} {hour:02d}:{minute:02d} UTC\nHimawari True Color RGB',
+         ha='center', va='bottom', linespacing=1.3)
+fig.subplots_adjust(left=0.005, right=0.995, bottom=0.15, top=0.95)
+fig.savefig(opng)
+
+
+
+# endregion
+
+
 # region animate himawari true color and/or night microphysics
 
 parser=argparse.ArgumentParser()

@@ -1,6 +1,6 @@
 
 
-# region si2reflectance, si2radiance, get_modis_latlonrgb
+# region si2reflectance, si2radiance, get_modis_latlonrgbs, get_modis_latlonvars
 
 def si2reflectance(scaled_integers, scales, offsets, gamma = 2.2):
     import numpy as np
@@ -85,19 +85,57 @@ def get_modis_latlonrgbs(fl):
     return(lats, lons, rgbs)
 
 
+def get_modis_latlonvar(ifile, ivar):
+    from pyhdf.SD import SD, SDC
+    from satpy.scene import Scene
+    
+    hdf_sd = SD(ifile, SDC.READ)
+    var = hdf_sd.select(ivar)[:].astype(float)
+    var_attr = hdf_sd.select(ivar).attributes()
+    var[(var < var_attr['valid_range'][0]) | (var > var_attr['valid_range'][1]) | (var == var_attr['_FillValue'])] = np.nan
+    var = var_attr['scale_factor'] * (var - var_attr['add_offset'])
+    
+    lat = hdf_sd.select('Latitude')[:]
+    lon = hdf_sd.select('Longitude')[:]
+    
+    if lat.shape != var.shape:
+        scn = Scene(filenames={'modis_l2': [ifile]})
+        scn.load(["longitude", "latitude"])
+        lon = scn["longitude"].values
+        lat = scn["latitude"].values
+    
+    return(lat, lon, var)
+
+
+def get_modis_latlonvars(fl, ivar):
+    import numpy as np
+    lats = []
+    lons = []
+    vars = []
+    for ifile in fl:
+        print(ifile)
+        lat, lon, var = get_modis_latlonvar(ifile, ivar)
+        lats.append(lat)
+        lons.append(lon)
+        vars.append(var)
+    
+    lats = np.concatenate(lats, axis=0)
+    lons = np.concatenate(lons, axis=0)
+    vars = np.concatenate(vars, axis=0)
+    return(lats, lons, vars)
+
+
+
 '''
-        for ivar in hdf_sd.datasets().keys():
-            print(f'#---------------- {ivar}')
-        # lat.append(hdf_sd.select('Latitude')[:])
-        # lon.append(hdf_sd.select('Longitude')[:])
+for ivar in hdf_sd.datasets().keys():
+    print(f'#---------------- {ivar}')
 
-        hdf_vs = HDF(fl[0]).vstart()
-        for ivdata in hdf_vs.vdatainfo():
-            print(f'#---------------- {ivdata}')
-        scn = Scene(filenames={'modis_l1b': [ifile]})
-        for ids in scn.available_dataset_names():
-            print(f'#---------------- {ids}')
-
+hdf_vs = HDF(fl[0]).vstart()
+for ivdata in hdf_vs.vdatainfo():
+    print(f'#---------------- {ivdata}')
+scn = Scene(filenames={'modis_l1b': [ifile]})
+for ids in scn.available_dataset_names():
+    print(f'#---------------- {ids}')
 '''
 
 # endregion

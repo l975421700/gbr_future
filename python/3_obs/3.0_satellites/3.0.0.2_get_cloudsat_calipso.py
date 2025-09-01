@@ -21,7 +21,6 @@ from metpy.calc import pressure_to_height_std, geopotential_to_height
 from metpy.units import units
 import metpy.calc as mpcalc
 import requests
-import rioxarray
 from datetime import datetime, timedelta
 import glob
 from pyhdf.SD import SD, SDC
@@ -76,7 +75,6 @@ from namelist import (
     seasons,
     seconds_per_d,
     zerok,
-    panel_labels,
     )
 
 from component_plot import (
@@ -312,7 +310,8 @@ for iproduct in [
     if len(fl) > 0:
         ifile=fl[0]
         hdf1 = SD(ifile, SDC.READ)
-        print(hdf1.datasets().keys())
+        for ivar in hdf1.datasets().keys():
+            print(ivar)
     else:
         print('No file found')
 

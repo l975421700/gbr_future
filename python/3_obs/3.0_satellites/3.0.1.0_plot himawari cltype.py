@@ -437,6 +437,64 @@ pltnorm = plt.Normalize(vmin=0, vmax=len(ISCCP_types) - 1)
 # endregion
 
 
+# region plot ISCCP cloud type over c2_domain
+
+# options
+year, month, day, hour, minute = 2020, 6, 2, 5, 0
+plt_region = 'c2_domain'
+
+# settings
+ISCCP_types = {'Clear': 0,
+               'Cirrus': 1, 'Cirrostratus': 2, 'Deep convection': 3,
+               'Altocumulus': 4, 'Altostratus': 5, 'Nimbostratus':6,
+               'Cumulus':7, 'Stratocumulus': 8, 'Stratus': 9,}
+colors = {
+    'Clear': (1, 1, 1, 0),
+    'Cirrus': plt.cm.colors.to_rgba('pink'),
+    'Cirrostratus': plt.cm.colors.to_rgba('tab:pink'),
+    'Deep convection': plt.cm.colors.to_rgba('tab:red'),
+    'Altocumulus': plt.cm.colors.to_rgba('tab:brown'),
+    'Altostratus': plt.cm.colors.to_rgba('tab:gray'),
+    'Nimbostratus': plt.cm.colors.to_rgba('lightgray'),
+    'Cumulus': plt.cm.colors.to_rgba('tab:blue'),
+    'Stratocumulus': plt.cm.colors.to_rgba('deepskyblue'),
+    'Stratus': plt.cm.colors.to_rgba('cyan'),}
+pltcmp = ListedColormap([colors[itype] for itype in ISCCP_types])
+pltlevel = np.arange(len(ISCCP_types) + 1) - 0.5
+pltticks = np.arange(len(ISCCP_types))
+pltnorm = BoundaryNorm(pltlevel, len(ISCCP_types))
+
+opng = f'figures/3_satellites/3.0_hamawari/3.0.1_cltype/3.0.1.1 himawari ISCCP cltype {plt_region} {year}{month:02d}{day:02d}{hour:02d}{minute:02d}.png'
+plt_text = f'{year}-{month:02d}-{day:02d} {hour:02d}:{minute:02d} UTC\nHimawari ISCCP cloud types'
+
+ds_cltype = xr.open_dataset(f'scratch/data/obs/jaxa/clp/{year}{month:02d}/{day:02d}/{hour:02d}/CLTYPE_{year}{month:02d}{day:02d}{hour:02d}{minute:02d}.nc').CLTYPE.squeeze()
+
+fig, ax = regional_plot(
+    figsize = np.array([6.6+3, 6+1]) / 2.54,
+    extent=[110.58, 157.34, -43.69, -7.01], central_longitude=180,)
+
+plt.text(0.5, -0.03, plt_text, transform=ax.transAxes,
+         ha='center', va='top', rotation='horizontal', linespacing=1.5)
+plt_mesh = ax.pcolormesh(
+    ds_cltype.longitude, ds_cltype.latitude, ds_cltype,
+    norm=pltnorm, cmap=pltcmp, transform=ccrs.PlateCarree())
+cbar = fig.colorbar(
+    plt_mesh,
+    format=remove_trailing_zero_pos,
+    orientation="vertical", ticks=pltticks, extend='neither',
+    cax=fig.add_axes([6.7/(6.6+3), 0.5/(6+1), 0.02, 0.9]))
+cbar.ax.minorticks_off()
+cbar.ax.set_yticklabels(list(colors.keys()))
+cbar.ax.tick_params(length=2, width=0.5)
+fig.subplots_adjust(left=0.01, right=1-3/(6.6+3), bottom=1/(6+1), top=0.99)
+fig.savefig(opng)
+
+
+'''
+'''
+# endregion
+
+
 # region plot daily cycle of observed counts
 
 with open('data/obs/era5/hourly/era5_hourly_alltime_mtdwswrf.pkl', 'rb') as f:

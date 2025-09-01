@@ -1,6 +1,8 @@
+# Memory Used: 1.51GB, Walltime Used: 04:42:31
 
 year=$1
 month=$2
+month=$(printf '%02d' $month)
 # year=2022
 # month=12
 
