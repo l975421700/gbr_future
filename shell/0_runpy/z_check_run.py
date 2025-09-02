@@ -1,6 +1,6 @@
 
 import glob
-qjobo_fl = sorted(glob.glob('qjob*'))
+qjobo_fl = sorted(glob.glob('scratch/others/qjob*'))
 for ifile in qjobo_fl:
     with open(ifile, 'r') as file:
         content = file.read()

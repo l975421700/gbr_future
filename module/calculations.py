@@ -1,5 +1,311 @@
 
 
+# region get_LTS
+
+from metpy.calc import potential_temperature
+from metpy.units import units
+def get_LTS(tas, ps, ta700):
+    # tas/ta700 in K, ps in Pa
+    thetas = potential_temperature(ps * units.Pa, tas * units.K)
+    theta700 = potential_temperature(700 * units.hPa, ta700 * units.K)
+    LTS = theta700 - thetas
+    return(LTS)
+
+# endregion
+
+
+# region get_inversion
+
+import numpy as np
+def get_inversion(temperature, altitude, topo = 0, oinversiont=False):
+    '''
+    Input --------
+    temperature: 1D, bottom-up
+    altitude: 1D in m
+    
+    Output --------
+    inversionh, inversiont: scalar
+    '''
+    
+    temperature = temperature[altitude > topo].copy()
+    altitude = altitude[altitude > topo].copy()
+    
+    try:
+        level = np.where(temperature[1:] - temperature[:-1] > 0)[0][0]
+        inversionh = altitude[level]
+        inversiont = temperature[level]
+    except:
+        inversionh = np.nan
+        inversiont = np.nan
+    
+    if oinversiont:
+        return(inversionh, inversiont)
+    else:
+        return(inversionh)
+
+
+from numba import njit
+@njit
+def get_inversion_numba(temperature, altitude, topo=0.0):
+    mask = altitude > topo
+    t = temperature[mask]
+    z = altitude[mask]
+    
+    n = t.size
+    if n < 2:
+        return np.nan
+    
+    for i in range(n-1):
+        if t[i+1] - t[i] > 0:
+            return z[i]
+    
+    return np.nan
+
+
+'''
+'''
+# endregion
+
+
+# region get_LCL
+
+def get_LCL(p,T,rh=None,rhl=None,rhs=None,return_ldl=False,return_min_lcl_ldl=False):
+    # p in Pascals, T in Kelvins, rh dimensionless
+
+   import math
+   import scipy.special
+
+   # Parameters
+   Ttrip = 273.16     # K
+   ptrip = 611.65     # Pa
+   E0v   = 2.3740e6   # J/kg
+   E0s   = 0.3337e6   # J/kg
+   ggr   = 9.81       # m/s^2
+   rgasa = 287.04     # J/kg/K 
+   rgasv = 461        # J/kg/K 
+   cva   = 719        # J/kg/K
+   cvv   = 1418       # J/kg/K 
+   cvl   = 4119       # J/kg/K 
+   cvs   = 1861       # J/kg/K 
+   cpa   = cva + rgasa
+   cpv   = cvv + rgasv
+
+   # The saturation vapor pressure over liquid water
+   def pvstarl(T):
+      return ptrip * (T/Ttrip)**((cpv-cvl)/rgasv) * \
+         math.exp( (E0v - (cvv-cvl)*Ttrip) / rgasv * (1/Ttrip - 1/T) )
+   
+   # The saturation vapor pressure over solid ice
+   def pvstars(T):
+      return ptrip * (T/Ttrip)**((cpv-cvs)/rgasv) * \
+         math.exp( (E0v + E0s - (cvv-cvs)*Ttrip) / rgasv * (1/Ttrip - 1/T) )
+
+   # Calculate pv from rh, rhl, or rhs
+   rh_counter = 0
+   if rh  is not None:
+      rh_counter = rh_counter + 1
+   if rhl is not None:
+      rh_counter = rh_counter + 1
+   if rhs is not None:
+      rh_counter = rh_counter + 1
+   if rh_counter != 1:
+      print(rh_counter)
+      exit('Error in lcl: Exactly one of rh, rhl, and rhs must be specified')
+   if rh is not None:
+      # The variable rh is assumed to be 
+      # with respect to liquid if T > Ttrip and 
+      # with respect to solid if T < Ttrip
+      if T > Ttrip:
+         pv = rh * pvstarl(T)
+      else:
+         pv = rh * pvstars(T)
+      rhl = pv / pvstarl(T)
+      rhs = pv / pvstars(T)
+   elif rhl is not None:
+      pv = rhl * pvstarl(T)
+      rhs = pv / pvstars(T)
+      if T > Ttrip:
+         rh = rhl
+      else:
+         rh = rhs
+   elif rhs is not None:
+      pv = rhs * pvstars(T)
+      rhl = pv / pvstarl(T)
+      if T > Ttrip:
+         rh = rhl
+      else:
+         rh = rhs
+   if pv > p:
+      return None
+
+   # Calculate lcl_liquid and lcl_solid
+   qv = rgasa*pv / (rgasv*p + (rgasa-rgasv)*pv)
+   rgasm = (1-qv)*rgasa + qv*rgasv
+   cpm = (1-qv)*cpa + qv*cpv
+   if rh == 0:
+      return cpm*T/ggr
+   aL = -(cpv-cvl)/rgasv + cpm/rgasm
+   bL = -(E0v-(cvv-cvl)*Ttrip)/(rgasv*T)
+   cL = pv/pvstarl(T)*math.exp(-(E0v-(cvv-cvl)*Ttrip)/(rgasv*T))
+   aS = -(cpv-cvs)/rgasv + cpm/rgasm
+   bS = -(E0v+E0s-(cvv-cvs)*Ttrip)/(rgasv*T)
+   cS = pv/pvstars(T)*math.exp(-(E0v+E0s-(cvv-cvs)*Ttrip)/(rgasv*T))
+   lcl = cpm*T/ggr*( 1 - \
+      bL/(aL*scipy.special.lambertw(bL/aL*cL**(1/aL),-1).real) )
+   ldl = cpm*T/ggr*( 1 - \
+      bS/(aS*scipy.special.lambertw(bS/aS*cS**(1/aS),-1).real) )
+
+   # Return either lcl or ldl
+   if return_ldl and return_min_lcl_ldl:
+      exit('return_ldl and return_min_lcl_ldl cannot both be true')
+   elif return_ldl:
+      return ldl
+   elif return_min_lcl_ldl:
+      return min(lcl,ldl)
+   else:
+      return lcl
+
+
+
+
+'''
+# reference: https://romps.berkeley.edu/papers/pubs-2016-lcl.html
+# Version 1.0 released by David Romps on September 12, 2017.
+
+# (LCL) in meters.  The inputs are:
+# - p in Pascals
+# - T in Kelvins
+# - Exactly one of rh, rhl, and rhs (dimensionless, from 0 to 1):
+#    * The value of rh is interpreted to be the relative humidity with
+#      respect to liquid water if T >= 273.15 K and with respect to ice if
+#      T < 273.15 K. 
+#    * The value of rhl is interpreted to be the relative humidity with
+#      respect to liquid water
+#    * The value of rhs is interpreted to be the relative humidity with
+#      respect to ice
+# - return_ldl is an optional logical flag.  If true, the lifting deposition
+#   level (LDL) is returned instead of the LCL. 
+# - return_min_lcl_ldl is an optional logical flag.  If true, the minimum of the
+#   LCL and LDL is returned.
+
+# test
+# exec(open('lcl.py').read())
+
+if abs(get_LCL(1e5,300,rhl=.5,return_ldl=False)/( 1433.844139279)-1) < 1e-10 and \
+   abs(get_LCL(1e5,300,rhs=.5,return_ldl=False)/( 923.2222457185)-1) < 1e-10 and \
+   abs(get_LCL(1e5,200,rhl=.5,return_ldl=False)/( 542.8017712435)-1) < 1e-10 and \
+   abs(get_LCL(1e5,200,rhs=.5,return_ldl=False)/( 1061.585301941)-1) < 1e-10 and \
+   abs(get_LCL(1e5,300,rhl=.5,return_ldl=True )/( 1639.249726127)-1) < 1e-10 and \
+   abs(get_LCL(1e5,300,rhs=.5,return_ldl=True )/( 1217.336637217)-1) < 1e-10 and \
+   abs(get_LCL(1e5,200,rhl=.5,return_ldl=True )/(-8.609834216556)-1) < 1e-10 and \
+   abs(get_LCL(1e5,200,rhs=.5,return_ldl=True )/( 508.6366558898)-1) < 1e-10:
+   print('Success')
+else:
+   print('Failure')
+
+
+# check
+def get_LCL2(pres, tem, rh):
+    # ----Input
+    # pres: in Pascals
+    # tem: in Kelvins
+    # rh: relative humidity with respect to liquid water if T >= 273.15 K
+    #                       with respect to ice if T < 273.15 K.
+    
+    # ----output
+    # lcl: the height of the lifting condensation level (LCL) in meters.
+    import math
+    import scipy.special
+    import numpy as np
+    
+    # Parameters
+    Ttrip = 273.16     # K
+    ptrip = 611.65     # Pa
+    E0v = 2.3740e6   # J/kg
+    E0s = 0.3337e6   # J/kg
+    ggr = 9.81       # m/s^2
+    rgasa = 287.04     # J/kg/K
+    rgasv = 461        # J/kg/K
+    cva = 719        # J/kg/K
+    cvv = 1418       # J/kg/K
+    cvl = 4119       # J/kg/K
+    cvs = 1861       # J/kg/K
+    cpa = cva + rgasa
+    cpv = cvv + rgasv
+    
+    # The saturation vapor pressure over liquid water
+    def pvstarl(T):
+        return ptrip * (T/Ttrip)**((cpv-cvl)/rgasv) * \
+        math.exp((E0v - (cvv-cvl)*Ttrip) / rgasv * (1/Ttrip - 1/T))
+    
+    # The saturation vapor pressure over solid ice
+    def pvstars(T):
+        return ptrip * (T/Ttrip)**((cpv-cvs)/rgasv) * \
+        math.exp((E0v + E0s - (cvv-cvs)*Ttrip) / rgasv * (1/Ttrip - 1/T))
+    
+    # Calculate pv from rh
+    # The variable rh is assumed to be
+    # with respect to liquid if T > Ttrip and
+    # with respect to solid if T < Ttrip
+    if tem > Ttrip:
+        pv = rh * pvstarl(tem)
+    else:
+        pv = rh * pvstars(tem)
+    
+    rhl = pv / pvstarl(tem)
+    rhs = pv / pvstars(tem)
+    
+    if pv > pres:
+        return np.nan
+    
+    # Calculate lcl_liquid and lcl_solid
+    qv = rgasa*pv / (rgasv*pres + (rgasa-rgasv)*pv)
+    rgasm = (1-qv)*rgasa + qv*rgasv
+    cpm = (1-qv)*cpa + qv*cpv
+    if rh == 0:
+        return cpm*tem/ggr
+    
+    aL = -(cpv-cvl)/rgasv + cpm/rgasm
+    bL = -(E0v-(cvv-cvl)*Ttrip)/(rgasv*tem)
+    cL = pv/pvstarl(tem)*math.exp(-(E0v-(cvv-cvl)*Ttrip)/(rgasv*tem))
+    lcl = cpm*tem/ggr*(
+        1 - bL/(aL*scipy.special.lambertw(bL/aL*cL**(1/aL), -1).real))
+    
+    return lcl
+
+
+from metpy.units import units
+import metpy.calc as mpcalc
+pres = 101320.75
+tem = 296.5619
+rh = 0.90995485
+
+get_LCL(pres, tem, rh)
+get_LCL2(pres, tem, rh)
+
+'''
+# endregion
+
+
+# region get_EIS
+
+from typhon.physics import moist_lapse_rate
+def get_EIS(tas, ps, ta700, hurs, zg700):
+    # tas/ta700 in K, ps in Pa, hurs dimensionless, zg700 in m
+    
+    LCL = get_LCL(ps, tas, hurs)
+    LTS = get_LTS(tas, ps, ta700)
+    gamma = moist_lapse_rate(850 * 100, (tas+ta700)/2)
+    EIS = LTS.m - gamma * (zg700 - LCL)
+    return(EIS)
+
+
+'''
+https://arts2.mi.uni-hamburg.de/misc/typhon/doc/generated/typhon.physics.moist_lapse_rate.html?utm_source=chatgpt.com
+'''
+# endregion
+
+
 # region coslat_weighted_mean, coslat_weighted_rmsd
 
 def coslat_weighted_mean(dataarray):

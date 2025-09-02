@@ -1,129 +1,208 @@
 
 
-# qsub -I -q normal -P v46 -l walltime=3:00:00,ncpus=1,mem=20GB,jobfs=100MB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22
-
-
 # region import packages
 
 # data analysis
 import numpy as np
-import pandas as pd
-import numpy.ma as ma
-import glob
-from datetime import datetime, timedelta
-from pyhdf.SD import SD, SDC
-from pyhdf.HDF import HDF
-from pyhdf.VS import VS
-from pyhdf.error import HDF4Error
-from satpy.scene import Scene
-from skimage.measure import block_reduce
 import xarray as xr
-
-# plot
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-import cartopy.crs as ccrs
-mpl.rcParams['figure.dpi'] = 600
-mpl.rc('font', family='Times New Roman', size=10)
-mpl.rcParams['axes.linewidth'] = 0.2
-plt.rcParams.update({"mathtext.fontset": "stix"})
+import dask
+dask.config.set({"array.slicing.split_large_chunks": True})
+from dask.diagnostics import ProgressBar
+pbar = ProgressBar()
+pbar.register()
+import joblib
+import argparse
+from metpy.calc import specific_humidity_from_dewpoint, relative_humidity_from_dewpoint, vertical_velocity_pressure, mixing_ratio_from_specific_humidity, relative_humidity_from_specific_humidity
+from metpy.units import units
+import time
 
 # management
 import os
 import sys  # print(sys.path)
 sys.path.append(os.getcwd() + '/code/gbr_future/module')
-import psutil
-process = psutil.Process()
+import glob
+import pickle
+import datetime
+# import psutil
+# process = psutil.Process()
 # print(process.memory_info().rss / 2**30)
 
-# self defined
-from mapplot import (
-    globe_plot,
-    regional_plot,
-    ticks_labels,
-    scale_bar,
-    plot_maxmin_points,
-    remove_trailing_zero,
-    remove_trailing_zero_pos,
-    )
-
-from namelist import (
-    month_jan,
-    monthini,
-    seasons,
-    seconds_per_d,
-    zerok,
-    panel_labels,
-    )
-
-from component_plot import (
-    rainbow_text,
-    change_snsbar_width,
-    cplot_wind_vectors,
-    cplot_lon180,
-    cplot_lon180_ctr,
-    plt_mesh_pars,
-    plot_loc,
-    draw_polygon,
-)
-
 from calculations import (
-    find_ilat_ilon,
+    mon_sea_ann,
+    get_inversion, get_inversion_numba,
+    get_LCL, get_LTS, get_EIS,
     )
 
-from metplot import si2reflectance, si2radiance, get_modis_latlonrgbs
-
+from namelist import zerok, seconds_per_d
 
 # endregion
 
 
-# region get 'MOD08_M3', 'MYD08_M3': total column q, qcl, qcf
+# region get BARRA-C2 inversionh, LCL, LTS, EIS
+# get_inversion_numba:  Memory Used: 47.54GB, Walltime Used: 01:48:02
+# get_LCL:              Memory Used: 167.14GB,Walltime Used: 02:43:01
+# get_LTS:              Memory Used: 68.83GB, Walltime Used: 00:04:39
+# get_EIS:
 
-products = ['MOD08_M3']
-vars = {'Atmospheric_Water_Vapor_Mean_Mean': 'prw',
-        'Cloud_Water_Path_Ice_Mean_Mean': 'clivi',
-        'Cloud_Water_Path_Liquid_Mean_Mean': 'clwvi'}
 
-for iproduct in products:
-    # iproduct = 'MOD08_M3'
-    print(f'#---------------- {iproduct}')
-    fl = sorted(glob.glob(f'scratch/data/obs/MODIS/{iproduct}/????/???/*.hdf'))
-    das = []
-    lon = SD(fl[0], SDC.READ).select('XDim')[:]
-    lat = SD(fl[0], SDC.READ).select('YDim')[:]
+var = 'inversionh' # ['inversionh', 'LCL', 'LTS', 'EIS']
+print(f'#-------------------------------- {var}')
+odir = f'data/sim/um/barra_c2/{var}'
+os.makedirs(odir, exist_ok=True)
+
+
+def std_func(ds_in, ivar):
+    ds = ds_in.expand_dims(dim='pressure', axis=1)
+    varname = [varname for varname in ds.data_vars if varname.startswith(ivar)][0]
+    ds = ds.rename({varname: ivar})
+    # ds = ds.chunk(chunks={'time': len(ds.time), 'pressure': 1, 'lat': len(ds.lat), 'lon': len(ds.lon)})
+    ds = ds.astype('float32')
+    return(ds)
+
+
+parser=argparse.ArgumentParser()
+parser.add_argument('-y', '--year', type=int, required=True,)
+parser.add_argument('-m', '--month', type=int, required=True,)
+args = parser.parse_args()
+
+year=args.year
+month=args.month
+# year=2020; month=6
+print(f'#---------------- {year} {month:02d}')
+
+
+if var == 'inversionh':
+    vars = ['ta', 'zg', 'orog']
+elif var == 'LCL':
+    vars = ['tas', 'ps', 'hurs']
+elif var == 'LTS':
+    vars = ['tas', 'ps', 'ta700']
+elif var == 'EIS':
+    vars = ['tas', 'ps', 'ta700', 'hurs', 'zg700']
+
+dss = {}
+for ivar in vars:
+    print(f'#-------- {ivar}')
+    if ivar in ['ta', 'zg']:
+        dss[ivar] = xr.open_mfdataset(sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/{ivar}[0-9]*[!m]/latest/*{year}{month:02d}.nc')), parallel=True, preprocess=lambda ds: std_func(ds, ivar=ivar))[ivar].chunk({'pressure': -1})
+    elif ivar in ['orog']:
+        dss[ivar] = xr.open_dataset('/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/fx/orog/latest/orog_AUST-04_ERA5_historical_hres_BOM_BARRA-C2_v1.nc')['orog']
+    elif ivar in ['tas', 'ps', 'hurs', 'ta700', 'zg700']:
+        dss[ivar] = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/{ivar}/latest/{ivar}_AUST-04_ERA5_historical_hres_BOM_BARRA-C2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')[ivar]
     
-    for ifile in fl:
-        # ifile = fl[0]
-        print(f'#-------- {ifile}')
-        
-        hdf_sd = SD(ifile, SDC.READ)
-        year = ifile.split('/')[-3]
-        doy  = ifile.split('/')[-2]
-        date = datetime.strptime(f'{year}{doy}', '%Y%j')
-        
-        for ivar in vars.keys():
-            # ivar = list(vars.keys())[0]
-            # print(f'#-------- {ivar}')
-            
-            ds = hdf_sd.select(ivar)[:].astype(float)
-            ds_attr = hdf_sd.select(ivar).attributes()
-            
-            ds[(ds < ds_attr['valid_range'][0]) | (ds > ds_attr['valid_range'][1]) | (ds == ds_attr['_FillValue'])] = np.nan
-            ds = ds_attr['scale_factor'] * (ds - ds_attr['add_offset'])
-            if ivar == 'Atmospheric_Water_Vapor_Mean_Mean': ds *= 10
-            # print(np.nanmean(ds))
-            
-            da = xr.DataArray(
-                ds[None, ], dims=('time', 'lat', 'lon'),
-                coords={'time': [date], 'lat': lat, 'lon': lon},
-                name=vars[ivar])
-            das.append(da)
-        hdf_sd.end()
-    
-    dss = xr.merge(das)
-    ofile = f'scratch/data/obs/MODIS/{iproduct}/{'_'.join(vars.values())}.nc'
-    if os.path.exists(ofile): os.remove(ofile)
-    dss.to_netcdf(ofile)
+    # if ivar == 'orog':
+    #     dss[ivar] = dss[ivar].isel(lat=slice(0, 10), lon=slice(0, 10))
+    # else:
+    #     dss[ivar] = dss[ivar].isel(time=slice(0, 10), lat=slice(0, 10), lon=slice(0, 10))
+
+
+if var == 'inversionh':
+    dss[var] = xr.apply_ufunc(
+        # get_inversion,
+        get_inversion_numba,
+        dss['ta'].sortby('pressure', ascending=False),
+        dss['zg'].sortby('pressure', ascending=False),
+        dss['orog'],
+        input_core_dims=[['pressure'], ['pressure'], []],
+        vectorize=True, dask='parallelized', output_dtypes=[float],
+        ).compute().rename(var)
+elif var == 'LCL':
+    dss[var] = xr.apply_ufunc(
+        get_LCL,
+        dss['ps'], dss['tas'], dss['hurs'] / 100,
+        vectorize=True, dask='parallelized').compute().rename(var)
+elif var == 'LTS':
+    dss[var] = get_LTS(dss['tas'], dss['ps'], dss['ta700']).compute().rename(var)
+elif var == 'EIS':
+    dss[var] = xr.apply_ufunc(
+        get_EIS,
+        dss['tas'], dss['ps'], dss['ta700'], dss['hurs'] / 100, dss['zg700'],
+        vectorize=True, dask='parallelized').compute().rename(var)
+
+
+ofile = f'{odir}/{var}_hourly_{year}{month:02d}.nc'
+if os.path.exists(ofile): os.remove(ofile)
+dss[var].to_netcdf(ofile)
 
 
 
+
+'''
+#-------------------------------- check
+def std_func(ds_in, ivar):
+    ds = ds_in.expand_dims(dim='pressure', axis=1)
+    varname = [varname for varname in ds.data_vars if varname.startswith(ivar)][0]
+    return(ds.rename({varname: ivar}).astype('float32'))
+
+year=2024; month=1
+print(f'#-------------------------------- {year} {month:02d}')
+vars = ['inversionh', 'LCL', 'LTS', 'EIS',
+        'ta', 'zg', 'orog', 'tas', 'ps', 'hurs', 'ta700', 'zg700']
+
+dss = {}
+for ivar in vars:
+    print(f'#---------------- {ivar}')
+    if ivar in ['ta', 'zg']:
+        dss[ivar] = xr.open_mfdataset(sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/{ivar}[0-9]*[!m]/latest/*{year}{month:02d}.nc')), parallel=True, preprocess=lambda ds: std_func(ds, ivar=ivar))[ivar].chunk({'pressure': -1})
+    elif ivar in ['orog']:
+        dss[ivar] = xr.open_dataset('/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/fx/orog/latest/orog_AUST-04_ERA5_historical_hres_BOM_BARRA-C2_v1.nc')['orog']
+    elif ivar in ['tas', 'ps', 'hurs', 'ta700', 'zg700']:
+        dss[ivar] = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/{ivar}/latest/{ivar}_AUST-04_ERA5_historical_hres_BOM_BARRA-C2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')[ivar]
+    elif ivar in ['inversionh', 'LCL', 'LTS', 'EIS']:
+        dss[ivar] = xr.open_dataset(f'data/sim/um/barra_c2/{ivar}/{ivar}_hourly_{year}{month:02d}.nc')
+
+itime = 5
+ilat  = 5
+ilon  = 5
+
+for var in ['inversionh', 'LCL', 'LTS', 'EIS']:
+    print(f'#---------------- {var}')
+    print(dss[var][var][itime, ilat, ilon].values)
+    if var == 'inversionh':
+        # var = 'inversionh'
+        print(get_inversion(
+            dss['ta'][itime, ::-1, ilat, ilon].values,
+            dss['zg'][itime, ::-1, ilat, ilon].values,
+            dss['orog'][ilat, ilon].values
+            ))
+        print(get_inversion_numba(
+            dss['ta'][itime, ::-1, ilat, ilon].values,
+            dss['zg'][itime, ::-1, ilat, ilon].values,
+            dss['orog'][ilat, ilon].values
+            ))
+    elif var == 'LCL':
+        # var = 'LCL'
+        print(get_LCL(
+            dss['ps'][itime, ilat, ilon].values,
+            dss['tas'][itime, ilat, ilon].values,
+            dss['hurs'][itime, ilat, ilon].values / 100,
+            ))
+    elif var == 'LTS':
+        # var = 'LTS'
+        print(get_LTS(
+            dss['tas'][itime, ilat, ilon].values,
+            dss['ps'][itime, ilat, ilon].values,
+            dss['ta700'][itime, ilat, ilon].values,
+        ))
+    elif var == 'EIS':
+        # var = 'EIS'
+        print(get_EIS(
+            dss['tas'][itime, ilat, ilon].values,
+            dss['ps'][itime, ilat, ilon].values,
+            dss['ta700'][itime, ilat, ilon].values,
+            dss['hurs'][itime, ilat, ilon].values / 100,
+            dss['zg700'][itime, ilat, ilon].values,
+        ))
+
+
+ds1 = xr.open_dataset('data/sim/um/barra_c2/inversionh/inversionh_hourly_202401.nc')
+ds2 = xr.open_dataset('data/sim/um/barra_c2/inversionh/inversionh_hourly_2024012.nc')
+np.max(np.abs(ds1['inversionh'].values - ds2['inversionh'].values))
+
+
+
+for ivar in vars:
+    print(f'#---------------- {ivar}')
+    print(dss[ivar])
+'''
+# endregion

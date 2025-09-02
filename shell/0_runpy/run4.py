@@ -29,6 +29,8 @@ import datetime
 
 from calculations import (
     mon_sea_ann,
+    get_inversion, get_inversion_numba,
+    get_LCL, get_LTS, get_EIS,
     )
 
 from namelist import zerok, seconds_per_d
@@ -36,26 +38,25 @@ from namelist import zerok, seconds_per_d
 # endregion
 
 
-# region derive BARRA-C2 hourly pl data
-# wap:24min; hur:14min
+# region get BARRA-C2 inversionh, LCL, LTS, EIS
+# get_inversion_numba:  Memory Used: 47.54GB, Walltime Used: 01:48:02
+# get_LCL:              Memory Used: 167.14GB,Walltime Used: 02:43:01
+# get_LTS:              Memory Used: 68.83GB, Walltime Used: 00:04:39
+# get_EIS:
 
-time1 = time.perf_counter()
-var = 'wap' # ['hur', 'wap']
+
+var = 'EIS' # ['inversionh', 'LCL', 'LTS', 'EIS']
 print(f'#-------------------------------- {var}')
-odir = f'scratch/data/sim/um/barra_c2/{var}'
+odir = f'data/sim/um/barra_c2/{var}'
 os.makedirs(odir, exist_ok=True)
 
 
-def std_func(ds_in, var):
+def std_func(ds_in, ivar):
     ds = ds_in.expand_dims(dim='pressure', axis=1)
-    varname = [varname for varname in ds.data_vars if varname.startswith(var)][0]
-    ds = ds.rename({varname: var})
-    ds = ds.chunk(chunks={'time': len(ds.time), 'pressure': 1, 'lat': len(ds.lat), 'lon': len(ds.lon)})
+    varname = [varname for varname in ds.data_vars if varname.startswith(ivar)][0]
+    ds = ds.rename({varname: ivar})
+    # ds = ds.chunk(chunks={'time': len(ds.time), 'pressure': 1, 'lat': len(ds.lat), 'lon': len(ds.lon)})
     ds = ds.astype('float32')
-    # if var == 'hus':
-    #     ds = ds * 1000
-    # elif var == 'ta':
-    #     ds = ds - zerok
     return(ds)
 
 
@@ -69,83 +70,139 @@ month=args.month
 # year=2020; month=6
 print(f'#---------------- {year} {month:02d}')
 
-if var=='wap':
-    vars = ['hus', 'wa', 'ta']
-elif var=='hur':
-    vars = ['hus', 'ta']
+
+if var == 'inversionh':
+    vars = ['ta', 'zg', 'orog']
+elif var == 'LCL':
+    vars = ['tas', 'ps', 'hurs']
+elif var == 'LTS':
+    vars = ['tas', 'ps', 'ta700']
+elif var == 'EIS':
+    vars = ['tas', 'ps', 'ta700', 'hurs', 'zg700']
 
 dss = {}
-
 for ivar in vars:
     print(f'#-------- {ivar}')
-    dss[ivar] = xr.open_mfdataset(sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/{ivar}[0-9]*[!m]/latest/{ivar}[0-9]*{year}{month:02d}-{year}{month:02d}.nc')), parallel=True, preprocess=lambda ds: std_func(ds, var=ivar))[ivar]
+    if ivar in ['ta', 'zg']:
+        dss[ivar] = xr.open_mfdataset(sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/{ivar}[0-9]*[!m]/latest/*{year}{month:02d}.nc')), parallel=True, preprocess=lambda ds: std_func(ds, ivar=ivar))[ivar].chunk({'pressure': -1})
+    elif ivar in ['orog']:
+        dss[ivar] = xr.open_dataset('/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/fx/orog/latest/orog_AUST-04_ERA5_historical_hres_BOM_BARRA-C2_v1.nc')['orog']
+    elif ivar in ['tas', 'ps', 'hurs', 'ta700', 'zg700']:
+        dss[ivar] = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/{ivar}/latest/{ivar}_AUST-04_ERA5_historical_hres_BOM_BARRA-C2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')[ivar]
+    
+    # if ivar == 'orog':
+    #     dss[ivar] = dss[ivar].isel(lat=slice(0, 10), lon=slice(0, 10))
+    # else:
+    #     dss[ivar] = dss[ivar].isel(time=slice(0, 10), lat=slice(0, 10), lon=slice(0, 10))
 
-if var=='wap':
-    dss['mixr'] = mixing_ratio_from_specific_humidity(dss['hus'].sel(pressure=dss['wa'].pressure) * units('kg/kg')).compute()
-    dss['wap'] = vertical_velocity_pressure(
-        dss['wa'] * units('m/s'),
-        dss['wa'].pressure * units.hPa,
-        dss['ta'].sel(pressure=dss['wa'].pressure) * units.K,
-        dss['mixr']).metpy.dequantify().astype('float32').compute()
-elif var=='hur':
-    dss['hur'] = (relative_humidity_from_specific_humidity(
-        dss['hus'].pressure * units.hPa,
-        dss['ta'] * units.K,
-        dss['hus'] * units('kg/kg')).metpy.dequantify().astype('float32') * 100).compute()
 
-# ofile1 = f'{odir}/{var}_hourly_{year}{month:02d}.nc'
-ofile2 = f'{odir}/{var}_monthly_{year}{month:02d}.nc'
-# if os.path.exists(ofile1): os.remove(ofile1)
-if os.path.exists(ofile2): os.remove(ofile2)
+if var == 'inversionh':
+    dss[var] = xr.apply_ufunc(
+        # get_inversion,
+        get_inversion_numba,
+        dss['ta'].sortby('pressure', ascending=False),
+        dss['zg'].sortby('pressure', ascending=False),
+        dss['orog'],
+        input_core_dims=[['pressure'], ['pressure'], []],
+        vectorize=True, dask='parallelized', output_dtypes=[float],
+        ).compute().rename(var)
+elif var == 'LCL':
+    dss[var] = xr.apply_ufunc(
+        get_LCL,
+        dss['ps'], dss['tas'], dss['hurs'] / 100,
+        vectorize=True, dask='parallelized').compute().rename(var)
+elif var == 'LTS':
+    dss[var] = get_LTS(dss['tas'], dss['ps'], dss['ta700']).compute().rename(var)
+elif var == 'EIS':
+    dss[var] = xr.apply_ufunc(
+        get_EIS,
+        dss['tas'], dss['ps'], dss['ta700'], dss['hurs'] / 100, dss['zg700'],
+        vectorize=True, dask='parallelized').compute().rename(var)
 
-# dss[var].to_netcdf(ofile1)
-dss[var].resample({'time': '1MS'}).mean().compute().rename(var).to_netcdf(ofile2)
-time2 = time.perf_counter()
-print(f'Execution time: {time2 - time1:.1f} s')
+
+ofile = f'{odir}/{var}_hourly_{year}{month:02d}.nc'
+if os.path.exists(ofile): os.remove(ofile)
+dss[var].to_netcdf(ofile)
+
 
 
 
 '''
 #-------------------------------- check
-def std_func(ds_in, var):
+def std_func(ds_in, ivar):
     ds = ds_in.expand_dims(dim='pressure', axis=1)
-    varname = [varname for varname in ds.data_vars if varname.startswith(var)][0]
-    ds = ds.rename({varname: var})
-    ds = ds.chunk(chunks={'time': len(ds.time), 'pressure': 1, 'lat': len(ds.lat), 'lon': len(ds.lon)})
-    ds = ds.astype('float32')
-    return(ds)
+    varname = [varname for varname in ds.data_vars if varname.startswith(ivar)][0]
+    return(ds.rename({varname: ivar}).astype('float32'))
 
-year=2012; month=1
+year=2024; month=1
+print(f'#-------------------------------- {year} {month:02d}')
+vars = ['inversionh', 'LCL', 'LTS', 'EIS',
+        'ta', 'zg', 'orog', 'tas', 'ps', 'hurs', 'ta700', 'zg700']
+
 dss = {}
-for ivar in ['hus', 'wa', 'ta']:
-    print(f'#-------- {ivar}')
-    dss[ivar] = xr.open_mfdataset(sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/{ivar}[0-9]*[!m]/latest/{ivar}[0-9]*{year}{month:02d}-{year}{month:02d}.nc')), parallel=True, preprocess=lambda ds: std_func(ds, var=ivar))[ivar]
+for ivar in vars:
+    print(f'#---------------- {ivar}')
+    if ivar in ['ta', 'zg']:
+        dss[ivar] = xr.open_mfdataset(sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/{ivar}[0-9]*[!m]/latest/*{year}{month:02d}.nc')), parallel=True, preprocess=lambda ds: std_func(ds, ivar=ivar))[ivar].chunk({'pressure': -1})
+    elif ivar in ['orog']:
+        dss[ivar] = xr.open_dataset('/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/fx/orog/latest/orog_AUST-04_ERA5_historical_hres_BOM_BARRA-C2_v1.nc')['orog']
+    elif ivar in ['tas', 'ps', 'hurs', 'ta700', 'zg700']:
+        dss[ivar] = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/{ivar}/latest/{ivar}_AUST-04_ERA5_historical_hres_BOM_BARRA-C2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')[ivar]
+    elif ivar in ['inversionh', 'LCL', 'LTS', 'EIS']:
+        dss[ivar] = xr.open_dataset(f'data/sim/um/barra_c2/{ivar}/{ivar}_hourly_{year}{month:02d}.nc')
 
-dss['hur'] = xr.open_dataset(f'scratch/data/sim/um/barra_c2/hur/hur_monthly_{year}{month:02d}.nc')['hur']
-dss['wap'] = xr.open_dataset(f'scratch/data/sim/um/barra_c2/wap/wap_monthly_{year}{month:02d}.nc')['wap']
+itime = 5
+ilat  = 5
+ilon  = 5
 
-ilat = 200
-ilon = 200
-iplev = 500
+for var in ['inversionh', 'LCL', 'LTS', 'EIS']:
+    print(f'#---------------- {var}')
+    print(dss[var][var][itime, ilat, ilon].values)
+    if var == 'inversionh':
+        # var = 'inversionh'
+        print(get_inversion(
+            dss['ta'][itime, ::-1, ilat, ilon].values,
+            dss['zg'][itime, ::-1, ilat, ilon].values,
+            dss['orog'][ilat, ilon].values
+            ))
+        print(get_inversion_numba(
+            dss['ta'][itime, ::-1, ilat, ilon].values,
+            dss['zg'][itime, ::-1, ilat, ilon].values,
+            dss['orog'][ilat, ilon].values
+            ))
+    elif var == 'LCL':
+        # var = 'LCL'
+        print(get_LCL(
+            dss['ps'][itime, ilat, ilon].values,
+            dss['tas'][itime, ilat, ilon].values,
+            dss['hurs'][itime, ilat, ilon].values / 100,
+            ))
+    elif var == 'LTS':
+        # var = 'LTS'
+        print(get_LTS(
+            dss['tas'][itime, ilat, ilon].values,
+            dss['ps'][itime, ilat, ilon].values,
+            dss['ta700'][itime, ilat, ilon].values,
+        ))
+    elif var == 'EIS':
+        # var = 'EIS'
+        print(get_EIS(
+            dss['tas'][itime, ilat, ilon].values,
+            dss['ps'][itime, ilat, ilon].values,
+            dss['ta700'][itime, ilat, ilon].values,
+            dss['hurs'][itime, ilat, ilon].values / 100,
+            dss['zg700'][itime, ilat, ilon].values,
+        ))
 
-aaa = (relative_humidity_from_specific_humidity(
-        iplev * units.hPa,
-        dss['ta'].sel(pressure=iplev).isel(lon=ilat, lat=ilat) * units.K,
-        dss['hus'].sel(pressure=iplev).isel(lon=ilat, lat=ilat) * units('kg/kg')).metpy.dequantify().astype('float32') * 100).compute()
-print((aaa.mean().values - dss['hur'].sel(pressure=iplev).isel(lon=ilat, lat=ilat).squeeze().values) / dss['hur'].sel(pressure=iplev).isel(lon=ilat, lat=ilat).squeeze().values)
 
-bbb = vertical_velocity_pressure(
-    dss['wa'].sel(pressure=iplev).isel(lon=ilat, lat=ilat) * units('m/s'),
-    iplev * units.hPa,
-    dss['ta'].sel(pressure=iplev).isel(lon=ilat, lat=ilat) * units.K,
-    mixing_ratio_from_specific_humidity(
-        dss['hus'].sel(pressure=iplev).isel(lon=ilat, lat=ilat) * units('kg/kg')
-        ).compute()
-    ).metpy.dequantify().astype('float32').compute()
+ds1 = xr.open_dataset('data/sim/um/barra_c2/inversionh/inversionh_hourly_202401.nc')
+ds2 = xr.open_dataset('data/sim/um/barra_c2/inversionh/inversionh_hourly_2024012.nc')
+np.max(np.abs(ds1['inversionh'].values - ds2['inversionh'].values))
 
-print((bbb.mean().values - dss['wap'].sel(pressure=iplev).isel(lon=ilat, lat=ilat).squeeze().values) / dss['wap'].sel(pressure=iplev).isel(lon=ilat, lat=ilat).squeeze().values)
 
+
+for ivar in vars:
+    print(f'#---------------- {ivar}')
+    print(dss[ivar])
 '''
 # endregion
-
-

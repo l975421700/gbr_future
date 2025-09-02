@@ -40,6 +40,7 @@ mamba install easygems -y
 mamba install healpy -y
 mamba install satpy -y
 mamba install geopandas -y
+mamba install -c rttools typhon -y
 conda clean -a -y -y -y -y -y
 
 #-------------------------------- Other packages

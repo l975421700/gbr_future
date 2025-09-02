@@ -440,7 +440,7 @@ pltnorm = plt.Normalize(vmin=0, vmax=len(ISCCP_types) - 1)
 # region plot ISCCP cloud type over c2_domain
 
 # options
-year, month, day, hour, minute = 2020, 6, 2, 5, 0
+year, month, day, hour, minute = 2020, 6, 2, 3, 0
 plt_region = 'c2_domain'
 
 # settings

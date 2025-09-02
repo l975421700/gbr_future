@@ -19,7 +19,7 @@ python ${HOME}/code/gbr_future/shell/0_runpy/run1.py
 # max walltime in copyq:10hours
 # max cpu in copyq:     1
 # max J in copyq:       10
-# delete all jobs: qstat | awk 'NR > 2 {print $1}' | xargs qdel
+# delete all jobs: qstat | awk 'NR > 3 {print $1}' | xargs qdel
 # check project quota: lquota
 # check user usage: quota
 # check queue status: qstat -Q
