@@ -109,21 +109,25 @@ from um_postprocess import (
 
 # region compare sensitivity tests
 
-year, month, day, hour = 2020, 6, 2, 3
-var2s = ['clt', 'clivi', 'clwvi']
+year, month, day, hour = 2020, 6, 2, 5
+var2s = ['clwvi']
 # 'rsut', 'rlut', 'cll', 'clm', 'clh', 'clt', 'clivi', 'clwvi'
-modes = ['original', 'difference'] # 'original'
+modes = ['original'] # 'original', 'difference'
 dsss = [
     # [('CERES',''),('ERA5',''),('BARRA-C2',''),('u-dq700',1)],#control
     # [('CERES',''),('ERA5',''),('u-dq788',1),('u-dq911',1),('u-dq799',1)],#res
     # [('CERES',''),('ERA5',''),('u-dr095',1),('u-dr093',1),('u-dr091',1)],#Sres
     # [('CERES',''),('ERA5',''),('u-dq700',1),('u-dr040',1),('u-dr041',1)],#CDNC
-    [('CERES',''),('ERA5',''),('u-dq700',1),('u-dq799',1),('u-dr041',1),('u-dr145',1)],#res+CDNC
+    # [('CERES',''),('ERA5',''),('u-dq700',1),('u-dq799',1),('u-dr041',1),('u-dr145',1)],#res+CDNC
     # [('CERES',''),('ERA5',''),('u-dq700',1),('u-dr091',1),('u-dr041',1),('u-dr147',1)],#Sres+CDNC
     # [('CERES',''),('ERA5',''),('u-dq700',1),('u-dr108',1),('u-dr109',1)],#param
     # [('CERES',''),('ERA5',''),('u-dq700',1),('u-dq912',1)],#LD
     # [('CERES',''),('ERA5',''),('u-dq700',1),('u-dr105',1),('u-dr107',1)],#levs
     # [('CERES',''),('ERA5',''),('u-dq700',1),('u-dr789',1),('u-dr922',1)],#clinho
+    
+    # [('CERES',''),('u-dq700',1),('u-dr091',1)],
+    # [('CERES',''),('u-dq700',1),('u-dr041',1)],
+    [('CERES',''),('u-dq700',1),('u-dr147',1)],
     
     # [('ERA5',''),('u-dq700',1),('u-dq799',1),('u-dr041',1),('u-dr145',1)],#res+CDNC
     # [('ERA5',''),('u-dq700',1),('u-dr091',1),('u-dr041',1),('u-dr147',1)],#Sres+CDNC
@@ -241,10 +245,15 @@ for dss in dsss:
         extend2 = 'both'
     elif var2 in ['rsut']:
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=-800, cm_max=0, cm_interval1=50, cm_interval2=100, cmap='Greens')
+            cm_min=-400, cm_max=0, cm_interval1=25, cm_interval2=50, cmap='Greens')
         extend = 'min'
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-400,cm_max=400,cm_interval1=50,cm_interval2=100,cmap='BrBG')
+            cm_min=-200,cm_max=200,cm_interval1=25,cm_interval2=50,cmap='BrBG')
+        # pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+        #     cm_min=-800, cm_max=0, cm_interval1=50, cm_interval2=100, cmap='Greens')
+        # extend = 'min'
+        # pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+        #     cm_min=-400,cm_max=400,cm_interval1=50,cm_interval2=100,cmap='BrBG')
         extend2 = 'both'
     elif var2 in ['rsutcs']:
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
@@ -508,7 +517,7 @@ for dss in dsss:
             gridspec_kw={'hspace': 0.01, 'wspace': 0.01},)
         
         for jcol in range(ncol):
-            axs[jcol] = regional_plot(extent=extents, central_longitude=180, ax_org=axs[jcol], lw=0.1)
+            axs[jcol] = regional_plot(extent=extents, central_longitude=180, ax_org=axs[jcol], lw=0.3)
             # axs[jcol] = regional_plot(extent=extentl, central_longitude=180, ax_org=axs[jcol], lw=0.1)
             # if extents != extentl:
             #     axs[jcol].add_patch(Rectangle(

@@ -250,6 +250,7 @@ cmip6_era5_var = {
     'orog': 'orog',
     'ncloud': 'ncloud',
     'CDNC': 'CDNC',
+    'ps': 'sp',
     # 'wa',
 }
 # tcw = tcwv + tcsw + tcrw + tclw + tciw

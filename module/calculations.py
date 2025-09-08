@@ -290,13 +290,23 @@ get_LCL2(pres, tem, rh)
 # region get_EIS
 
 from typhon.physics import moist_lapse_rate
-def get_EIS(tas, ps, ta700, hurs, zg700):
+def get_EIS(tas, ps, ta700, hurs, zg700, topo):
     # tas/ta700 in K, ps in Pa, hurs dimensionless, zg700 in m
     
     LCL = get_LCL(ps, tas, hurs)
     LTS = get_LTS(tas, ps, ta700)
     gamma = moist_lapse_rate(850 * 100, (tas+ta700)/2)
-    EIS = LTS.m - gamma * (zg700 - LCL)
+    EIS = LTS.m - gamma * (zg700 - topo - LCL)
+    return(EIS)
+
+
+def get_EIS_simplified(LCL, LTS, tas, ta700, zg700, topo):
+    # tas/ta700 in K, ps in Pa, hurs dimensionless, zg700 in m
+    
+    # LCL = get_LCL(ps, tas, hurs)
+    # LTS = get_LTS(tas, ps, ta700)
+    gamma = moist_lapse_rate(850 * 100, (tas+ta700)/2)
+    EIS = LTS - gamma * (zg700 - topo - LCL)
     return(EIS)
 
 

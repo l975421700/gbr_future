@@ -30,7 +30,9 @@ import datetime
 from calculations import (
     mon_sea_ann,
     get_inversion, get_inversion_numba,
-    get_LCL, get_LTS, get_EIS,
+    get_LCL,
+    get_LTS,
+    get_EIS, get_EIS_simplified,
     )
 
 from namelist import zerok, seconds_per_d
@@ -39,8 +41,8 @@ from namelist import zerok, seconds_per_d
 
 
 # region get BARRA-C2 inversionh, LCL, LTS, EIS
-# get_inversion_numba:  Memory Used: 47.54GB, Walltime Used: 01:48:02
-# get_LCL:              Memory Used: 167.14GB,Walltime Used: 02:43:01
+# get_inversion_numba:  Memory Used: 60.06GB, Walltime Used: 02:07:38
+# get_LCL:              Memory Used: 188.22GB,Walltime Used: 03:42:41
 # get_LTS:              Memory Used: 68.83GB, Walltime Used: 00:04:39
 # get_EIS:
 
@@ -78,7 +80,7 @@ elif var == 'LCL':
 elif var == 'LTS':
     vars = ['tas', 'ps', 'ta700']
 elif var == 'EIS':
-    vars = ['tas', 'ps', 'ta700', 'hurs', 'zg700']
+    vars = ['LCL', 'LTS', 'tas', 'ta700', 'zg700', 'orog']
 
 dss = {}
 for ivar in vars:
@@ -89,6 +91,8 @@ for ivar in vars:
         dss[ivar] = xr.open_dataset('/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/fx/orog/latest/orog_AUST-04_ERA5_historical_hres_BOM_BARRA-C2_v1.nc')['orog']
     elif ivar in ['tas', 'ps', 'hurs', 'ta700', 'zg700']:
         dss[ivar] = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/{ivar}/latest/{ivar}_AUST-04_ERA5_historical_hres_BOM_BARRA-C2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')[ivar]
+    elif ivar in ['LCL', 'LTS']:
+        dss[ivar] = xr.open_dataset(f'data/sim/um/barra_c2/{ivar}/{ivar}_hourly_{year}{month:02d}.nc')[ivar]
     
     # if ivar == 'orog':
     #     dss[ivar] = dss[ivar].isel(lat=slice(0, 10), lon=slice(0, 10))
@@ -115,8 +119,10 @@ elif var == 'LTS':
     dss[var] = get_LTS(dss['tas'], dss['ps'], dss['ta700']).compute().rename(var)
 elif var == 'EIS':
     dss[var] = xr.apply_ufunc(
-        get_EIS,
-        dss['tas'], dss['ps'], dss['ta700'], dss['hurs'] / 100, dss['zg700'],
+        # get_EIS,
+        get_EIS_simplified,
+        dss['LCL'], dss['LTS'],
+        dss['tas'], dss['ta700'], dss['zg700'], dss['orog'],
         vectorize=True, dask='parallelized').compute().rename(var)
 
 
@@ -136,7 +142,7 @@ def std_func(ds_in, ivar):
 
 year=2024; month=1
 print(f'#-------------------------------- {year} {month:02d}')
-vars = ['inversionh', 'LCL', 'LTS', 'EIS',
+vars = ['LTS', 'inversionh', 'LCL', 'EIS',#
         'ta', 'zg', 'orog', 'tas', 'ps', 'hurs', 'ta700', 'zg700']
 
 dss = {}
@@ -149,15 +155,15 @@ for ivar in vars:
     elif ivar in ['tas', 'ps', 'hurs', 'ta700', 'zg700']:
         dss[ivar] = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/{ivar}/latest/{ivar}_AUST-04_ERA5_historical_hres_BOM_BARRA-C2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')[ivar]
     elif ivar in ['inversionh', 'LCL', 'LTS', 'EIS']:
-        dss[ivar] = xr.open_dataset(f'data/sim/um/barra_c2/{ivar}/{ivar}_hourly_{year}{month:02d}.nc')
+        dss[ivar] = xr.open_dataset(f'data/sim/um/barra_c2/{ivar}/{ivar}_hourly_{year}{month:02d}.nc')[ivar]
 
-itime = 5
-ilat  = 5
-ilon  = 5
+itime = 100
+ilat  = 100
+ilon  = 100
 
-for var in ['inversionh', 'LCL', 'LTS', 'EIS']:
+for var in ['LTS', ]: #, 'EIS', 'inversionh', 'LCL'
     print(f'#---------------- {var}')
-    print(dss[var][var][itime, ilat, ilon].values)
+    print(dss[var][itime, ilat, ilon].values)
     if var == 'inversionh':
         # var = 'inversionh'
         print(get_inversion(
@@ -194,12 +200,12 @@ for var in ['inversionh', 'LCL', 'LTS', 'EIS']:
             dss['zg700'][itime, ilat, ilon].values,
         ))
 
-
+# check two get_inversionh methods
 ds1 = xr.open_dataset('data/sim/um/barra_c2/inversionh/inversionh_hourly_202401.nc')
 ds2 = xr.open_dataset('data/sim/um/barra_c2/inversionh/inversionh_hourly_2024012.nc')
 np.max(np.abs(ds1['inversionh'].values - ds2['inversionh'].values))
 
-
+ds = xr.open_dataset('data/sim/um/barra_c2/LTS/LTS_hourly_202312.nc')['LTS']
 
 for ivar in vars:
     print(f'#---------------- {ivar}')

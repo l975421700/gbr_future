@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -l walltime=1:00:00,ncpus=1,mem=192GB,storage=gdata/v46+gdata/ob53+scratch/v46+gdata/rr1+gdata/rt52+gdata/oi10+gdata/hh5+gdata/fs38
+# qsub -I -q normal -l walltime=3:00:00,ncpus=1,mem=192GB,storage=gdata/v46+gdata/ob53+scratch/v46+gdata/rr1+gdata/rt52+gdata/oi10+gdata/hh5+gdata/fs38
 
 
 # region import packages
@@ -14,6 +14,10 @@ dask.config.set({"array.slicing.split_large_chunks": True})
 # pbar = ProgressBar()
 # pbar.register()
 import joblib
+import argparse
+import calendar
+from metpy.calc import geopotential_to_height, relative_humidity_from_dewpoint
+from metpy.units import units
 
 # management
 import os
@@ -25,9 +29,13 @@ import datetime
 
 from calculations import (
     mon_sea_ann,
+    get_inversion, get_inversion_numba,
+    get_LCL,
+    get_LTS,
+    get_EIS, get_EIS_simplified,
     )
 
-from namelist import cmip6_units, zerok, seconds_per_d
+from namelist import cmip6_units, zerok, seconds_per_d, cmip6_era5_var
 
 # endregion
 
@@ -608,3 +616,223 @@ for var1, vars in zip(['mtuwswrf'], [['mtnswrf', 'mtdwswrf']]):
 
 '''
 # endregion
+
+
+# region get era5 inversionh, LCL, LTS, EIS
+# get_inversion_numba:  Memory Used: 799.59GB,  Walltime Used: 01:26:26
+# get_LCL:              Memory Used: 150.88GB,  Walltime Used: 02:12:26
+# get_LTS:              Memory Used:
+# get_EIS:              Memory Used: 208.88GB,  Walltime Used: 02:21:16
+
+
+var = 'inversionh' # ['inversionh', 'LCL', 'LTS', 'EIS']
+print(f'#-------------------------------- {var}')
+odir = f'data/obs/era5/hourly/{var}'
+os.makedirs(odir, exist_ok=True)
+
+
+parser=argparse.ArgumentParser()
+parser.add_argument('-y', '--year', type=int, required=True,)
+parser.add_argument('-m', '--month', type=int, required=True,)
+args = parser.parse_args()
+
+year=args.year
+month=args.month
+# year=2024; month=12
+print(f'#---------------- {year} {month:02d}')
+
+
+if var == 'inversionh':
+    vars = ['ta', 'zg', 'orog']
+elif var == 'LCL':
+    vars = ['tas', 'ps', 'hurs']
+elif var == 'LTS':
+    vars = ['tas', 'ps', 'ta700']
+elif var == 'EIS':
+    vars = ['LCL', 'LTS', 'tas', 'ta700', 'zg700', 'orog']
+
+dss = {}
+for ivar in vars:
+    print(f'#-------- {ivar}')
+    if ivar in ['ta', 'zg']:
+        # ivar = 'zg'
+        dss[ivar] = xr.open_dataset(f'/g/data/rt52/era5/pressure-levels/reanalysis/{cmip6_era5_var[ivar]}/{year}/{cmip6_era5_var[ivar]}_era5_oper_pl_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc').rename({'level': 'pressure'})[cmip6_era5_var[ivar]].sortby('pressure', ascending=False)
+        if ivar == 'zg': dss[ivar] = geopotential_to_height(dss[ivar])
+    elif ivar in ['orog']:
+        # ivar = 'orog'
+        dss[ivar] = xr.open_dataset('/g/data/rt52/era5/single-levels/reanalysis/z/2020/z_era5_oper_sfc_20200601-20200630.nc')['z'][0]
+        dss[ivar] = geopotential_to_height(dss[ivar])
+    elif ivar in ['tas', 'ps', 'hurs', 'ta700', 'zg700']:
+        # ivar = 'hurs'
+        if ivar == 'tas':
+            # ivar = 'tas'
+            dss[ivar] = xr.open_dataset(f'/g/data/rt52/era5/single-levels/reanalysis/2t/{year}/2t_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')[cmip6_era5_var[ivar]]
+        elif ivar == 'hurs':
+            # ivar = 'hurs'
+            era5_t2m = xr.open_dataset(f'/g/data/rt52/era5/single-levels/reanalysis/2t/{year}/2t_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')['t2m']
+            era5_d2m = xr.open_dataset(f'/g/data/rt52/era5/single-levels/reanalysis/2d/{year}/2d_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')['d2m']
+            dss[ivar] = relative_humidity_from_dewpoint(era5_t2m * units.K, era5_d2m * units.K)
+        elif ivar == 'ta700':
+            # ivar = 'ta700'
+            dss[ivar] = xr.open_dataset(f'/g/data/rt52/era5/pressure-levels/reanalysis/t/{year}/t_era5_oper_pl_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')['t'].sel(level=700)
+        elif ivar == 'zg700':
+            # ivar = 'zg700'
+            dss[ivar] = xr.open_dataset(f'/g/data/rt52/era5/pressure-levels/reanalysis/z/{year}/z_era5_oper_pl_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')['z'].sel(level=700)
+            dss[ivar] = geopotential_to_height(dss[ivar])
+        else:
+            # ivar = 'ps'
+            dss[ivar] = xr.open_dataset(f'/g/data/rt52/era5/single-levels/reanalysis/{cmip6_era5_var[ivar]}/{year}/{cmip6_era5_var[ivar]}_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')[cmip6_era5_var[ivar]]
+    elif ivar in ['LCL', 'LTS']:
+        dss[ivar] = xr.open_dataset(f'data/obs/era5/hourly/{ivar}/{ivar}_hourly_{year}{month:02d}.nc')[ivar]
+    
+    if not ivar in ['LCL', 'LTS']:
+        dss[ivar] = dss[ivar].rename({'latitude': 'lat', 'longitude': 'lon'})
+    
+    # if ivar == 'orog':
+    #     dss[ivar] = dss[ivar].isel(lat=slice(0, 10), lon=slice(0, 10))
+    # else:
+    #     dss[ivar] = dss[ivar].isel(time=slice(0, 10), lat=slice(0, 10), lon=slice(0, 10))
+
+
+if var == 'inversionh':
+    dss[var] = xr.apply_ufunc(
+        # get_inversion,
+        get_inversion_numba,
+        dss['ta'],
+        dss['zg'],
+        dss['orog'],
+        input_core_dims=[['pressure'], ['pressure'], []],
+        vectorize=True, dask='parallelized', output_dtypes=[float],
+        ).compute().rename(var)
+elif var == 'LCL':
+    dss[var] = xr.apply_ufunc(
+        get_LCL,
+        dss['ps'], dss['tas'], dss['hurs'],
+        vectorize=True, dask='parallelized').compute().rename(var)
+elif var == 'LTS':
+    dss[var] = get_LTS(dss['tas'], dss['ps'], dss['ta700']).compute().rename(var)
+elif var == 'EIS':
+    dss[var] = xr.apply_ufunc(
+        # get_EIS,
+        get_EIS_simplified,
+        dss['LCL'], dss['LTS'],
+        dss['tas'], dss['ta700'], dss['zg700'], dss['orog'],
+        vectorize=True, dask='parallelized').compute().rename(var)
+
+
+ofile = f'{odir}/{var}_hourly_{year}{month:02d}.nc'
+if os.path.exists(ofile): os.remove(ofile)
+dss[var].to_netcdf(ofile)
+
+
+
+
+'''
+#-------------------------------- check
+
+year=2018; month=1
+print(f'#-------------------------------- {year} {month:02d}')
+vars = ['LTS', 'LCL', 'inversionh', 'EIS', #
+        'ta', 'zg', 'orog', 'zg700', 'tas', 'ps', 'hurs', 'ta700', #
+        ]
+
+dss = {}
+for ivar in vars:
+    print(f'#---------------- {ivar}')
+    if ivar in ['ta', 'zg']:
+        # ivar = 'zg'
+        dss[ivar] = xr.open_dataset(f'/g/data/rt52/era5/pressure-levels/reanalysis/{cmip6_era5_var[ivar]}/{year}/{cmip6_era5_var[ivar]}_era5_oper_pl_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc').rename({'level': 'pressure'})[cmip6_era5_var[ivar]].sortby('pressure', ascending=False)
+        # if ivar == 'zg': dss[ivar] = geopotential_to_height(dss[ivar])
+    elif ivar in ['orog']:
+        # ivar = 'orog'
+        dss[ivar] = xr.open_dataset('/g/data/rt52/era5/single-levels/reanalysis/z/2020/z_era5_oper_sfc_20200601-20200630.nc')['z'][0]
+        # dss[ivar] = geopotential_to_height(dss[ivar])
+    elif ivar in ['tas', 'ps', 'hurs', 'ta700', 'zg700']:
+        # ivar = 'hurs'
+        if ivar == 'tas':
+            dss[ivar] = xr.open_dataset(f'/g/data/rt52/era5/single-levels/reanalysis/2t/{year}/2t_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')[cmip6_era5_var[ivar]]
+        elif ivar == 'hurs':
+            era5_t2m = xr.open_dataset(f'/g/data/rt52/era5/single-levels/reanalysis/2t/{year}/2t_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')['t2m']
+            era5_d2m = xr.open_dataset(f'/g/data/rt52/era5/single-levels/reanalysis/2d/{year}/2d_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')['d2m']
+            dss[ivar] = relative_humidity_from_dewpoint(era5_t2m * units.K, era5_d2m * units.K)
+        elif ivar == 'ta700':
+            dss[ivar] = xr.open_dataset(f'/g/data/rt52/era5/pressure-levels/reanalysis/t/{year}/t_era5_oper_pl_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')['t'].sel(level=700)
+        elif ivar == 'zg700':
+            dss[ivar] = xr.open_dataset(f'/g/data/rt52/era5/pressure-levels/reanalysis/z/{year}/z_era5_oper_pl_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')['z'].sel(level=700)
+            # dss[ivar] = geopotential_to_height(dss[ivar])
+        else:
+            dss[ivar] = xr.open_dataset(f'/g/data/rt52/era5/single-levels/reanalysis/{cmip6_era5_var[ivar]}/{year}/{cmip6_era5_var[ivar]}_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')[cmip6_era5_var[ivar]]
+    elif ivar in ['LCL', 'LTS', 'inversionh', 'EIS']:
+        dss[ivar] = xr.open_dataset(f'data/obs/era5/hourly/{ivar}/{ivar}_hourly_{year}{month:02d}.nc')[ivar]
+    
+    if not ivar in ['LCL', 'LTS', 'inversionh', 'EIS']:
+        dss[ivar] = dss[ivar].rename({'latitude': 'lat', 'longitude': 'lon'})
+
+itime = 20
+ilat  = 40
+ilon  = 40
+
+for var in ['LTS', 'LCL', 'inversionh', 'EIS', ]: #
+    print(f'#---------------- {var}')
+    print(dss[var][itime, ilat, ilon].values)
+    if var == 'inversionh':
+        # var = 'inversionh'
+        print(get_inversion(
+            dss['ta'][itime, :, ilat, ilon].values,
+            geopotential_to_height(dss['zg'][itime, :, ilat, ilon].values * units("m2/s2")).m,
+            geopotential_to_height(dss['orog'][ilat, ilon].values * units("m2/s2")).m
+            ))
+        print(get_inversion_numba(
+            dss['ta'][itime, :, ilat, ilon].values,
+            geopotential_to_height(dss['zg'][itime, :, ilat, ilon].values * units("m2/s2")).m,
+            geopotential_to_height(dss['orog'][ilat, ilon].values * units("m2/s2")).m
+            ))
+    elif var == 'LCL':
+        # var = 'LCL'
+        print(get_LCL(
+            dss['ps'][itime, ilat, ilon].values,
+            dss['tas'][itime, ilat, ilon].values,
+            dss['hurs'][itime, ilat, ilon].values,
+            ))
+    elif var == 'LTS':
+        # var = 'LTS'
+        print(get_LTS(
+            dss['tas'][itime, ilat, ilon].values,
+            dss['ps'][itime, ilat, ilon].values,
+            dss['ta700'][itime, ilat, ilon].values,
+        ))
+    elif var == 'EIS':
+        # var = 'EIS'
+        print(get_EIS(
+            dss['tas'][itime, ilat, ilon].values,
+            dss['ps'][itime, ilat, ilon].values,
+            dss['ta700'][itime, ilat, ilon].values,
+            dss['hurs'][itime, ilat, ilon].values,
+            geopotential_to_height(dss['zg700'][itime, ilat, ilon].values * units("m2/s2")).m,
+            geopotential_to_height(dss['orog'][ilat, ilon].values * units("m2/s2")).m,
+        ))
+        print(get_EIS_simplified(
+            dss['LCL'][itime, ilat, ilon].values,
+            dss['LTS'][itime, ilat, ilon].values,
+            dss['tas'][itime, ilat, ilon].values,
+            dss['ta700'][itime, ilat, ilon].values,
+            geopotential_to_height(dss['zg700'][itime, ilat, ilon].values * units("m2/s2")).m,
+            geopotential_to_height(dss['orog'][ilat, ilon].values * units("m2/s2")).m,
+        ))
+
+
+
+
+# check two get_inversionh methods
+ds1 = xr.open_dataset('data/sim/um/barra_c2/inversionh/inversionh_hourly_202401.nc')
+ds2 = xr.open_dataset('data/sim/um/barra_c2/inversionh/inversionh_hourly_2024012.nc')
+np.max(np.abs(ds1['inversionh'].values - ds2['inversionh'].values))
+
+ds = xr.open_dataset('data/sim/um/barra_c2/LTS/LTS_hourly_202312.nc')['LTS']
+
+for ivar in vars:
+    print(f'#---------------- {ivar}')
+    print(dss[ivar])
+'''
+# endregion
+
