@@ -181,6 +181,9 @@ era5_varlabels = {
     'blh': r'boundary layer height [$m$]',
     'ncloud': r'CDNC [$cm^{-3}$]',
     'CDNC': r'CDNC [$cm^{-3}$]',
+    'inversionh': r'Inversion height [$m$]',
+    'LCL': r'LCL [$m$]',
+    'EIS': r'EIS [$K$]',
 }
 
 
@@ -251,6 +254,10 @@ cmip6_era5_var = {
     'ncloud': 'ncloud',
     'CDNC': 'CDNC',
     'ps': 'sp',
+    'inversionh': 'inversionh',
+    'LCL': 'LCL',
+    'LTS': 'LTS',
+    'EIS': 'EIS',
     # 'wa',
 }
 # tcw = tcwv + tcsw + tcrw + tclw + tciw

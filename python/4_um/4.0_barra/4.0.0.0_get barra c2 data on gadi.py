@@ -45,13 +45,16 @@ from namelist import zerok, seconds_per_d
 
 # region get BARRA-C2 mon data
 
-for var in ['prw']:
-    # var = 'pr'
+years = '2016'
+yeare = '2023'
+for var in ['inversionh', 'LCL', 'LTS', 'EIS']:
+    # var = 'inversionh'
     print(var)
     
-    fl = sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/mon/{var}/latest/*')) #[:540]
+    # fl = sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/mon/{var}/latest/*')) #[:540]
+    fl = sorted(glob.glob(f'data/sim/um/barra_c2/{var}/{var}_monthly_*.nc'))
     
-    barra_c2_mon = xr.open_mfdataset(fl)[var].sel(time=slice('1979', '2023'))
+    barra_c2_mon = xr.open_mfdataset(fl)[var].sel(time=slice(years, yeare))
     if var in ['pr', 'evspsbl', 'evspsblpot']:
         barra_c2_mon = barra_c2_mon * seconds_per_d
     elif var in ['tas', 'ts']:
@@ -77,13 +80,13 @@ for var in ['prw']:
 
 
 '''
-parameter description
-https://opus.nci.org.au/spaces/NDP/pages/338002591/BARRA2+Parameter+Descriptions
+# parameter description: https://opus.nci.org.au/spaces/NDP/pages/338002591/BARRA2+Parameter+Descriptions
+
 #-------------------------------- check
 ifile = -1
 
 barra_c2_mon_alltime = {}
-for var in ['prw']:
+for var in ['inversionh', 'LCL', 'LTS', 'EIS']:
     # var = 'clwvi'
     # ['pr', 'clh', 'clm', 'cll', 'clt', 'evspsbl', 'hfls', 'hfss', 'psl', 'rlds', 'rldscs', 'rlus', 'rluscs', 'rlut', 'rlutcs', 'rsds', 'rsdscs', 'rsdt', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'sfcWind', 'tas', 'ts', 'evspsblpot', 'hurs', 'huss', 'uas', 'vas', 'clivi', 'clwvi']
     print(f'#-------- {var}')
@@ -91,7 +94,8 @@ for var in ['prw']:
     with open(f'data/sim/um/barra_c2/barra_c2_mon_alltime_{var}.pkl','rb') as f:
         barra_c2_mon_alltime[var] = pickle.load(f)
     
-    fl = sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/mon/{var}/latest/*'))[:540]
+    # fl = sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/mon/{var}/latest/*'))[:540]
+    fl = sorted(glob.glob(f'data/sim/um/barra_c2/{var}/{var}_monthly_*.nc'))[:96]
     
     data1 = xr.open_dataset(fl[ifile])[var]
     data2 = barra_c2_mon_alltime[var]['mon'][ifile]
@@ -770,7 +774,9 @@ print((barra_c2_hourly_alltime['mon'][ifile] == ds[var].squeeze()).all().values)
 # endregion
 
 
-# region get BARRA-C2 inversionh, LCL, LTS, EIS
+
+
+# region get hourly BARRA-C2 inversionh, LCL, LTS, EIS
 # get_inversion_numba:  Memory Used: 60.06GB, Walltime Used: 02:07:38
 # get_LCL:              Memory Used: 188.22GB,Walltime Used: 03:42:41
 # get_LTS:              Memory Used: 68.83GB, Walltime Used: 00:04:39
@@ -950,6 +956,46 @@ ds = xr.open_dataset('data/sim/um/barra_c2/LTS/LTS_hourly_202312.nc')['LTS']
 for ivar in vars:
     print(f'#---------------- {ivar}')
     print(dss[ivar])
+'''
+# endregion
+
+
+# region get monthly BARRA-C2 inversionh, LCL, LTS, EIS
+# 4 vars, 8 years, 12 months: NCPUs Used: 96; Memory Used: 1.29TB; Walltime Used: 00:32:12
+
+vars = ['inversionh', 'LCL', 'LTS', 'EIS']
+
+def get_mon_from_hour(var, year, month):
+    # var = 'LTS'; year=2024; month=1
+    print(f'#---------------- {var} {year} {month:02d}')
+    
+    ifile = f'data/sim/um/barra_c2/{var}/{var}_hourly_{year}{month:02d}.nc'
+    ofile = f'data/sim/um/barra_c2/{var}/{var}_monthly_{year}{month:02d}.nc'
+    
+    ds_in = xr.open_dataset(ifile)[var]
+    ds_out = ds_in.resample({'time': '1ME'}).mean(skipna=True).compute()
+    
+    if os.path.exists(ofile): os.remove(ofile)
+    ds_out.to_netcdf(ofile)
+    
+    del ds_in, ds_out
+    return f'Finished processing {ofile}'
+
+joblib.Parallel(n_jobs=4)(joblib.delayed(get_mon_from_hour)(var, year, month) for var in vars for year in range(2024, 2025) for month in range(1, 2))
+
+
+'''
+#---- check
+var = 'EIS'
+year = 2016
+month = 6
+ds_in = xr.open_dataset(f'data/sim/um/barra_c2/{var}/{var}_hourly_{year}{month:02d}.nc')[var]
+ds_out = xr.open_dataset(f'data/sim/um/barra_c2/{var}/{var}_monthly_{year}{month:02d}.nc')[var]
+
+ilat = 100
+ilon = 100
+print(np.nanmean(ds_in[:, ilat, ilon].values) - ds_out[0, ilat, ilon].values)
+
 '''
 # endregion
 

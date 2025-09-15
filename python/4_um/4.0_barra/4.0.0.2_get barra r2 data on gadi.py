@@ -20,6 +20,7 @@ import argparse
 from metpy.calc import specific_humidity_from_dewpoint, relative_humidity_from_dewpoint, vertical_velocity_pressure, mixing_ratio_from_specific_humidity, relative_humidity_from_specific_humidity
 from metpy.units import units
 import time
+import joblib
 
 # management
 import os
@@ -44,15 +45,19 @@ from namelist import cmip6_units, zerok, seconds_per_d
 # region get BARRA-R2 mon data
 # mem=20GB, jobfs=20GB, lowclouds, 30 min
 
-for var in ['prw']:
+years = '2016'
+yeare = '2023'
+for var in ['inversionh', 'LCL', 'LTS', 'EIS']:
     # var = 'rsut'
     print(var)
     
-    fl = sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/mon/{var}/latest/*')) #[:540]
+    # fl = sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/mon/{var}/latest/*')) #[:540]
+    # with tempfile.NamedTemporaryFile(suffix='.nc') as temp_output:
+    #     cdo.mergetime(input=fl, output=temp_output.name)
+    #     barra_r2_mon = xr.open_dataset(temp_output.name)[var].sel(time=slice(years, yeare)).compute()
     
-    with tempfile.NamedTemporaryFile(suffix='.nc') as temp_output:
-        cdo.mergetime(input=fl, output=temp_output.name)
-        barra_r2_mon = xr.open_dataset(temp_output.name)[var].sel(time=slice('1979', '2023')).compute()
+    fl = sorted(glob.glob(f'data/sim/um/barra_r2/{var}/{var}_monthly_*.nc'))
+    barra_r2_mon = xr.open_mfdataset(fl)[var].sel(time=slice(years, yeare))
     
     if var in ['pr', 'evspsbl', 'evspsblpot']:
         barra_r2_mon = barra_r2_mon * seconds_per_d
@@ -78,10 +83,10 @@ for var in ['prw']:
 
 '''
 #-------------------------------- check
-ifile = -100
+ifile = -1
 
 barra_r2_mon_alltime = {}
-for var in ['clivi', 'clwvi', 'prw']:
+for var in ['inversionh', 'LCL', 'LTS', 'EIS']:
     # ['pr', 'clh', 'clm', 'cll', 'clt', 'evspsbl', 'hfls', 'hfss', 'psl', 'rlds', 'rldscs', 'rlus', 'rluscs', 'rlut', 'rlutcs', 'rsds', 'rsdscs', 'rsdt', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'sfcWind', 'tas', 'ts', 'evspsblpot', 'hurs', 'huss', 'uas', 'vas']
     # var = 'huss'
     print(f'#-------- {var}')
@@ -89,7 +94,8 @@ for var in ['clivi', 'clwvi', 'prw']:
     with open(f'data/sim/um/barra_r2/barra_r2_mon_alltime_{var}.pkl','rb') as f:
         barra_r2_mon_alltime[var] = pickle.load(f)
     
-    fl = sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/mon/{var}/latest/*'))[:540]
+    # fl = sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/mon/{var}/latest/*'))[:540]
+    fl = sorted(glob.glob(f'data/sim/um/barra_r2/{var}/{var}_monthly_*.nc'))[:96]
     
     data1 = xr.open_dataset(fl[ifile])[var]
     data2 = barra_r2_mon_alltime[var]['mon'][ifile]
@@ -676,6 +682,8 @@ del barra_r2_hourly_alltime
 # endregion
 
 
+
+
 # region get BARRA-R2 inversionh, LCL, LTS, EIS
 # get_inversion_numba:  Memory Used: 118.42GB, Walltime Used: 02:18:21
 # get_LCL:              Memory Used: 97.6GB, Walltime Used: 01:33:11
@@ -859,4 +867,45 @@ for ivar in vars:
     print(dss[ivar])
 '''
 # endregion
+
+
+# region get monthly BARRA-R2 inversionh, LCL, LTS, EIS
+# 4 vars, 8 years, 12 months: NCPUs Used: 96; Memory Used: 1.0TB; Walltime Used: 00:11:29
+
+vars = ['inversionh', 'LCL', 'LTS', 'EIS']
+
+def get_mon_from_hour(var, year, month):
+    # var = 'LTS'; year=2024; month=1
+    print(f'#---------------- {var} {year} {month:02d}')
+    
+    ifile = f'data/sim/um/barra_r2/{var}/{var}_hourly_{year}{month:02d}.nc'
+    ofile = f'data/sim/um/barra_r2/{var}/{var}_monthly_{year}{month:02d}.nc'
+    
+    ds_in = xr.open_dataset(ifile)[var]
+    ds_out = ds_in.resample({'time': '1ME'}).mean(skipna=True).compute()
+    
+    if os.path.exists(ofile): os.remove(ofile)
+    ds_out.to_netcdf(ofile)
+    
+    del ds_in, ds_out
+    return f'Finished processing {ofile}'
+
+joblib.Parallel(n_jobs=4)(joblib.delayed(get_mon_from_hour)(var, year, month) for var in vars for year in range(2024, 2025) for month in range(1, 2))
+
+
+'''
+#---- check
+var = 'inversionh'
+year = 2016
+month = 6
+ds_in = xr.open_dataset(f'data/sim/um/barra_r2/{var}/{var}_hourly_{year}{month:02d}.nc')[var]
+ds_out = xr.open_dataset(f'data/sim/um/barra_r2/{var}/{var}_monthly_{year}{month:02d}.nc')[var]
+
+ilat = 100
+ilon = 100
+print(np.nanmean(ds_in[:, ilat, ilon].values) - ds_out[0, ilat, ilon].values)
+
+'''
+# endregion
+
 

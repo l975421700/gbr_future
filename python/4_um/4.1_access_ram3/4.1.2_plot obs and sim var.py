@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -P v46 -l walltime=3:00:00,ncpus=1,mem=96GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/qx55
+# qsub -I -q normal -P v46 -l walltime=1:00:00,ncpus=1,mem=20GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/qx55
 
 
 # region import packages
@@ -109,10 +109,10 @@ from um_postprocess import (
 
 # region compare sensitivity tests
 
-year, month, day, hour = 2020, 6, 2, 5
-var2s = ['clwvi']
+year, month, day, hour = 2020, 6, 2, 4
+var2s = ['cll', 'clwvi']
 # 'rsut', 'rlut', 'cll', 'clm', 'clh', 'clt', 'clivi', 'clwvi'
-modes = ['original'] # 'original', 'difference'
+modes = ['difference'] # 'original', 'difference'
 dsss = [
     # [('CERES',''),('ERA5',''),('BARRA-C2',''),('u-dq700',1)],#control
     # [('CERES',''),('ERA5',''),('u-dq788',1),('u-dq911',1),('u-dq799',1)],#res
@@ -127,8 +127,11 @@ dsss = [
     
     # [('CERES',''),('u-dq700',1),('u-dr091',1)],
     # [('CERES',''),('u-dq700',1),('u-dr041',1)],
-    [('CERES',''),('u-dq700',1),('u-dr147',1)],
+    # [('CERES',''),('u-dq700',1),('u-dr147',1)],
     
+    # [('ERA5',''),('u-dq700',1),('u-dr040',1),('u-dr041',1)],#res+CDNC
+    [('ERA5',''),('u-dq788',1),('u-dq911',1),('u-dq799',1)],#res
+    [('ERA5',''),('u-dr095',1),('u-dr093',1),('u-dr091',1)],#Sres
     # [('ERA5',''),('u-dq700',1),('u-dq799',1),('u-dr041',1),('u-dr145',1)],#res+CDNC
     # [('ERA5',''),('u-dq700',1),('u-dr091',1),('u-dr041',1),('u-dr147',1)],#Sres+CDNC
 ]

@@ -1,19 +1,19 @@
-#PBS -N qjob
-#PBS -q normal
-#PBS -l walltime=1:00:00
-#PBS -l mem=96GB
+#PBS -N single_job
+#PBS -q hugemem
+#PBS -l walltime=0:30:00
+#PBS -l mem=1470GB
 #PBS -l jobfs=100MB
-#PBS -l ncpus=1
+#PBS -l ncpus=48
 #PBS -j oe
 #PBS -l storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/qx55
-#PBS -P nf33
+#PBS -P v46
 #PBS -r y
 
 cd $HOME
-source ${HOME}/miniconda3/bin/activate lowclouds
-python ${HOME}/code/gbr_future/shell/0_runpy/run1.py
+source miniconda3/bin/activate lowclouds
+python code/gbr_future/shell/0_runpy/run3.py
 
-# ${HOME}/code/gbr_future/shell/2.0_get_clean_jaxa.sh 2015 07
+# code/gbr_future/shell/2.0_get_clean_jaxa.sh 2015 07
 
 #---- remarks
 # max walltime in copyq:10hours
@@ -29,5 +29,5 @@ python ${HOME}/code/gbr_future/shell/0_runpy/run1.py
 # nci_account -P gb02 -v
 
 # qsub -I -q normal -P v46 -l walltime=48:00:00,ncpus=1,mem=4GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/gx60
-# cp -aruvP /home/563/qg8515/scratch/cylc-run /g/data/gx60/qg8515/ &
-# cp -aruvP /home/563/qg8515/scratch/data /g/data/gx60/qg8515/ &
+# cp -aruvP /g/data/v46/qg8515/data/obs/era5 /g/data/gx60/qg8515/data/sim/ &
+# cp -aruvP /g/data/v46/qg8515/data/sim/um /g/data/gx60/qg8515/data/sim/ &

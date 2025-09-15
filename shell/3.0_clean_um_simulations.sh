@@ -5,8 +5,8 @@ output_dir='/home/563/qg8515/scratch/cylc-run'
 echo '#---------------- folder: ' ${output_dir}
 
 
-for expid in 'u-dq700' 'u-dq788' 'u-dq799' 'u-dq911' 'u-dq912' 'u-dq987' 'u-dr040' 'u-dr041' 'u-dr091' 'u-dr093' 'u-dr095' 'u-dr105' 'u-dr107'; do
-    # 'u-dr108' 'u-dr109', 'u-dr144' 'u-dr145' 'u-dr146' 'u-dr147' 'u-dr148' 'u-dr149'
+for expid in 'u-dr789' 'u-dr922'; do
+    # 'u-dr108' 'u-dr109', 'u-dr144' 'u-dr145' 'u-dr146' 'u-dr147' 'u-dr148' 'u-dr149', 'u-dq700' 'u-dq788' 'u-dq799' 'u-dq911' 'u-dq912' 'u-dq987' 'u-dr040' 'u-dr041' 'u-dr091' 'u-dr093' 'u-dr095' 'u-dr105' 'u-dr107'
     echo '#-------- exp: ' ${expid}
     cd ${output_dir}/${expid}
     # pwd

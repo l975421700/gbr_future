@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -P v46 -l walltime=6:00:00,ncpus=1,mem=192GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/qx55
+# qsub -I -q normal -P v46 -l walltime=1:00:00,ncpus=1,mem=192GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/qx55
 
 
 # region import packages
@@ -112,11 +112,11 @@ from um_postprocess import (
 
 # options
 years = '2016'; yeare = '2023'
-# ['rsut', 'rlut'， 'cll', 'clm', 'clh', 'clt', 'clwvi', 'clivi']
-vars = ['cll', 'clm', 'clh', 'clt']
+# ['rsut', 'rlut'， 'cll', 'clm', 'clh', 'clt', 'clwvi', 'clivi', 'inversionh', 'LCL', 'LTS', 'EIS']
+vars = ['pr']
 # ['CERES', 'CM SAF', 'Himawari', 'ERA5', 'BARRA-R2', 'BARRA-C2', 'BARPA-C', 'MOD08_M3', 'MYD08_M3']
-ds_names = ['Himawari', 'ERA5']
-plt_regions = ['h9_domain'] # ['global', 'c2_domain', 'h9_domain']
+ds_names = ['ERA5', 'BARRA-R2', 'BARRA-C2']
+plt_regions = ['c2_domain'] # ['global', 'c2_domain', 'h9_domain']
 plt_modes = ['original', 'difference'] # ['original', 'difference']
 
 # settings
@@ -311,6 +311,48 @@ for ivar in vars:
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
                     cm_min=-100, cm_max=100, cm_interval1=10, cm_interval2=20,
                     cmap='BrBG_r')
+            elif ivar in ['inversionh']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=0, cm_max=3200, cm_interval1=200, cm_interval2=400,
+                    cmap='viridis',)
+                extend1 = 'max'
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-400, cm_max=400, cm_interval1=50, cm_interval2=100,
+                    cmap='BrBG_r')
+            elif ivar in ['LCL']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=0, cm_max=2000, cm_interval1=100, cm_interval2=200,
+                    cmap='viridis',)
+                extend1 = 'max'
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-200, cm_max=200, cm_interval1=25, cm_interval2=50,
+                    cmap='BrBG_r')
+            elif ivar in ['LTS']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=0, cm_max=16, cm_interval1=1, cm_interval2=2,
+                    cmap='viridis')
+                extend1 = 'max'
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-3, cm_max=3, cm_interval1=0.5, cm_interval2=1,
+                    cmap='BrBG_r')
+            elif ivar in ['EIS']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=0, cm_max=10, cm_interval1=1, cm_interval2=1,
+                    cmap='viridis')
+                extend1 = 'max'
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-3, cm_max=3, cm_interval1=0.5, cm_interval2=1,
+                    cmap='BrBG_r')
+            elif ivar=='pr':
+                pltlevel1 = np.array([0, 0.5, 1, 2, 3, 4, 6, 8, 10, 12, 16, 20,])
+                pltticks1 = np.array([0, 0.5, 1, 2, 3, 4, 6, 8, 10, 12, 16, 20,])
+                pltnorm1 = BoundaryNorm(pltlevel1, ncolors=len(pltlevel1)-1, clip=True)
+                pltcmp1 = plt.get_cmap('viridis_r', len(pltlevel1)-1)
+                extend1 = 'max'
+                pltlevel2 = np.array([-6, -4, -3, -2, -1, -0.5, 0, 0.5, 1, 2, 3, 4, 6])
+                pltticks2 = np.array([-6, -4, -3, -2, -1, -0.5, 0, 0.5, 1, 2, 3, 4, 6])
+                pltnorm2 = BoundaryNorm(pltlevel2, ncolors=len(pltlevel2)-1, clip=True)
+                pltcmp2 = plt.get_cmap('BrBG', len(pltlevel2)-1)
         elif plt_region == 'h9_domain':
             if ivar in ['clh', 'clm', 'cll']:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
