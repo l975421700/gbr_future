@@ -29,5 +29,6 @@ python code/gbr_future/shell/0_runpy/run3.py
 # nci_account -P gb02 -v
 
 # qsub -I -q normal -P v46 -l walltime=48:00:00,ncpus=1,mem=4GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/gx60
-# cp -aruvP /g/data/v46/qg8515/data/obs/era5 /g/data/gx60/qg8515/data/sim/ &
-# cp -aruvP /g/data/v46/qg8515/data/sim/um /g/data/gx60/qg8515/data/sim/ &
+# cp -aruvP /home/563/qg8515/scratch/data/obs/jaxa /home/563/qg8515/data/obs/ &
+# cp -aruvP /home/563/qg8515/scratch/data/obs/MODIS /home/563/qg8515/data/obs/ &
+

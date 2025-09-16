@@ -77,12 +77,6 @@ stash2var = {
     'STASH_m01s16i206': 'qc',
     'STASH_m01s00i272': 'qr',
     'STASH_m01s16i207': 'qt',
-    'STASH_m01s00i391': 'mv',
-    'STASH_m01s00i392': 'mcl',
-    'STASH_m01s00i393': 'mcf',
-    'STASH_m01s00i394': 'mr',
-    'STASH_m01s00i395': 'mg',
-    'STASH_m01s00i396': 'mcf2',
     'STASH_m01s00i408': 'pa',
     'STASH_m01s03i234': 'hfls',
     'STASH_m01s03i217': 'hfss',
@@ -102,8 +96,6 @@ stash2var = {
     'STASH_m01s00i033': 'orog',
     'STASH_m01s00i239': 'rlu_t_s',
     'STASH_m01s03i250': 'das',
-    'STASH_m01s03i513': 'blendingw',
-    'STASH_m01s04i118': 'radar_reflectivity',
     'STASH_m01s04i224': 'clslw',
     'STASH_m01s20i114': 'CAPE',
     'STASH_m01s30i405': 'clwvi',
@@ -135,6 +127,17 @@ var2stash = {stash2var[ikey]: ikey  for ikey in stash2var.keys()}
 var2stash_gal = {stash2var_gal[ikey]: ikey  for ikey in stash2var_gal.keys()}
 var2stash_ral = {stash2var_ral[ikey]: ikey  for ikey in stash2var_ral.keys()}
 
+
+'''
+    # 'STASH_m01s00i391': 'mv',
+    # 'STASH_m01s00i392': 'mcl',
+    # 'STASH_m01s00i393': 'mcf',
+    # 'STASH_m01s00i394': 'mr',
+    # 'STASH_m01s00i395': 'mg',
+    # 'STASH_m01s00i396': 'mcf2',
+    # 'STASH_m01s03i513': 'blendingw',
+    # 'STASH_m01s04i118': 'radar_reflectivity',
+'''
 # endregion
 
 
