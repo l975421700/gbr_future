@@ -33,13 +33,10 @@ month_days = np.array([31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31])
 seconds_per_d = 86400
 
 nci_ds = {
-    'era5': '/g/data/rt52/era5/',
-    'BARRA-C2': '/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/',
     'ISCCP': '/g/data/ct11/access-nri/replicas/esmvaltool/obsdata-v2/Tier1/ISCCP',
     'AGCD': '/g/data/ct11/access-nri/replicas/esmvaltool/obsdata-v2/Tier2/AGCD',
     'CALIOP': '/g/data/ct11/access-nri/replicas/esmvaltool/obsdata-v2/Tier1/CALIOP',
     'ESACCI-CLOUD': '/g/data/ct11/access-nri/replicas/esmvaltool/obsdata-v2/Tier2/ESACCI-CLOUD',
-    'IMERG': '/g/data/ia39/aus-ref-clim-data-nci/frogs/data/1DD_V1/IMERG_V07B_FC',
     'AuRa': '/g/data/rq0',
     'BARPA-C': '/g/data/py18/BARPA/output/CMIP6/DD/AUST-04/BOM/ERA5/evaluation/r1i1p1f1/BARPA-C/v1-r1',
 }

@@ -1,14 +1,14 @@
-for idx in $(seq 1 2); do
+for idx in $(seq 1 11); do
     qsub -v idx=$idx <<EOF
 #PBS -N qjob$idx
 #PBS -q normal
-#PBS -l walltime=3:00:00
+#PBS -l walltime=0:30:00
 #PBS -l mem=192GB
 #PBS -l jobfs=100MB
-#PBS -l ncpus=1
+#PBS -l ncpus=48
 #PBS -j oe
-#PBS -l storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+gdata/zv2+gdata/ra22+gdata/py18
-#PBS -P v46
+#PBS -l storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/py18+gdata/gx60
+#PBS -P gb02
 #PBS -r y
 
 cd ${HOME}

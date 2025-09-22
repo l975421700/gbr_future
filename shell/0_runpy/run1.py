@@ -40,28 +40,41 @@ from namelist import zerok, seconds_per_d
 # endregion
 
 
-# region get monthly BARRA-C2 inversionh, LCL, LTS, EIS
+# region get BARPA-C alltime hourly data
 
-vars = ['inversionh', 'LCL', 'LTS', 'EIS']
-
-def get_mon_from_hour(var, year, month):
-    # var = 'LTS'; year=2024; month=1
-    print(f'#---------------- {var} {year} {month:02d}')
+years = '2016'
+yeare = '2023'
+for var in ['rlut', 'rlutcs', 'pr', 'cll', 'clm', 'clh', 'clt', 'rsut', 'rsutcs', 'clwvi', 'clivi']:
+    # var = 'cll'
+    # ['clivi', 'clwvi', 'prw', 'cll', 'clh', 'clm', 'clt', 'pr', 'tas']
+    print(f'#-------------------------------- {var}')
     
-    ifile = f'data/sim/um/barra_c2/{var}/{var}_hourly_{year}{month:02d}.nc'
-    ofile = f'data/sim/um/barra_c2/{var}/{var}_monthly_{year}{month:02d}.nc'
+    fl = sorted(glob.glob(f'data/sim/um/barpa_c/{var}/{var}_hourly_*.nc'))
+    barpa_c_hourly = xr.open_mfdataset(fl)[var].sel(time=slice(years, yeare))
+    barpa_c_hourly_alltime = mon_sea_ann(
+        var_monthly=barpa_c_hourly, lcopy=False, mm=True, sm=True, am=True)
     
-    ds_in = xr.open_dataset(ifile)[var]
-    ds_out = ds_in.resample({'time': '1ME'}).mean(skipna=True).compute()
-    
+    ofile = f'data/sim/um/barpa_c/barpa_c_hourly_alltime_{var}.pkl'
     if os.path.exists(ofile): os.remove(ofile)
-    ds_out.to_netcdf(ofile)
+    with open(ofile,'wb') as f:
+        pickle.dump(barpa_c_hourly_alltime, f)
     
-    del ds_in, ds_out
-    return f'Finished processing {ofile}'
-
-joblib.Parallel(n_jobs=96)(joblib.delayed(get_mon_from_hour)(var, year, month) for var in vars for year in range(2016, 2024) for month in range(1, 13))
+    del barpa_c_hourly, barpa_c_hourly_alltime
 
 
+
+'''
+#-------------------------------- check
+var = 'pr'
+with open(f'data/sim/um/barpa_c/barpa_c_hourly_alltime_{var}.pkl','rb') as f:
+    barpa_c_hourly_alltime = pickle.load(f)
+
+fl = sorted(glob.glob(f'scratch/data/sim/um/barpa_c/{var}/{var}_hourly_*.nc'))
+ifile = -1
+ds = xr.open_dataset(fl[ifile])
+
+print((barpa_c_hourly_alltime['mon'][ifile] == ds[var].squeeze()).all().values)
+
+
+'''
 # endregion
-
