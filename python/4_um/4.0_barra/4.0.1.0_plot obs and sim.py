@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -P v46 -l walltime=1:00:00,ncpus=1,mem=192GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/qx55
+# qsub -I -q normal -P v46 -l walltime=1:00:00,ncpus=1,mem=60GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/qx55+gdata/gx60
 
 
 # region import packages
@@ -35,7 +35,7 @@ import cartopy.crs as ccrs
 from matplotlib import cm
 plt.rcParams['pcolor.shading'] = 'auto'
 mpl.rcParams['figure.dpi'] = 600
-mpl.rc('font', family='Times New Roman', size=10)
+mpl.rc('font', family='Times New Roman', size=12)
 mpl.rcParams['axes.linewidth'] = 0.2
 plt.rcParams.update({"mathtext.fontset": "stix"})
 import matplotlib.animation as animation
@@ -113,11 +113,11 @@ from um_postprocess import (
 # options
 years = '2016'; yeare = '2023'
 # ['rsut', 'rlut'， 'cll', 'clm', 'clh', 'clt', 'clwvi', 'clivi', 'inversionh', 'LCL', 'LTS', 'EIS']
-vars = ['pr']
+vars = ['clwvi', 'clivi']
 # ['CERES', 'CM SAF', 'Himawari', 'ERA5', 'BARRA-R2', 'BARRA-C2', 'BARPA-C', 'MOD08_M3', 'MYD08_M3']
-ds_names = ['ERA5', 'BARRA-R2', 'BARRA-C2']
+ds_names = ['CERES', 'ERA5', 'BARRA-R2', 'BARRA-C2', 'BARPA-C']
 plt_regions = ['c2_domain'] # ['global', 'c2_domain', 'h9_domain']
-plt_modes = ['original', 'difference'] # ['original', 'difference']
+plt_modes = ['difference'] # ['original', 'difference']
 
 # settings
 min_lon, max_lon, min_lat, max_lat = [110.58, 157.34, -43.69, -7.01]
@@ -180,7 +180,7 @@ for ivar in vars:
             ds_data['ann'][ids] = cm_saf[cm_saf_varnames[ivar]].resample({'time': '1YE'}).map(time_weighted_mean).compute()
         elif ids == 'ERA5':
             # ids = 'ERA5'
-            with open(f'data/obs/era5/mon/era5_sl_mon_alltime_{cmip6_era5_var[ivar]}.pkl', 'rb') as f:
+            with open(f'data/sim/era5/mon/era5_sl_mon_alltime_{cmip6_era5_var[ivar]}.pkl', 'rb') as f:
                 era5_sl_mon_alltime = pickle.load(f)
             ds_data['ann'][ids] = era5_sl_mon_alltime['ann'].sel(time=slice(years, yeare)).sortby('lat')
             if ivar in ['clwvi', 'clivi']:
@@ -213,8 +213,12 @@ for ivar in vars:
             ds_data['ann'][ids] = cltype_frequency_alltime['ann'].sel(types=cltypes[cmip6_era5_var[ivar]], time=slice(years, yeare)).sum(dim='types').sortby('lat')
         elif ids in ['MOD08_M3', 'MYD08_M3']:
             # ids = 'MYD08_M3'
-            modis = xr.open_mfdataset(glob.glob(f'scratch/data/obs/MODIS/{ids}/*{ivar}*.nc')).sel(time=slice(years, yeare)).sortby('lat')
+            modis = xr.open_mfdataset(glob.glob(f'data/obs/MODIS/{ids}/*{ivar}*.nc')).sel(time=slice(years, yeare)).sortby('lat')
             ds_data['ann'][ids] = modis[ivar].resample({'time': '1YE'}).map(time_weighted_mean).compute()
+        elif ids == 'IMERG':
+            with open(f'data/obs/IMERG/imerg_mon_alltime_pr.pkl', 'rb') as f:
+                imerg_mon_alltime = pickle.load(f)
+            ds_data['ann'][ids] = imerg_mon_alltime['ann']
         else:
             print('Warning: unknown dataset')
         
@@ -399,11 +403,12 @@ for ivar in vars:
             plt_rmsd[ids] = coslat_weighted_rmsd(plt_diff[ids])
             plt_md[ids] = coslat_weighted_mean(plt_diff[ids])
             
-            ttest_fdr_res = ttest_fdr_control(
-                xe.Regridder(plt_ann[ids], plt_ann[ds_names[0]], 'bilinear')(plt_ann[ids]),
-                # regrid(plt_ann[ids], plt_ann[ds_names[0]]),
-                plt_ann[ds_names[0]])
-            plt_diff[ids] = plt_diff[ids].where(ttest_fdr_res, np.nan)
+            if ivar != 'pr':
+                ttest_fdr_res = ttest_fdr_control(
+                    xe.Regridder(plt_ann[ids], plt_ann[ds_names[0]], 'bilinear')(plt_ann[ids]),
+                    # regrid(plt_ann[ids], plt_ann[ds_names[0]]),
+                    plt_ann[ds_names[0]])
+                plt_diff[ids] = plt_diff[ids].where(ttest_fdr_res, np.nan)
         
         for plt_mode in plt_modes:
             print(f'#-------- {plt_mode}')
@@ -419,7 +424,7 @@ for ivar in vars:
             elif plt_region == 'c2_domain':
                 fig, axs = plt.subplots(
                     nrow, ncol,
-                    figsize=np.array([6.6*ncol, 6*nrow+1.5])/2.54,
+                    figsize=np.array([4.4*ncol, 4*nrow+1.6])/2.54,
                     subplot_kw={'projection': ccrs.PlateCarree(central_longitude=180)},
                     gridspec_kw={'hspace': 0.01, 'wspace': 0.01},)
                 for jcol in range(ncol):
@@ -435,18 +440,25 @@ for ivar in vars:
             else:
                 print('Warning: plt_region unspecified')
             
-            plt_colnames = [f'{ds_names[0]}, Mean: {str(np.round(plt_mean[ds_names[0]], 1))}']
+            plt_colnames = [f'{ds_names[0]}']
+            plt_text = [f'Mean: {str(np.round(plt_mean[ds_names[0]], 1))}']
             if plt_mode in ['original']:
-                plt_colnames += [f'{ids}, {str(np.round(plt_mean[ids], 1))}' for ids in ds_names[1:]]
+                plt_colnames += [f'{ids}' for ids in ds_names[1:]]
+                plt_text += [f'{str(np.round(plt_mean[ids], 1))}' for ids in ds_names[1:]]
             elif plt_mode in ['difference']:
-                plt_colnames += [f'{ds_names[1]} - {ds_names[0]}, RMSD: {str(np.round(plt_rmsd[ds_names[1]], 1))}, MD: {str(np.round(plt_md[ds_names[1]], 1))}']
-                plt_colnames += [f'{ids} - {ds_names[0]}, {str(np.round(plt_rmsd[ids], 1))}, {str(np.round(plt_md[ids], 1))}' for ids in ds_names[2:]]
+                plt_colnames += [f'{ds_names[1]} - {ds_names[0]}']
+                plt_text += [f'RMSD: {str(np.round(plt_rmsd[ds_names[1]], 1))}, MD: {str(np.round(plt_md[ds_names[1]], 1))}']
+                plt_colnames += [f'{ids} - {ds_names[0]}' for ids in ds_names[2:]]
+                plt_text += [f'{str(np.round(plt_rmsd[ids], 1))}, {str(np.round(plt_md[ids], 1))}' for ids in ds_names[2:]]
             
             for jcol in range(ncol):
                 axs[jcol].text(
                     0, 1.02,
                     f'({string.ascii_lowercase[jcol]}) {plt_colnames[jcol]}',
-                    ha='left',va='bottom',transform=axs[jcol].transAxes,size=9)
+                    ha='left',va='bottom',transform=axs[jcol].transAxes)
+                axs[jcol].text(
+                    0.01, 0.01, plt_text[jcol], ha='left', va='bottom',
+                    transform=axs[jcol].transAxes,)
             
             plt_mesh1 = axs[0].pcolormesh(
                 plt_org[ds_names[0]].lon,
@@ -467,7 +479,7 @@ for ivar in vars:
                     plt_mesh1,#cm.ScalarMappable(norm=pltnorm1, cmap=pltcmp1),#
                     format=remove_trailing_zero_pos,
                     orientation="horizontal", ticks=pltticks1, extend=extend1,
-                    cax=fig.add_axes([0.26, 0.18, 0.48, 0.04]))
+                    cax=fig.add_axes([0.26, 0.2, 0.48, 0.04]))
                 cbar1.ax.set_xlabel(cbar_label1)
             elif plt_mode in ['difference']:
                 for jcol in range(ncol-1):
@@ -481,20 +493,22 @@ for ivar in vars:
                     plt_mesh1,#cm.ScalarMappable(norm=pltnorm1, cmap=pltcmp1),#
                     format=remove_trailing_zero_pos,
                     orientation="horizontal", ticks=pltticks1, extend=extend1,
-                    cax=fig.add_axes([0.01, 0.18, 0.48, 0.04]))
+                    cax=fig.add_axes([0.01, 0.2, 0.48, 0.04]))
                 cbar1.ax.set_xlabel(cbar_label1)
                 cbar2 = fig.colorbar(
                     plt_mesh2,#cm.ScalarMappable(norm=pltnorm2, cmap=pltcmp2),#
                     format=remove_trailing_zero_pos,
                     orientation="horizontal", ticks=pltticks2, extend=extend2,
-                    cax=fig.add_axes([0.51, 0.18, 0.48, 0.04]))
+                    cax=fig.add_axes([0.51, 0.2, 0.48, 0.04]))
                 cbar2.ax.set_xlabel(cbar_label2)
             else:
                 print('Warning: unspecified plot mode')
             
             opng = f'figures/4_um/4.0_barra/4.0.7_obs_sim/4.0.7.0 {ivar} {', '.join(ds_names)} {plt_region} {plt_mode} {years}-{yeare}.png'
-            fig.subplots_adjust(left=0.005, right=0.995, bottom=0.18, top=0.97)
+            fig.subplots_adjust(left=0.005, right=0.995, bottom=0.2, top=0.97)
             fig.savefig(opng)
+    
+    # del ds_data
 
 
 

@@ -1,6 +1,6 @@
 
 
-# qsub -I -q express -l walltime=2:00:00,ncpus=1,mem=192GB,storage=gdata/v46+gdata/rr1
+# qsub -I -q express -l walltime=2:00:00,ncpus=1,mem=192GB,storage=gdata/v46+gdata/rr1+gdata/gx60
 
 
 # region import packages
@@ -21,7 +21,7 @@ from metpy.calc import pressure_to_height_std, geopotential_to_height
 from metpy.units import units
 import metpy.calc as mpcalc
 import requests
-import rioxarray
+# import rioxarray
 
 # plot
 import matplotlib as mpl
@@ -311,8 +311,8 @@ ax.text(CS_A2[0]-1, CS_A2[1]-1, 'A2', ha='right', va='top')
 
 opng='figures/0_gbr/0.1_study region/0.0_Australia1.png'
 
-gbr_shp = gpd.read_file('data/others/Great_Barrier_Reef_Marine_Park_Boundary/Great_Barrier_Reef_Marine_Park_Boundary.shp')
-gbr_shp.plot(ax=ax, edgecolor='tab:blue', facecolor='none', lw=1, zorder=2)
+# gbr_shp = gpd.read_file('data/others/Great_Barrier_Reef_Marine_Park_Boundary/Great_Barrier_Reef_Marine_Park_Boundary.shp')
+# gbr_shp.plot(ax=ax, edgecolor='tab:blue', facecolor='none', lw=1, zorder=2)
 
 cbar = fig.colorbar(
     plt_mesh1,

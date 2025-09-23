@@ -9,7 +9,7 @@ shopt -s nullglob
 for month in $(seq 1 12); do
     # month=1
     month=$(printf '%02d' $month)
-    ymfolder=/scratch/v46/qg8515/data/obs/jaxa/clp/$year$month
+    ymfolder=/home/563/qg8515/data/obs/jaxa/clp/$year$month
     if [ -d $ymfolder ]; then
         echo Processing year $year month $month
         last_day=$(date -d "$year-$month-01 +1 month -1 day" +%d)
@@ -32,7 +32,7 @@ for month in $(seq 1 12); do
                                 echo Processed year $year month $month day $day hour $hour minute $minute
                             else
                                 echo Warning 4: No file for year $year month $month day $day hour $hour minute $minute
-                                wget -q -r -nH --cut-dirs=5 --continue --no-remove-listing --ftp-user='gaoqg229_gmail.com' --ftp-password='SP+wari8' --tries=5 --retry-connrefused --wait=5 --timeout=30 --glob=on -A "NC_H*_$year$month${day}_$hour${minute}_L2CLP010_FLDK.02401_02401.nc" ftp://ftp.ptree.jaxa.jp/pub/himawari/L2/CLP/010/$year$month/$day/$hour/ -P /scratch/v46/qg8515/data/obs/jaxa/clp
+                                wget -q -r -nH --cut-dirs=5 --continue --no-remove-listing --ftp-user='gaoqg229_gmail.com' --ftp-password='SP+wari8' --tries=5 --retry-connrefused --wait=5 --timeout=30 --glob=on -A "NC_H*_$year$month${day}_$hour${minute}_L2CLP010_FLDK.02401_02401.nc" ftp://ftp.ptree.jaxa.jp/pub/himawari/L2/CLP/010/$year$month/$day/$hour/ -P /home/563/qg8515/data/obs/jaxa/clp
                                 if [ $? -eq 0 ]; then
                                     downloadedfile=$(ls $hfolder/NC_H*_$year$month${day}_$hour${minute}_L2CLP010_FLDK.02401_02401.nc | tail -n 1)
                                     if [ -f $downloadedfile ]; then

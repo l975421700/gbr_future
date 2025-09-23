@@ -180,7 +180,7 @@ print((cltype_count_alltime['ann'].loc[{'types': itype}][:, ilat, ilon] == cltyp
 
 # region get alltime frequency of each cloud type
 
-with open('/scratch/v46/qg8515/data/obs/jaxa/clp/cltype_count_alltime.pkl', 'rb') as f:
+with open('data/obs/jaxa/clp/cltype_count_alltime.pkl', 'rb') as f:
     cltype_count_alltime = pickle.load(f)
 
 cltype_frequency_alltime = {}
@@ -195,7 +195,7 @@ for ialltime in ['mon', 'sea', 'ann', 'mm', 'sm', 'am']:
         print(f'#---------------- {itype}')
         cltype_frequency_alltime[ialltime].loc[{'types': itype}][:] = (cltype_count_alltime[ialltime].loc[{'types': itype}] / cltype_count_alltime[ialltime].loc[{'types': 'finite'}] * 100).compute().astype(np.float32)
 
-ofile='/scratch/v46/qg8515/data/obs/jaxa/clp/cltype_frequency_alltime.pkl'
+ofile='data/obs/jaxa/clp/cltype_frequency_alltime.pkl'
 if os.path.exists(ofile): os.remove(ofile)
 with open(ofile, 'wb') as f:
     pickle.dump(cltype_frequency_alltime, f)

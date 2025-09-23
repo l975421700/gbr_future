@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -P v46 -l walltime=1:00:00,ncpus=1,mem=20GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/qx55
+# qsub -I -q normal -P gb02 -l walltime=2:00:00,ncpus=1,mem=20GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/qx55+gdata/gx60
 
 
 # region import packages
@@ -34,7 +34,7 @@ import cartopy.crs as ccrs
 from matplotlib import cm
 plt.rcParams['pcolor.shading'] = 'auto'
 mpl.rcParams['figure.dpi'] = 600
-mpl.rc('font', family='Times New Roman', size=10)
+mpl.rc('font', family='Times New Roman', size=12)
 mpl.rcParams['axes.linewidth'] = 0.2
 plt.rcParams.update({"mathtext.fontset": "stix"})
 import matplotlib.animation as animation
@@ -109,29 +109,32 @@ from um_postprocess import (
 
 # region compare sensitivity tests
 
-year, month, day, hour = 2020, 6, 2, 4
-var2s = ['cll', 'clwvi']
+year, month, day, hour = 2020, 6, 2, 5
+var2s = ['rsut']
 # 'rsut', 'rlut', 'cll', 'clm', 'clh', 'clt', 'clivi', 'clwvi'
 modes = ['difference'] # 'original', 'difference'
 dsss = [
     # [('CERES',''),('ERA5',''),('BARRA-C2',''),('u-dq700',1)],#control
-    # [('CERES',''),('ERA5',''),('u-dq788',1),('u-dq911',1),('u-dq799',1)],#res
     # [('CERES',''),('ERA5',''),('u-dr095',1),('u-dr093',1),('u-dr091',1)],#Sres
     # [('CERES',''),('ERA5',''),('u-dq700',1),('u-dr040',1),('u-dr041',1)],#CDNC
-    # [('CERES',''),('ERA5',''),('u-dq700',1),('u-dq799',1),('u-dr041',1),('u-dr145',1)],#res+CDNC
     # [('CERES',''),('ERA5',''),('u-dq700',1),('u-dr091',1),('u-dr041',1),('u-dr147',1)],#Sres+CDNC
+    # [('CERES',''),('ERA5',''),('u-dq788',1),('u-dq911',1),('u-dq799',1)],#res
+    # [('CERES',''),('ERA5',''),('u-dq700',1),('u-dq799',1),('u-dr041',1),('u-dr145',1)],#res+CDNC
     # [('CERES',''),('ERA5',''),('u-dq700',1),('u-dr108',1),('u-dr109',1)],#param
     # [('CERES',''),('ERA5',''),('u-dq700',1),('u-dq912',1)],#LD
     # [('CERES',''),('ERA5',''),('u-dq700',1),('u-dr105',1),('u-dr107',1)],#levs
     # [('CERES',''),('ERA5',''),('u-dq700',1),('u-dr789',1),('u-dr922',1)],#clinho
+    # [('CERES',''),('ERA5',''),('u-dq700',1),('u-ds719',1)], #shortTS
+    # [('CERES',''),('ERA5',''),('u-ds728',1),('u-ds730',1),('u-ds732',1)],#SA1p1
+    [('CERES',''),('ERA5',''),('u-ds722',1),('u-ds724',1),('u-ds726',1)],#SA1p1
     
     # [('CERES',''),('u-dq700',1),('u-dr091',1)],
     # [('CERES',''),('u-dq700',1),('u-dr041',1)],
     # [('CERES',''),('u-dq700',1),('u-dr147',1)],
     
     # [('ERA5',''),('u-dq700',1),('u-dr040',1),('u-dr041',1)],#res+CDNC
-    [('ERA5',''),('u-dq788',1),('u-dq911',1),('u-dq799',1)],#res
-    [('ERA5',''),('u-dr095',1),('u-dr093',1),('u-dr091',1)],#Sres
+    # [('ERA5',''),('u-dq788',1),('u-dq911',1),('u-dq799',1)],#res
+    # [('ERA5',''),('u-dr095',1),('u-dr093',1),('u-dr091',1)],#Sres
     # [('ERA5',''),('u-dq700',1),('u-dq799',1),('u-dr041',1),('u-dr145',1)],#res+CDNC
     # [('ERA5',''),('u-dq700',1),('u-dr091',1),('u-dr041',1),('u-dr147',1)],#Sres+CDNC
 ]
@@ -143,7 +146,7 @@ year0, month0, day0, hour0 = ptime.year, ptime.month, ptime.day, ptime.hour
 
 min_lon1, max_lon1, min_lat1, max_lat1 = 80, 220, -70, 20
 min_lon, max_lon, min_lat, max_lat = 110.58, 157.34, -43.69, -7.01
-pwidth = 6.6
+pwidth = 4.4
 nrow = 1
 regridder = {}
 
@@ -248,15 +251,15 @@ for dss in dsss:
         extend2 = 'both'
     elif var2 in ['rsut']:
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=-400, cm_max=0, cm_interval1=25, cm_interval2=50, cmap='Greens')
-        extend = 'min'
+            cm_min=-300, cm_max=-50, cm_interval1=25, cm_interval2=50, cmap='Greens')
+        extend = 'both'
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
             cm_min=-200,cm_max=200,cm_interval1=25,cm_interval2=50,cmap='BrBG')
         # pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-        #     cm_min=-800, cm_max=0, cm_interval1=50, cm_interval2=100, cmap='Greens')
+        #     cm_min=-600, cm_max=0, cm_interval1=50, cm_interval2=100, cmap='Greens')
         # extend = 'min'
         # pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-        #     cm_min=-400,cm_max=400,cm_interval1=50,cm_interval2=100,cmap='BrBG')
+        #     cm_min=-300,cm_max=300,cm_interval1=50,cm_interval2=100,cmap='BrBG')
         extend2 = 'both'
     elif var2 in ['rsutcs']:
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
@@ -333,7 +336,7 @@ for dss in dsss:
         
         if ids[0] == 'CERES':
             if var2 in ['rsdt', 'rsut', 'rsutcs', 'rlut', 'rlutcs', 'clwvi', 'clivi']:
-                ds['CERES'] = xr.open_mfdataset(sorted(glob.glob(f'data/obs/CERES/SYN1deg/CERES_SYN1deg-1H_Terra-Aqua-NOAA20_Ed4.2_Subset_{year}{month:02d}??-{year}{month:02d}??.nc')))
+                ds['CERES'] = xr.open_mfdataset(sorted(glob.glob(f'data/obs/CERES/CERES_SYN1deg-1H_Terra-Aqua-NOAA20_Ed4.2_Subset_{year}{month:02d}??-{year}{month:02d}??.nc'))[0])
                 # ds['CERES'] = xr.open_dataset(f'data/obs/CERES/CERES_SYN1deg-1H_Terra-Aqua-NOAA20_Ed4.2_Subset_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')
                 ds['CERES'] = ds['CERES'].rename({
                     'toa_sw_clr_1h':    'rsutcs',
@@ -417,16 +420,16 @@ for dss in dsss:
             ilabel = f'{suite_label[isuite]}'
             
             if var2 in ['orog']:
-                ds[ilabel] = xr.open_dataset(sorted(glob.glob(f'/home/563/qg8515/cylc-run/{isuite}/share/cycle/{year}{month:02d}{day:02d}T0000Z/Australia/{ires}/*/um/umnsaa_pa000.nc'))[0]).pipe(preprocess_umoutput)[var2stash[var2]]
+                ds[ilabel] = xr.open_dataset(sorted(glob.glob(f'scratch/cylc-run/{isuite}/share/cycle/{year}{month:02d}{day:02d}T0000Z/Australia/{ires}/*/um/umnsaa_pa000.nc'))[0]).pipe(preprocess_umoutput)[var2stash[var2]]
             elif var2 in ['ts', 'blh', 'tas', 'huss', 'hurs', 'das', 'clslw', 'psl', 'CAPE', 'prw']:
-                ds[ilabel] = xr.open_dataset(sorted(glob.glob(f'/home/563/qg8515/cylc-run/{isuite}/share/cycle/{year}{month:02d}{day:02d}T0000Z/Australia/{ires}/*/um/umnsaa_pa000.nc'))[0]).pipe(preprocess_umoutput)[var2stash[var2]].sel(time=pd.Timestamp(year,month,day,hour))
+                ds[ilabel] = xr.open_dataset(sorted(glob.glob(f'scratch/cylc-run/{isuite}/share/cycle/{year}{month:02d}{day:02d}T0000Z/Australia/{ires}/*/um/umnsaa_pa000.nc'))[0]).pipe(preprocess_umoutput)[var2stash[var2]].sel(time=pd.Timestamp(year,month,day,hour))
             elif var2 in ['rlds', 'rlu_t_s', 'rsut', 'rsdt', 'rsutcs', 'rsdscs', 'rsds', 'rlns', 'rlut', 'rlutcs', 'rldscs', 'hfss', 'hfls', 'rain', 'snow', 'cll', 'clm', 'clh', 'clt', 'clwvi', 'clivi']:
-                ds[ilabel] = xr.open_dataset(sorted(glob.glob(f'/home/563/qg8515/cylc-run/{isuite}/share/cycle/{year1}{month1:02d}{day1:02d}T0000Z/Australia/{ires}/*/um/umnsaa_pa000.nc'))[0]).pipe(preprocess_umoutput)[var2stash[var2]].sel(time=pd.Timestamp(year1,month1,day1,hour1))
+                ds[ilabel] = xr.open_dataset(sorted(glob.glob(f'scratch/cylc-run/{isuite}/share/cycle/{year1}{month1:02d}{day1:02d}T0000Z/Australia/{ires}/*/um/umnsaa_pa000.nc'))[0]).pipe(preprocess_umoutput)[var2stash[var2]].sel(time=pd.Timestamp(year1,month1,day1,hour1))
             elif var2 in ['pr']:
                 try:
-                    ds[ilabel] = xr.open_dataset(sorted(glob.glob(f'/home/563/qg8515/cylc-run/{isuite}/share/cycle/{year1}{month1:02d}{day1:02d}T0000Z/Australia/{ires}/*/um/umnsaa_pa000.nc'))[0]).pipe(preprocess_umoutput)[var2stash_gal[var2]].sel(time=pd.Timestamp(year1,month1,day1,hour1))
+                    ds[ilabel] = xr.open_dataset(sorted(glob.glob(f'scratch/cylc-run/{isuite}/share/cycle/{year1}{month1:02d}{day1:02d}T0000Z/Australia/{ires}/*/um/umnsaa_pa000.nc'))[0]).pipe(preprocess_umoutput)[var2stash_gal[var2]].sel(time=pd.Timestamp(year1,month1,day1,hour1))
                 except KeyError:
-                    ds[ilabel] = xr.open_dataset(sorted(glob.glob(f'/home/563/qg8515/cylc-run/{isuite}/share/cycle/{year1}{month1:02d}{day1:02d}T0000Z/Australia/{ires}/*/um/umnsaa_pa000.nc'))[0]).pipe(preprocess_umoutput)[var2stash_ral['rain']].sel(time=pd.Timestamp(year1,month1,day1,hour1)) + xr.open_dataset(sorted(glob.glob(f'/home/563/qg8515/cylc-run/{isuite}/share/cycle/{year1}{month1:02d}{day1:02d}T0000Z/Australia/{ires}/*/um/umnsaa_pa000.nc'))[0]).pipe(preprocess_umoutput)[var2stash_ral['snow']].sel(time=pd.Timestamp(year1,month1,day1,hour1))
+                    ds[ilabel] = xr.open_dataset(sorted(glob.glob(f'scratch/cylc-run/{isuite}/share/cycle/{year1}{month1:02d}{day1:02d}T0000Z/Australia/{ires}/*/um/umnsaa_pa000.nc'))[0]).pipe(preprocess_umoutput)[var2stash_ral['rain']].sel(time=pd.Timestamp(year1,month1,day1,hour1)) + xr.open_dataset(sorted(glob.glob(f'scratch/cylc-run/{isuite}/share/cycle/{year1}{month1:02d}{day1:02d}T0000Z/Australia/{ires}/*/um/umnsaa_pa000.nc'))[0]).pipe(preprocess_umoutput)[var2stash_ral['snow']].sel(time=pd.Timestamp(year1,month1,day1,hour1))
             else:
                 print(f'Warning: no var in {ilabel}')
             
@@ -539,9 +542,9 @@ for dss in dsss:
                     transform=ccrs.PlateCarree(), zorder=1)
                 mean = ds[ids1].sel(lon=slice(min_lons, max_lons), lat=slice(min_lats, max_lats)).weighted(np.cos(np.deg2rad(ds[ids1].sel(lon=slice(min_lons, max_lons), lat=slice(min_lats, max_lats)).lat))).mean().values
                 if jcol==0:
-                    plt_colnames[jcol] = f'{plt_colnames[jcol]}, Mean: {str(np.round(mean, 1))}'
+                    plt_text = [f'Mean: {str(np.round(mean, 1))}']
                 else:
-                    plt_colnames[jcol] = f'{plt_colnames[jcol]}, {str(np.round(mean, 1))}'
+                    plt_text.append(f'{str(np.round(mean, 1))}')
                 cbar = fig.colorbar(
                     plt_mesh, #cm.ScalarMappable(norm=pltnorm1, cmap=pltcmp1), #
                     format=remove_trailing_zero_pos,
@@ -557,7 +560,7 @@ for dss in dsss:
                 norm=pltnorm, cmap=pltcmp,
                 transform=ccrs.PlateCarree(), zorder=1)
             mean = ds[list(ds.keys())[0]].sel(lon=slice(min_lons, max_lons), lat=slice(min_lats, max_lats)).weighted(np.cos(np.deg2rad(ds[list(ds.keys())[0]].sel(lon=slice(min_lons, max_lons), lat=slice(min_lats, max_lats)).lat))).mean().values
-            plt_colnames[0] = f'{plt_colnames[0]}, Mean: {str(np.round(mean, 1))}'
+            plt_text = [f'Mean: {str(np.round(mean, 1))}']
             for jcol, ids1 in zip(range(1, ncol), list(ds.keys())[1:]):
                 # jcol = 1; ids1 = list(ds.keys())[1]
                 ids2 = list(ds.keys())[0]
@@ -571,9 +574,9 @@ for dss in dsss:
                 rmsd = coslat_weighted_rmsd(plt_data.sel(lon=slice(min_lons, max_lons), lat=slice(min_lats, max_lats)))
                 md = coslat_weighted_mean(plt_data.sel(lon=slice(min_lons, max_lons), lat=slice(min_lats, max_lats)))
                 if jcol==1:
-                    plt_colnames[jcol] = f'{plt_colnames[jcol]}, RMSD: {str(np.round(rmsd, 1))}, MD: {str(np.round(md, 1))}'
+                    plt_text.append(f'RMSD: {str(np.round(rmsd, 1))}, MD: {str(np.round(md, 1))}')
                 else:
-                    plt_colnames[jcol] = f'{plt_colnames[jcol]}, {str(np.round(rmsd, 1))}, {str(np.round(md, 1))}'
+                    plt_text.append(f'{str(np.round(rmsd, 1))}, {str(np.round(md, 1))}')
                 plt_mesh2 = axs[jcol].pcolormesh(
                     plt_data.lon, plt_data.lat, plt_data,
                     norm=pltnorm2, cmap=pltcmp2,
@@ -594,7 +597,13 @@ for dss in dsss:
             cbar2.ax.tick_params(labelsize=10, pad=1)
         
         for jcol in range(ncol):
-            axs[jcol].text(0, 1.02, f'({string.ascii_lowercase[jcol]}) {plt_colnames[jcol]}', ha='left', va='bottom', transform=axs[jcol].transAxes,size=10)
+            axs[jcol].text(
+                0, 1.02,
+                f'({string.ascii_lowercase[jcol]}) {plt_colnames[jcol]}',
+                ha='left', va='bottom', transform=axs[jcol].transAxes)
+            axs[jcol].text(
+                0.01, 0.01, plt_text[jcol],
+                ha='left', va='bottom', transform=axs[jcol].transAxes)
         
         fig.text(0.5, fm_bottom-0.01, f'{year}-{month:02d}-{day:02d} {hour:02d}:00 UTC', ha='center', va='top')
         fig.subplots_adjust(left=0.005, right=0.995, bottom=fm_bottom, top=fm_top)
@@ -612,5 +621,12 @@ ds2 = xr.open_dataset(f'data/obs/CERES/CERES_SYN1deg-1H_Terra-Aqua-NOAA20_Ed4.2_
 (ds1['toa_sw_all_1h'].values == ds2['toa_sw_all_1h'].values).all()
 
 '''
+# endregion
+
+
+# region obs vs. sim monthly data
+
+
+
 # endregion
 

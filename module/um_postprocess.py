@@ -167,6 +167,16 @@ suite_res = {
     'u-dr149': ['d11km', 'd4p4kmsa'],
     'u-dr789': ['d11km', 'd4p4km'],
     'u-dr922': ['d11km', 'd4p4km'],
+    'u-ds714': ['d11km', 'd4p4km'],
+    'u-ds718': ['d11km', 'd4p4km'],
+    'u-ds717': ['d11km', 'd4p4km'],
+    'u-ds719': ['d11km', 'd4p4km'],
+    'u-ds722': ['d11km', 'd4p4km'],
+    'u-ds724': ['d11km', 'd2p2km'],
+    'u-ds726': ['d11km', 'd1p1km'],
+    'u-ds728': ['d11km', 'd4p4km'],
+    'u-ds730': ['d11km', 'd2p2km'],
+    'u-ds732': ['d11km', 'd1p1km'],
 }
 
 suite_label = {
@@ -193,6 +203,16 @@ suite_label = {
     'u-dr149': r'$SA4p4\_CN50$',
     'u-dr789': r'$cl\_inhomo0p5$',
     'u-dr922': r'$cl\_inhomo0p3$',
+    'u-ds714': r'$control$',
+    'u-ds718': r'$CN100$',
+    'u-ds717': r'$CN50$',
+    'u-ds719': r'$shortTS$',
+    'u-ds722': r'$NE4p4$',
+    'u-ds724': r'$NE2p2$',
+    'u-ds726': r'$NE1p1$',
+    'u-ds728': r'$SA4p4$',
+    'u-ds730': r'$SA2p2$',
+    'u-ds732': r'$SA1p1$',
 }
 
 # endregion

@@ -53,7 +53,6 @@ from namelist import (
     seasons,
     seconds_per_d,
     zerok,
-    panel_labels,
     )
 
 from component_plot import (
