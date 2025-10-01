@@ -177,6 +177,10 @@ suite_res = {
     'u-ds728': ['d11km', 'd4p4km'],
     'u-ds730': ['d11km', 'd2p2km'],
     'u-ds732': ['d11km', 'd1p1km'],
+    'u-ds919': ['d11km', 'd1p1km'],
+    'u-ds920': ['d11km', 'd1p1km'],
+    'u-ds921': ['d11km', 'd4p4km'],
+    'u-ds922': ['d11km', 'd4p4km'],
 }
 
 suite_label = {
@@ -213,6 +217,10 @@ suite_label = {
     'u-ds728': r'$SA4p4$',
     'u-ds730': r'$SA2p2$',
     'u-ds732': r'$SA1p1$',
+    'u-ds919': r'$NE1p1\_CN50$',
+    'u-ds920': r'$SA1p1\_CN50$',
+    'u-ds921': r'$5dSpin$',
+    'u-ds922': r'$10dSpin$',
 }
 
 # endregion

@@ -2,11 +2,12 @@
 
 import glob
 import os
-qjobo_fl = sorted(glob.glob('scratch/run/qjob*'))
+qjobo_fl = sorted(glob.glob('scratch/run/qjob_*'))
 for ifile in qjobo_fl:
     with open(ifile, 'r') as file:
         content = file.read()
-        if ('Exit Status:        0' not in content):
+        if ('Number of Files: ' not in content):
+        # if ('Exit Status:        0' not in content):
             print(ifile)
         # if ('Exit Status:        0' in content):
         #     # print(ifile)

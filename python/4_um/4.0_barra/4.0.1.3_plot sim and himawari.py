@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -l walltime=2:00:00,ncpus=1,mem=192GB,jobfs=100MB,storage=gdata/v46+gdata/rt52+gdata/ob53+gdata/zv2+scratch/v46
+# qsub -I -q normal -P v46 -l walltime=2:00:00,ncpus=1,mem=192GB,jobfs=100MB,storage=gdata/v46+gdata/rt52+gdata/ob53+gdata/zv2+scratch/v46+gdata/gx60
 
 
 # region import packages
@@ -71,7 +71,6 @@ from namelist import (
     seasons,
     seconds_per_d,
     zerok,
-    panel_labels,
     era5_varlabels,
     cmip6_era5_var,
     )
@@ -768,21 +767,21 @@ for ids in ['ERA5', 'BARRA-R2', 'BARRA-C2']:
 # region plot Himawari, ERA5, BARRA-R2, BARRA-C2, BARPA-C am
 
 years='2016'
-yeare='2021'
+yeare='2023'
 
-with open('/scratch/v46/qg8515/data/obs/jaxa/clp/cltype_frequency_alltime.pkl', 'rb') as f:
+with open('data/obs/jaxa/clp/cltype_frequency_alltime.pkl', 'rb') as f:
     cltype_frequency_alltime = pickle.load(f)
 
 mpl.rc('font', family='Times New Roman', size=8)
 plt_colnames = ['Himawari', 'ERA5 - Himawari', 'BARRA-R2 - Himawari', 'BARRA-C2 - Himawari', 'BARPA-C - Himawari']
 min_lon, max_lon, min_lat, max_lat = [110.58, 157.34, -43.69, -7.01]
 
-for var2 in ['cll']:
+for var2 in ['cll', 'clm', 'clh', 'clt']:
     # var2='cll'
     var1 = cmip6_era5_var[var2]
     print(f'#-------------------------------- {var1} and {var2}')
     
-    with open(f'data/obs/era5/mon/era5_sl_mon_alltime_{var1}.pkl', 'rb') as f:
+    with open(f'data/sim/era5/mon/era5_sl_mon_alltime_{var1}.pkl', 'rb') as f:
         era5_sl_mon_alltime = pickle.load(f)
     with open(f'data/sim/um/barra_r2/barra_r2_mon_alltime_{var2}.pkl','rb') as f:
         barra_r2_mon_alltime = pickle.load(f)
@@ -834,13 +833,13 @@ for var2 in ['cll']:
     print(stats.describe(np.concatenate([plt_data[colname].values for colname in plt_colnames[1:]]), axis=None, nan_policy='omit'))
     
     cbar_label1 = f'{years}-{yeare} ' + era5_varlabels[var1]
-    cbar_label2 = f'Difference in {years}-{yeare} ' + era5_varlabels[var1]
+    cbar_label2 = f'Difference in ' + era5_varlabels[var1]
     extend1 = 'neither'
     extend2 = 'both'
     
     if var2 in ['clh', 'clm', 'cll', 'clt']:
         pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-            cm_min=0, cm_max=100, cm_interval1=10, cm_interval2=10, cmap='viridis_r',)
+            cm_min=0, cm_max=100, cm_interval1=10, cm_interval2=10, cmap='Blues_r',)
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
             cm_min=-30, cm_max=30, cm_interval1=5, cm_interval2=10, cmap='BrBG_r',)
     

@@ -1,6 +1,6 @@
 
 
-# qsub -I -q copyq -l walltime=10:00:00,ncpus=1,mem=192GB,storage=gdata/v46+gdata/rt52+gdata/ob53+gdata/zv2
+# qsub -I -q copyq -l walltime=1:00:00,ncpus=1,mem=96GB,storage=gdata/v46+gdata/rt52+gdata/ob53+gdata/zv2+gdata/gx60
 
 
 # region import packages
@@ -68,12 +68,10 @@ from mapplot import (
     )
 
 from namelist import (
-    month,
     monthini,
     seasons,
     seconds_per_d,
     zerok,
-    panel_labels,
     era5_varlabels,
     cmip6_era5_var,
     )
@@ -439,7 +437,7 @@ for var2 in ['pr']:
 # region plot AGCD, ERA5, BARRA-R2, BARRA-C2, historical, amip, am
 
 mpl.rc('font', family='Times New Roman', size=8)
-plt_colnames = ['AGCD', 'ERA5 - AGCD', 'BARRA-R2 - AGCD', 'BARRA-C2 - AGCD', r'$historical$ - AGCD', r'$amip$ - AGCD']
+plt_colnames = ['AGCD', 'ERA5 - AGCD', 'BARRA-R2 - AGCD', 'BARRA-C2 - AGCD'] # , r'$historical$ - AGCD', r'$amip$ - AGCD'
 min_lon, max_lon, min_lat, max_lat = [110.58, 157.34, -43.69, -7.01]
 
 for var2 in ['pr']:
@@ -449,16 +447,16 @@ for var2 in ['pr']:
     
     with open(f'data/obs/agcd/agcd_alltime_{var2}.pkl','rb') as f:
         agcd_alltime = pickle.load(f)
-    with open(f'data/obs/era5/mon/era5_sl_mon_alltime_{var1}.pkl', 'rb') as f:
+    with open(f'data/sim/era5/mon/era5_sl_mon_alltime_{var1}.pkl', 'rb') as f:
         era5_sl_mon_alltime = pickle.load(f)
     with open(f'data/sim/um/barra_r2/barra_r2_mon_alltime_{var2}.pkl','rb') as f:
         barra_r2_mon_alltime = pickle.load(f)
     with open(f'data/sim/um/barra_c2/barra_c2_mon_alltime_{var2}.pkl','rb') as f:
         barra_c2_mon_alltime = pickle.load(f)
-    with open(f'/home/563/qg8515/scratch/data/sim/cmip6/historical_Amon_{var2}_regridded_alltime_ens.pkl', 'rb') as f:
-        historical_regridded_alltime_ens = pickle.load(f)
-    with open(f'/home/563/qg8515/scratch/data/sim/cmip6/amip_Amon_{var2}_regridded_alltime_ens.pkl', 'rb') as f:
-        amip_regridded_alltime_ens = pickle.load(f)
+    # with open(f'/home/563/qg8515/scratch/data/sim/cmip6/historical_Amon_{var2}_regridded_alltime_ens.pkl', 'rb') as f:
+    #     historical_regridded_alltime_ens = pickle.load(f)
+    # with open(f'/home/563/qg8515/scratch/data/sim/cmip6/amip_Amon_{var2}_regridded_alltime_ens.pkl', 'rb') as f:
+    #     amip_regridded_alltime_ens = pickle.load(f)
     
     plt_data = {}
     
@@ -467,39 +465,39 @@ for var2 in ['pr']:
     agcd_am = agcd_ann.mean(dim='time')
     
     plt_data['ERA5 - AGCD'] = (regrid(era5_sl_mon_alltime['ann'].sel(time=slice('2001', '2014')).mean(dim='time'), ds_out=agcd_am) - agcd_am).compute()
-    ttest_fdr_res = ttest_fdr_control(
-        agcd_ann,
-        regrid(era5_sl_mon_alltime['ann'].sel(time=slice('2001', '2014')), ds_out=agcd_am)
-        )
-    plt_data['ERA5 - AGCD'] = plt_data['ERA5 - AGCD'].where(ttest_fdr_res, np.nan)
+    # ttest_fdr_res = ttest_fdr_control(
+    #     agcd_ann,
+    #     regrid(era5_sl_mon_alltime['ann'].sel(time=slice('2001', '2014')), ds_out=agcd_am)
+    #     )
+    # plt_data['ERA5 - AGCD'] = plt_data['ERA5 - AGCD'].where(ttest_fdr_res, np.nan)
     
     plt_data['BARRA-R2 - AGCD'] = (regrid(barra_r2_mon_alltime['ann'].sel(time=slice('2001', '2014')).mean(dim='time'), ds_out=agcd_am) - agcd_am).compute()
-    ttest_fdr_res = ttest_fdr_control(
-        agcd_ann,
-        regrid(barra_r2_mon_alltime['ann'].sel(time=slice('2001', '2014')), ds_out=agcd_am)
-        )
-    plt_data['BARRA-R2 - AGCD'] = plt_data['BARRA-R2 - AGCD'].where(ttest_fdr_res, np.nan)
+    # ttest_fdr_res = ttest_fdr_control(
+    #     agcd_ann,
+    #     regrid(barra_r2_mon_alltime['ann'].sel(time=slice('2001', '2014')), ds_out=agcd_am)
+    #     )
+    # plt_data['BARRA-R2 - AGCD'] = plt_data['BARRA-R2 - AGCD'].where(ttest_fdr_res, np.nan)
     
     plt_data['BARRA-C2 - AGCD'] = (regrid(barra_c2_mon_alltime['ann'].sel(time=slice('2001', '2014')).mean(dim='time'), ds_out=agcd_am) - agcd_am).compute()
-    ttest_fdr_res = ttest_fdr_control(
-        agcd_ann,
-        regrid(barra_c2_mon_alltime['ann'].sel(time=slice('2001', '2014')), ds_out=agcd_am)
-        )
-    plt_data['BARRA-C2 - AGCD'] = plt_data['BARRA-C2 - AGCD'].where(ttest_fdr_res, np.nan)
+    # ttest_fdr_res = ttest_fdr_control(
+    #     agcd_ann,
+    #     regrid(barra_c2_mon_alltime['ann'].sel(time=slice('2001', '2014')), ds_out=agcd_am)
+    #     )
+    # plt_data['BARRA-C2 - AGCD'] = plt_data['BARRA-C2 - AGCD'].where(ttest_fdr_res, np.nan)
     
-    plt_data[r'$historical$ - AGCD'] = (historical_regridded_alltime_ens['ann'].sel(time=slice('2001', '2014')).mean(dim=['source_id', 'time']).sel(y=slice(min_lat, max_lat), x=slice(min_lon, max_lon)) - agcd_am).compute()
-    ttest_fdr_res = ttest_fdr_control(
-        agcd_ann,
-        historical_regridded_alltime_ens['ann'].sel(time=slice('2001', '2014')).mean(dim='source_id').sel(y=slice(min_lat, max_lat), x=slice(min_lon, max_lon))
-        )
-    plt_data[r'$historical$ - AGCD'] = plt_data[r'$historical$ - AGCD'].where(ttest_fdr_res, np.nan)
+    # plt_data[r'$historical$ - AGCD'] = (historical_regridded_alltime_ens['ann'].sel(time=slice('2001', '2014')).mean(dim=['source_id', 'time']).sel(y=slice(min_lat, max_lat), x=slice(min_lon, max_lon)) - agcd_am).compute()
+    # ttest_fdr_res = ttest_fdr_control(
+    #     agcd_ann,
+    #     historical_regridded_alltime_ens['ann'].sel(time=slice('2001', '2014')).mean(dim='source_id').sel(y=slice(min_lat, max_lat), x=slice(min_lon, max_lon))
+    #     )
+    # plt_data[r'$historical$ - AGCD'] = plt_data[r'$historical$ - AGCD'].where(ttest_fdr_res, np.nan)
     
-    plt_data[r'$amip$ - AGCD'] = (amip_regridded_alltime_ens['ann'].sel(time=slice('2001', '2014')).mean(dim=['source_id', 'time']).sel(y=slice(min_lat, max_lat), x=slice(min_lon, max_lon)) - agcd_am).compute()
-    ttest_fdr_res = ttest_fdr_control(
-        agcd_ann,
-        amip_regridded_alltime_ens['ann'].sel(time=slice('2001', '2014')).mean(dim='source_id').sel(y=slice(min_lat, max_lat), x=slice(min_lon, max_lon))
-        )
-    plt_data[r'$amip$ - AGCD'] = plt_data[r'$amip$ - AGCD'].where(ttest_fdr_res, np.nan)
+    # plt_data[r'$amip$ - AGCD'] = (amip_regridded_alltime_ens['ann'].sel(time=slice('2001', '2014')).mean(dim=['source_id', 'time']).sel(y=slice(min_lat, max_lat), x=slice(min_lon, max_lon)) - agcd_am).compute()
+    # ttest_fdr_res = ttest_fdr_control(
+    #     agcd_ann,
+    #     amip_regridded_alltime_ens['ann'].sel(time=slice('2001', '2014')).mean(dim='source_id').sel(y=slice(min_lat, max_lat), x=slice(min_lon, max_lon))
+    #     )
+    # plt_data[r'$amip$ - AGCD'] = plt_data[r'$amip$ - AGCD'].where(ttest_fdr_res, np.nan)
     
     print(stats.describe(plt_data['AGCD'].values, axis=None, nan_policy='omit'))
     print(stats.describe(np.concatenate([plt_data[colname].values for colname in plt_colnames[1:]]), axis=None, nan_policy='omit'))
@@ -562,7 +560,7 @@ for var2 in ['pr']:
     fig.subplots_adjust(left=0.005, right=0.995, bottom=fm_bottom, top=0.95)
     fig.savefig(f'figures/4_um/4.0_barra/4.0.0_whole region/4.0.0.1 agcd vs. barra_c2, era5, and cmip6 am {var1}.png')
     
-    del agcd_alltime, era5_sl_mon_alltime, barra_r2_mon_alltime, barra_c2_mon_alltime, historical_regridded_alltime_ens, amip_regridded_alltime_ens
+    del agcd_alltime, era5_sl_mon_alltime, barra_r2_mon_alltime, barra_c2_mon_alltime #, historical_regridded_alltime_ens, amip_regridded_alltime_ens
 
 
 

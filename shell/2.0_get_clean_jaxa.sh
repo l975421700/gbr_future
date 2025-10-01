@@ -2,16 +2,17 @@
 
 year=$1
 month=$2
-month=$(printf '%02d' $month)
+
 # year=2022
 # month=12
 
+month=$(printf '%02d' $month)
 module load cdo/2.4.3
 shopt -s nullglob
 
 
 # download directories
-wget -q -r -nH --cut-dirs=5 --continue --no-remove-listing --no-parent --reject "*.nc" --ftp-user='gaoqg229_gmail.com' --ftp-password='SP+wari8' ftp://ftp.ptree.jaxa.jp/pub/himawari/L2/CLP/010/$year$month -P /home/563/qg8515/data/obs/jaxa/clp
+# wget -q -r -nH --cut-dirs=5 --continue --no-remove-listing --no-parent --reject "*.nc" --ftp-user='gaoqg229_gmail.com' --ftp-password='SP+wari8' ftp://ftp.ptree.jaxa.jp/pub/himawari/L2/CLP/010/$year$month -P /home/563/qg8515/data/obs/jaxa/clp
 
 ymfolder=/home/563/qg8515/data/obs/jaxa/clp/$year$month
 
@@ -49,6 +50,7 @@ if [ -d $ymfolder ]; then
 else
     echo Warning: year month $year $month not existing
 fi
+
 
 
 

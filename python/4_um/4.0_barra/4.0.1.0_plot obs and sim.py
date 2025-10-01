@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -P v46 -l walltime=1:00:00,ncpus=1,mem=60GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/qx55+gdata/gx60
+# qsub -I -q normal -P v46 -l walltime=3:00:00,ncpus=1,mem=96GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/qx55+gdata/gx60
 
 
 # region import packages
@@ -112,10 +112,10 @@ from um_postprocess import (
 
 # options
 years = '2016'; yeare = '2023'
-# ['rsut', 'rlut'， 'cll', 'clm', 'clh', 'clt', 'clwvi', 'clivi', 'inversionh', 'LCL', 'LTS', 'EIS']
-vars = ['clwvi', 'clivi']
-# ['CERES', 'CM SAF', 'Himawari', 'ERA5', 'BARRA-R2', 'BARRA-C2', 'BARPA-C', 'MOD08_M3', 'MYD08_M3']
-ds_names = ['CERES', 'ERA5', 'BARRA-R2', 'BARRA-C2', 'BARPA-C']
+# ['rsut', 'rlut'， 'cll', 'clm', 'clh', 'clt', 'clwvi', 'clivi', 'inversionh', 'LCL', 'LTS', 'EIS', 'pr']
+vars = ['clt']
+# ['CERES', 'CM SAF', 'Himawari', 'ERA5', 'BARRA-R2', 'BARRA-C2', 'BARPA-C', 'MOD08_M3', 'MYD08_M3', 'IMERG']
+ds_names = ['Himawari', 'ERA5', 'BARRA-R2', 'BARRA-C2', 'BARPA-C']
 plt_regions = ['c2_domain'] # ['global', 'c2_domain', 'h9_domain']
 plt_modes = ['difference'] # ['original', 'difference']
 
@@ -182,7 +182,7 @@ for ivar in vars:
             # ids = 'ERA5'
             with open(f'data/sim/era5/mon/era5_sl_mon_alltime_{cmip6_era5_var[ivar]}.pkl', 'rb') as f:
                 era5_sl_mon_alltime = pickle.load(f)
-            ds_data['ann'][ids] = era5_sl_mon_alltime['ann'].sel(time=slice(years, yeare)).sortby('lat')
+            ds_data['ann'][ids] = era5_sl_mon_alltime['ann'].sel(time=slice(years, yeare))
             if ivar in ['clwvi', 'clivi']:
                 ds_data['ann'][ids] *= 1000
         elif ids == 'BARRA-R2':
@@ -208,22 +208,28 @@ for ivar in vars:
                 ds_data['ann'][ids] *= 1000
         elif ids == 'Himawari':
             # ids = 'Himawari'
-            with open('data/obs/jaxa/clp/cltype_frequency_alltime.pkl', 'rb') as f:
-                cltype_frequency_alltime = pickle.load(f)
-            ds_data['ann'][ids] = cltype_frequency_alltime['ann'].sel(types=cltypes[cmip6_era5_var[ivar]], time=slice(years, yeare)).sum(dim='types').sortby('lat')
+            if 'cltype_frequency_alltime' not in globals():
+                with open('data/obs/jaxa/clp/cltype_frequency_alltime.pkl', 'rb') as f:
+                    cltype_frequency_alltime = pickle.load(f)
+            ds_data['ann'][ids] = cltype_frequency_alltime['ann'].sel(types=cltypes[cmip6_era5_var[ivar]], time=slice(years, yeare)).sum(dim='types')
         elif ids in ['MOD08_M3', 'MYD08_M3']:
             # ids = 'MYD08_M3'
-            modis = xr.open_mfdataset(glob.glob(f'data/obs/MODIS/{ids}/*{ivar}*.nc')).sel(time=slice(years, yeare)).sortby('lat')
+            modis = xr.open_mfdataset(glob.glob(f'data/obs/MODIS/{ids}/*{ivar}*.nc')).sel(time=slice(years, yeare))
             ds_data['ann'][ids] = modis[ivar].resample({'time': '1YE'}).map(time_weighted_mean).compute()
         elif ids == 'IMERG':
             with open(f'data/obs/IMERG/imerg_mon_alltime_pr.pkl', 'rb') as f:
                 imerg_mon_alltime = pickle.load(f)
             ds_data['ann'][ids] = imerg_mon_alltime['ann']
+        elif ids == 'AGCD':
+            # ids = 'AGCD'
+            with open(f'data/obs/agcd/agcd_alltime_{ivar}.pkl','rb') as f:
+                agcd_alltime = pickle.load(f)
+            ds_data['ann'][ids] = agcd_alltime['ann'].sel(time=slice(years, yeare))
         else:
             print('Warning: unknown dataset')
         
         ds_data['ann'][ids]['lon'] = ds_data['ann'][ids]['lon'] % 360
-        ds_data['ann'][ids] = ds_data['ann'][ids].sortby('lon')
+        ds_data['ann'][ids] = ds_data['ann'][ids].sortby(['lon', 'lat'])
         
         ds_data['am'][ids] = ds_data['ann'][ids].mean(dim='time').compute()
     
@@ -381,6 +387,7 @@ for ivar in vars:
         plt_ann = {}
         plt_mean = {}
         for ids in ds_names:
+            print(f'org: {ids}')
             if plt_region == 'global':
                 plt_org[ids] = ds_data['am'][ids]
                 plt_ann[ids] = ds_data['ann'][ids]
@@ -396,14 +403,15 @@ for ivar in vars:
         plt_rmsd = {}
         plt_md = {}
         for ids in ds_names[1:]:
-            if ds_names[0] in ['Himawari']:
+            print(f'diff: {ids}')
+            if (ds_names[0] in ['Himawari']) & (plt_region == 'h9_domain'):
                 plt_diff[ids] = xe.Regridder(plt_org[ids], plt_org[ds_names[0]], 'bilinear')(plt_org[ids]) - plt_org[ds_names[0]]
             else:
                 plt_diff[ids] = regrid(plt_org[ids], plt_org[ds_names[0]]) - plt_org[ds_names[0]]
             plt_rmsd[ids] = coslat_weighted_rmsd(plt_diff[ids])
             plt_md[ids] = coslat_weighted_mean(plt_diff[ids])
             
-            if ivar != 'pr':
+            if ivar not in ['pr']:
                 ttest_fdr_res = ttest_fdr_control(
                     xe.Regridder(plt_ann[ids], plt_ann[ds_names[0]], 'bilinear')(plt_ann[ids]),
                     # regrid(plt_ann[ids], plt_ann[ds_names[0]]),
@@ -508,7 +516,7 @@ for ivar in vars:
             fig.subplots_adjust(left=0.005, right=0.995, bottom=0.2, top=0.97)
             fig.savefig(opng)
     
-    # del ds_data
+    del ds_data
 
 
 

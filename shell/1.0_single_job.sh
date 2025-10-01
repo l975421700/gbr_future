@@ -1,17 +1,17 @@
 #PBS -N single_job
-#PBS -q normal
-#PBS -l walltime=10:00:00
-#PBS -l mem=192GB
+#PBS -q hugemem
+#PBS -l walltime=24:00:00
+#PBS -l mem=500GB
 #PBS -l jobfs=100MB
 #PBS -l ncpus=1
 #PBS -j oe
 #PBS -l storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/py18+gdata/gx60
-#PBS -P gb02
+#PBS -P v46
 #PBS -r y
 
 cd $HOME
 source miniconda3/bin/activate lowclouds
-python code/gbr_future/shell/0_runpy/run1.py
+python code/gbr_future/shell/0_runpy/run5.py
 
 # code/gbr_future/shell/2.0_get_clean_jaxa.sh 2015 07
 
@@ -24,9 +24,7 @@ python code/gbr_future/shell/0_runpy/run1.py
 # check user usage: quota
 # check queue status: qstat -Q
 # https://opus.nci.org.au/spaces/Help/pages/236881198/Queue+Limits...
-# nci_account -P v46 -v
-# nci_account -P gx60 -v
-# nci_account -P gb02 -v
+# nci_account -P v46 -v # gx60, gb02, ng72, if69
 # nci-files-report -S --project gx60 --filesystem scratch
 
 # qsub -I -q normal -P v46 -l walltime=48:00:00,ncpus=1,mem=4GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/gx60

@@ -44,15 +44,16 @@ from namelist import zerok, seconds_per_d
 
 
 # region get BARRA-C2 mon data
+# Memory Used: 20.45GB, Walltime Used: 00:08:24
 
 years = '2016'
 yeare = '2023'
-for var in ['inversionh', 'LCL', 'LTS', 'EIS']:
+for var in ['pr', 'clh', 'clm', 'cll', 'clt', 'rsut', 'clivi', 'clwvi', ]:
     # var = 'inversionh'
     print(var)
     
-    # fl = sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/mon/{var}/latest/*')) #[:540]
-    fl = sorted(glob.glob(f'data/sim/um/barra_c2/{var}/{var}_monthly_*.nc'))
+    fl = sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/mon/{var}/latest/*')) #[:540]
+    # fl = sorted(glob.glob(f'data/sim/um/barra_c2/{var}/{var}_monthly_*.nc'))
     
     barra_c2_mon = xr.open_mfdataset(fl)[var].sel(time=slice(years, yeare))
     if var in ['pr', 'evspsbl', 'evspsblpot']:

@@ -41,26 +41,27 @@ from namelist import cmip6_units, zerok, seconds_per_d, cmip6_era5_var
 
 
 # region get era5 sl mon data
+# Memory Used: 14.87GB, Walltime Used: 00:15:42
 
-for var in ['inversionh', 'LCL', 'LTS', 'EIS']:
+for var in ['tp', 'hcc', 'mcc', 'lcc', 'tcc', 'tciw', 'tclw', 'mtnswrf', 'mtdwswrf']:
     # var = 'tp'
     # 'tp', 'e', 'cp', 'lsp', 'pev', 'msl', 'sst', '2t', '2d', 'skt', 'hcc', 'mcc', 'lcc', 'tcc', 'z', 'mper',
     print(var)
     
-    # fl = sorted([
-    #     file for iyear in np.arange(1979, 2024, 1)
-    #     for file in glob.glob(f'/g/data/rt52/era5/single-levels/monthly-averaged/{var}/{iyear}/*.nc')])
-    # if var == '2t': var='t2m'
-    # if var == '10si': var='si10'
-    # if var == '2d': var='d2m'
-    # if var == '10u': var='u10'
-    # if var == '10v': var='v10'
-    # if var == '100u': var='u100'
-    # if var == '100v': var='v100'
-    # era5_sl_mon = xr.open_mfdataset(fl, parallel=True).rename({'latitude': 'lat', 'longitude': 'lon'})[var]
+    fl = sorted([
+        file for iyear in np.arange(1979, 2024, 1)
+        for file in glob.glob(f'/g/data/rt52/era5/single-levels/monthly-averaged/{var}/{iyear}/*.nc')])
+    if var == '2t': var='t2m'
+    if var == '10si': var='si10'
+    if var == '2d': var='d2m'
+    if var == '10u': var='u10'
+    if var == '10v': var='v10'
+    if var == '100u': var='u100'
+    if var == '100v': var='v100'
+    era5_sl_mon = xr.open_mfdataset(fl, parallel=True).rename({'latitude': 'lat', 'longitude': 'lon'})[var]
     
-    fl = sorted(glob.glob(f'data/obs/era5/hourly/{var}/{var}_monthly_*.nc'))
-    era5_sl_mon = xr.open_mfdataset(fl)[var].sel(time=slice('2016', '2023'))
+    # fl = sorted(glob.glob(f'data/sim/era5/hourly/{var}/{var}_monthly_*.nc'))
+    # era5_sl_mon = xr.open_mfdataset(fl)[var].sel(time=slice('2016', '2023'))
     
     if var in ['tp', 'e', 'cp', 'lsp', 'pev']:
         era5_sl_mon = era5_sl_mon * 1000
@@ -81,7 +82,7 @@ for var in ['inversionh', 'LCL', 'LTS', 'EIS']:
     era5_sl_mon_alltime = mon_sea_ann(
         var_monthly=era5_sl_mon, lcopy=False, mm=True, sm=True, am=True,)
     
-    ofile = f'data/obs/era5/mon/era5_sl_mon_alltime_{var}.pkl'
+    ofile = f'data/sim/era5/mon/era5_sl_mon_alltime_{var}.pkl'
     if os.path.exists(ofile): os.remove(ofile)
     with open(ofile, 'wb') as f:
         pickle.dump(era5_sl_mon_alltime, f)
@@ -96,7 +97,7 @@ for var in ['inversionh', 'LCL', 'LTS', 'EIS']:
 era5_sl_mon_alltime = {}
 for var in ['tciw', 'tclw', 'tcw', 'tcwv', 'tcsw', 'tcrw', 'tcslw']:
     print(f'#---------------- {var}')
-    with open(f'data/obs/era5/mon/era5_sl_mon_alltime_{var}.pkl', 'rb') as f:
+    with open(f'data/sim/era5/mon/era5_sl_mon_alltime_{var}.pkl', 'rb') as f:
         era5_sl_mon_alltime[var] = pickle.load(f)
 
 for var in ['tciw', 'tclw', 'tcw', 'tcwv', 'tcsw', 'tcrw', 'tcslw']:
@@ -130,7 +131,7 @@ for var in ['inversionh', 'LCL', 'LTS', 'EIS']:
     # if var == '100v': var='v100'
     # ds = xr.open_dataset(fl[itime]).rename({'latitude': 'lat', 'longitude': 'lon'})[var].squeeze()
     
-    fl = sorted(glob.glob(f'data/obs/era5/hourly/{var}/{var}_monthly_*.nc'))[:96]
+    fl = sorted(glob.glob(f'data/sim/era5/hourly/{var}/{var}_monthly_*.nc'))[:96]
     ds = xr.open_dataset(fl[itime])[var].squeeze()
     
     if var in ['tp', 'e', 'cp', 'lsp', 'pev']:
@@ -147,7 +148,7 @@ for var in ['inversionh', 'LCL', 'LTS', 'EIS']:
         ds = ds * seconds_per_d
     ds = ds.astype(np.float32)
     
-    with open(f'data/obs/era5/mon/era5_sl_mon_alltime_{var}.pkl', 'rb') as f:
+    with open(f'data/sim/era5/mon/era5_sl_mon_alltime_{var}.pkl', 'rb') as f:
         era5_sl_mon_alltime[var] = pickle.load(f)
     
     ds2 = era5_sl_mon_alltime[var]['mon'].isel(time=itime)
@@ -214,7 +215,7 @@ for var in ['q', 't', 'z']:
     era5_pl_mon_alltime = mon_sea_ann(
         var_monthly=era5_pl_mon, lcopy=False, mm=True, sm=True, am=True,)
     
-    ofile = f'data/obs/era5/mon/era5_pl_mon_alltime_{var}.pkl'
+    ofile = f'data/sim/era5/mon/era5_pl_mon_alltime_{var}.pkl'
     if os.path.exists(ofile): os.remove(ofile)
     with open(ofile, 'wb') as f:
         pickle.dump(era5_pl_mon_alltime, f)
@@ -245,7 +246,7 @@ for var in ['pv', 'q', 'r', 't', 'u', 'v', 'w', 'z']:
         ds = ds / 9.80665
     ds = ds.astype(np.float32)
     
-    with open(f'data/obs/era5/mon/era5_pl_mon_alltime_{var}.pkl', 'rb') as f:
+    with open(f'data/sim/era5/mon/era5_pl_mon_alltime_{var}.pkl', 'rb') as f:
         era5_pl_mon_alltime[var] = pickle.load(f)
     ds2 = era5_pl_mon_alltime[var]['mon'].isel(time=itime)
     ds2 = ds2.astype(np.float32)
@@ -264,7 +265,7 @@ for var in ['pv', 'q', 'r', 't', 'u', 'v', 'w', 'z']:
 
 
 era5_sl_mon_alltime = {}
-for var1, var2, var3 in zip(['msuwlwrf'], ['msnlwrf'], ['msdwlwrf']):
+for var1, var2, var3 in zip(['mtuwswrf'], ['mtnswrf'], ['mtdwswrf']):
     # ['mtnlwrfcl', 'mtnswrfcl', 'mtuwswrfcl'], ['mtnlwrf', 'mtnswrf', 'mtuwswrf'], ['mtnlwrfcs', 'mtnswrfcs', 'mtuwswrfcs']
     # ['mtuwswrfcs'], ['mtnswrfcs'], ['mtdwswrf']
     # ['mtuwswrf'], ['mtnswrf'], ['mtdwswrf']
@@ -276,9 +277,9 @@ for var1, var2, var3 in zip(['msuwlwrf'], ['msnlwrf'], ['msdwlwrf']):
     print(f'Derive {var1} from {var2} and {var3}')
     print(str(datetime.datetime.now())[11:19])
     
-    with open(f'data/obs/era5/mon/era5_sl_mon_alltime_{var2}.pkl', 'rb') as f:
+    with open(f'data/sim/era5/mon/era5_sl_mon_alltime_{var2}.pkl', 'rb') as f:
         era5_sl_mon_alltime[var2] = pickle.load(f)
-    with open(f'data/obs/era5/mon/era5_sl_mon_alltime_{var3}.pkl', 'rb') as f:
+    with open(f'data/sim/era5/mon/era5_sl_mon_alltime_{var3}.pkl', 'rb') as f:
         era5_sl_mon_alltime[var3] = pickle.load(f)
     
     if var1 in ['msuwlwrf', 'msuwswrf', 'msuwlwrfcs', 'msuwswrfcs', 'msnlwrfcl', 'msnswrfcl', 'msdwlwrfcl', 'msdwswrfcl', 'msuwlwrfcl', 'msuwswrfcl', 'mtuwswrf', 'mtuwswrfcs', 'mtnlwrfcl', 'mtnswrfcl', 'mtuwswrfcl']:
@@ -288,7 +289,7 @@ for var1, var2, var3 in zip(['msuwlwrf'], ['msnlwrf'], ['msdwlwrf']):
     era5_sl_mon_alltime[var1] = mon_sea_ann(
         var_monthly=era5_sl_mon, lcopy=False, mm=True, sm=True, am=True)
     
-    with open(f'data/obs/era5/mon/era5_sl_mon_alltime_{var1}.pkl', 'wb') as f:
+    with open(f'data/sim/era5/mon/era5_sl_mon_alltime_{var1}.pkl', 'wb') as f:
         pickle.dump(era5_sl_mon_alltime[var1], f)
     
     del era5_sl_mon_alltime[var2], era5_sl_mon_alltime[var3], era5_sl_mon_alltime[var1], era5_sl_mon
@@ -308,11 +309,11 @@ for var1, var2, var3 in zip(
     # var1='msuwlwrf'; var2='msnlwrf'; var3='msdwlwrf'
     print(f'Derive {var1} from {var2} and {var3}')
     
-    with open(f'data/obs/era5/mon/era5_sl_mon_alltime_{var1}.pkl', 'rb') as f:
+    with open(f'data/sim/era5/mon/era5_sl_mon_alltime_{var1}.pkl', 'rb') as f:
         era5_sl_mon_alltime[var1] = pickle.load(f)
-    with open(f'data/obs/era5/mon/era5_sl_mon_alltime_{var2}.pkl', 'rb') as f:
+    with open(f'data/sim/era5/mon/era5_sl_mon_alltime_{var2}.pkl', 'rb') as f:
         era5_sl_mon_alltime[var2] = pickle.load(f)
-    with open(f'data/obs/era5/mon/era5_sl_mon_alltime_{var3}.pkl', 'rb') as f:
+    with open(f'data/sim/era5/mon/era5_sl_mon_alltime_{var3}.pkl', 'rb') as f:
         era5_sl_mon_alltime[var3] = pickle.load(f)
     
     data1 = era5_sl_mon_alltime[var1]['mon'][itime].astype(np.float32)
@@ -324,12 +325,15 @@ for var1, var2, var3 in zip(
 
 # check
 era5_sl_mon_alltime = {}
-with open(f'data/obs/era5/mon/era5_sl_mon_alltime_mtuwswrfcl.pkl', 'rb') as f:
+with open(f'data/sim/era5/mon/era5_sl_mon_alltime_mtuwswrfcl.pkl', 'rb') as f:
     era5_sl_mon_alltime['mtuwswrfcl'] = pickle.load(f)
-with open(f'data/obs/era5/mon/era5_sl_mon_alltime_mtnswrfcl.pkl', 'rb') as f:
+with open(f'data/sim/era5/mon/era5_sl_mon_alltime_mtnswrfcl.pkl', 'rb') as f:
     era5_sl_mon_alltime['mtnswrfcl'] = pickle.load(f)
 
 np.max(np.abs(era5_sl_mon_alltime['mtuwswrfcl']['am'].values - era5_sl_mon_alltime['mtnswrfcl']['am'].values))
+
+with open(f'data/sim/era5/mon/era5_sl_mon_alltime_mtuwswrf.pkl', 'rb') as f:
+    era5_sl_mon_alltime['mtuwswrf'] = pickle.load(f)
 
 '''
 # endregion
@@ -345,7 +349,7 @@ for var1, vars in zip(['toa_albedo', 'toa_albedocs', 'toa_albedocl'], [['mtuwswr
     era5_sl_mon_alltime = {}
     for var2 in vars:
         print(f'#---------------- {var2}')
-        with open(f'data/obs/era5/mon/era5_sl_mon_alltime_{var2}.pkl','rb') as f:
+        with open(f'data/sim/era5/mon/era5_sl_mon_alltime_{var2}.pkl','rb') as f:
             era5_sl_mon_alltime[var2] = pickle.load(f)
     
     if var1 in ['msnrf']:
@@ -358,7 +362,7 @@ for var1, vars in zip(['toa_albedo', 'toa_albedocs', 'toa_albedocl'], [['mtuwswr
             print(f'#-------- {ialltime}')
             era5_sl_mon_alltime[var1][ialltime] = (era5_sl_mon_alltime[vars[0]][ialltime] / era5_sl_mon_alltime[vars[1]][ialltime] * (-1)).compute()
     
-    ofile = f'data/obs/era5/mon/era5_sl_mon_alltime_{var1}.pkl'
+    ofile = f'data/sim/era5/mon/era5_sl_mon_alltime_{var1}.pkl'
     if os.path.exists(ofile): os.remove(ofile)
     with open(ofile,'wb') as f:
         pickle.dump(era5_sl_mon_alltime[var1], f)
@@ -377,7 +381,7 @@ for var1, vars in zip(['toa_albedo', 'toa_albedocs', 'toa_albedocl'], [['mtuwswr
     era5_sl_mon_alltime = {}
     for var2 in [var1] + vars:
         print(f'#---------------- {var2}')
-        with open(f'data/obs/era5/mon/era5_sl_mon_alltime_{var2}.pkl','rb') as f:
+        with open(f'data/sim/era5/mon/era5_sl_mon_alltime_{var2}.pkl','rb') as f:
             era5_sl_mon_alltime[var2] = pickle.load(f)
     
     for ialltime in era5_sl_mon_alltime[var1].keys():
@@ -393,7 +397,7 @@ for var1, vars in zip(['toa_albedo', 'toa_albedocs', 'toa_albedocl'], [['mtuwswr
 era5_sl_mon_alltime = {}
 for var2 in ['msnrf', 'msdwlwrf', 'msdwswrf', 'msuwlwrf', 'msuwswrf', 'mslhf', 'msshf']:
     print(f'#---------------- {var2}')
-    with open(f'data/obs/era5/mon/era5_sl_mon_alltime_{var2}.pkl','rb') as f:
+    with open(f'data/sim/era5/mon/era5_sl_mon_alltime_{var2}.pkl','rb') as f:
         era5_sl_mon_alltime[var2] = pickle.load(f)
 
 itime=-1
@@ -410,7 +414,7 @@ print((data1 == data2).all())
 
 var = 'lcc' # ['mtnswrf', 'mtdwswrf', 'mtnlwrf', 'tcwv', 'tclw', 'tciw', 'lcc', 'mcc', 'hcc', 'tcc', 'tp', '2t']
 print(f'#-------------------------------- {var}')
-odir = f'scratch/data/obs/era5/{var}'
+odir = f'scratch/data/sim/era5/{var}'
 os.makedirs(odir, exist_ok=True)
 
 # year=2020; month=1
@@ -466,7 +470,7 @@ year=2020; month=6
 for var in ['mtnswrf', 'mtdwswrf', 'mtnlwrf']:
     # var = 'lcc'
     print(f'#-------------------------------- {var}')
-    odir = f'scratch/data/obs/era5/{var}'
+    odir = f'data/sim/era5/{var}'
     
     ifile = glob.glob(f'/g/data/rt52/era5/single-levels/reanalysis/{var}/{year}/{var}_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}??.nc')[0]
     if var == '2t': var='t2m'
@@ -512,7 +516,7 @@ for var in ['mtnswrf', 'mtdwswrf', 'mtnlwrf']:
     # var = 'lcc'
     # ['tcwv', 'tclw', 'tciw', 'lcc', 'mcc', 'hcc', 'tcc', 'tp', '2t']
     print(f'#-------------------------------- {var}')
-    odir = f'scratch/data/obs/era5/{var}'
+    odir = f'data/sim/era5/{var}'
     
     if var == '2t': var='t2m'
     if var == '10si': var='si10'
@@ -527,7 +531,7 @@ for var in ['mtnswrf', 'mtdwswrf', 'mtnlwrf']:
     era5_hourly_alltime = mon_sea_ann(
         var_monthly=era5_hourly, lcopy=False, mm=True, sm=True, am=True)
     
-    ofile = f'data/obs/era5/hourly/era5_hourly_alltime_{var}.pkl'
+    ofile = f'data/sim/era5/hourly/era5_hourly_alltime_{var}.pkl'
     if os.path.exists(ofile): os.remove(ofile)
     with open(ofile,'wb') as f:
         pickle.dump(era5_hourly_alltime, f)
@@ -544,7 +548,7 @@ for var in ['tcwv', 'tclw', 'tciw']:
     # var = 'lcc'
     # ['lcc', 'mcc', 'hcc', 'tcc', 'tp', '2t']
     print(f'#-------------------------------- {var}')
-    odir = f'scratch/data/obs/era5/{var}'
+    odir = f'data/sim/era5/{var}'
     
     if var == '2t': var='t2m'
     if var == '10si': var='si10'
@@ -557,7 +561,7 @@ for var in ['tcwv', 'tclw', 'tciw']:
     fl = sorted(glob.glob(f'{odir}/{var}_hourly_*.nc'))
     ds = xr.open_dataset(fl[ifile])
     
-    with open(f'data/obs/era5/hourly/era5_hourly_alltime_{var}.pkl','rb') as f:
+    with open(f'data/sim/era5/hourly/era5_hourly_alltime_{var}.pkl','rb') as f:
         era5_hourly_alltime = pickle.load(f)
     
     print((era5_hourly_alltime['mon'][ifile] == ds[var].squeeze()).all().values)
@@ -578,7 +582,7 @@ for var1, vars in zip(['mtuwswrf'], [['mtnswrf', 'mtdwswrf']]):
     era5_hourly_alltime = {}
     for var2 in vars:
         print(f'#---------------- {var2}')
-        with open(f'data/obs/era5/hourly/era5_hourly_alltime_{var2}.pkl','rb') as f:
+        with open(f'data/sim/era5/hourly/era5_hourly_alltime_{var2}.pkl','rb') as f:
             era5_hourly_alltime[var2] = pickle.load(f)
     
     era5_hourly_alltime[var1] = {}
@@ -590,7 +594,7 @@ for var1, vars in zip(['mtuwswrf'], [['mtnswrf', 'mtdwswrf']]):
             print(f'{var1} = {vars[0]} - {vars[1]}')
             era5_hourly_alltime[var1][ialltime] = (era5_hourly_alltime[vars[0]][ialltime] - era5_hourly_alltime[vars[1]][ialltime]).rename(var1).compute()
     
-    ofile = f'data/obs/era5/hourly/era5_hourly_alltime_{var1}.pkl'
+    ofile = f'data/sim/era5/hourly/era5_hourly_alltime_{var1}.pkl'
     if os.path.exists(ofile): os.remove(ofile)
     with open(ofile,'wb') as f:
         pickle.dump(era5_hourly_alltime[var1], f)
@@ -610,7 +614,7 @@ for var1, vars in zip(['mtuwswrf'], [['mtnswrf', 'mtdwswrf']]):
     era5_hourly_alltime = {}
     for var2 in [var1]+vars:
         print(f'#---------------- {var2}')
-        with open(f'data/obs/era5/hourly/era5_hourly_alltime_{var2}.pkl','rb') as f:
+        with open(f'data/sim/era5/hourly/era5_hourly_alltime_{var2}.pkl','rb') as f:
             era5_hourly_alltime[var2] = pickle.load(f)
     
     for ialltime in era5_hourly_alltime[vars[0]].keys():
@@ -636,7 +640,7 @@ for var1, vars in zip(['mtuwswrf'], [['mtnswrf', 'mtdwswrf']]):
 
 var = 'inversionh' # ['inversionh', 'LCL', 'LTS', 'EIS']
 print(f'#-------------------------------- {var}')
-odir = f'data/obs/era5/hourly/{var}'
+odir = f'data/sim/era5/hourly/{var}'
 os.makedirs(odir, exist_ok=True)
 
 
@@ -692,7 +696,7 @@ for ivar in vars:
             # ivar = 'ps'
             dss[ivar] = xr.open_dataset(f'/g/data/rt52/era5/single-levels/reanalysis/{cmip6_era5_var[ivar]}/{year}/{cmip6_era5_var[ivar]}_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')[cmip6_era5_var[ivar]]
     elif ivar in ['LCL', 'LTS']:
-        dss[ivar] = xr.open_dataset(f'data/obs/era5/hourly/{ivar}/{ivar}_hourly_{year}{month:02d}.nc')[ivar]
+        dss[ivar] = xr.open_dataset(f'data/sim/era5/hourly/{ivar}/{ivar}_hourly_{year}{month:02d}.nc')[ivar]
     
     if not ivar in ['LCL', 'LTS']:
         dss[ivar] = dss[ivar].rename({'latitude': 'lat', 'longitude': 'lon'})
@@ -772,7 +776,7 @@ for ivar in vars:
         else:
             dss[ivar] = xr.open_dataset(f'/g/data/rt52/era5/single-levels/reanalysis/{cmip6_era5_var[ivar]}/{year}/{cmip6_era5_var[ivar]}_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')[cmip6_era5_var[ivar]]
     elif ivar in ['LCL', 'LTS', 'inversionh', 'EIS']:
-        dss[ivar] = xr.open_dataset(f'data/obs/era5/hourly/{ivar}/{ivar}_hourly_{year}{month:02d}.nc')[ivar]
+        dss[ivar] = xr.open_dataset(f'data/sim/era5/hourly/{ivar}/{ivar}_hourly_{year}{month:02d}.nc')[ivar]
     
     if not ivar in ['LCL', 'LTS', 'inversionh', 'EIS']:
         dss[ivar] = dss[ivar].rename({'latitude': 'lat', 'longitude': 'lon'})
@@ -855,8 +859,8 @@ def get_mon_from_hour(var, year, month):
     # var = 'LTS'; year=2024; month=1
     print(f'#---------------- {var} {year} {month:02d}')
     
-    ifile = f'data/obs/era5/hourly/{var}/{var}_hourly_{year}{month:02d}.nc'
-    ofile = f'data/obs/era5/hourly/{var}/{var}_monthly_{year}{month:02d}.nc'
+    ifile = f'data/sim/era5/hourly/{var}/{var}_hourly_{year}{month:02d}.nc'
+    ofile = f'data/sim/era5/hourly/{var}/{var}_monthly_{year}{month:02d}.nc'
     
     ds_in = xr.open_dataset(ifile)[var]
     ds_out = ds_in.resample({'time': '1ME'}).mean(skipna=True).compute()
@@ -875,8 +879,8 @@ joblib.Parallel(n_jobs=4)(joblib.delayed(get_mon_from_hour)(var, year, month) fo
 var = 'EIS'
 year = 2016
 month = 6
-ds_in = xr.open_dataset(f'data/obs/era5/hourly/{var}/{var}_hourly_{year}{month:02d}.nc')[var]
-ds_out = xr.open_dataset(f'data/obs/era5/hourly/{var}/{var}_monthly_{year}{month:02d}.nc')[var]
+ds_in = xr.open_dataset(f'data/sim/era5/hourly/{var}/{var}_hourly_{year}{month:02d}.nc')[var]
+ds_out = xr.open_dataset(f'data/sim/era5/hourly/{var}/{var}_monthly_{year}{month:02d}.nc')[var]
 
 ilat = 100
 ilon = 100

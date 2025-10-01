@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -l walltime=10:00:00,ncpus=1,mem=192GB,storage=gdata/v46+gdata/rt52+gdata/ob53+gdata/zv2
+# qsub -I -q normal -l walltime=10:00:00,ncpus=1,mem=192GB,storage=gdata/v46+gdata/rt52+gdata/ob53+gdata/zv2+gdata/gx60
 
 
 # region import packages
@@ -35,8 +35,8 @@ from namelist import cmip6_units, zerok, seconds_per_d
 
 # region get agcd data
 
-for var in ['pr', 'tmax', 'tmin']:
-    # var = 'pr'
+for var in ['pr']:
+    # var = 'pr', 'tmax', 'tmin'
     print(f'#-------------------------------- {var}')
     
     if var=='pr':

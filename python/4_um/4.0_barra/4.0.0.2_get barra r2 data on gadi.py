@@ -47,17 +47,17 @@ from namelist import cmip6_units, zerok, seconds_per_d
 
 years = '2016'
 yeare = '2023'
-for var in ['inversionh', 'LCL', 'LTS', 'EIS']:
+for var in ['pr', 'clh', 'clm', 'cll', 'clt', 'rsut', 'clivi', 'clwvi', ]:
     # var = 'rsut'
     print(var)
     
-    # fl = sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/mon/{var}/latest/*')) #[:540]
-    # with tempfile.NamedTemporaryFile(suffix='.nc') as temp_output:
-    #     cdo.mergetime(input=fl, output=temp_output.name)
-    #     barra_r2_mon = xr.open_dataset(temp_output.name)[var].sel(time=slice(years, yeare)).compute()
+    fl = sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/mon/{var}/latest/*')) #[:540]
+    with tempfile.NamedTemporaryFile(suffix='.nc') as temp_output:
+        cdo.mergetime(input=fl, output=temp_output.name)
+        barra_r2_mon = xr.open_dataset(temp_output.name)[var].sel(time=slice(years, yeare)).compute()
     
-    fl = sorted(glob.glob(f'data/sim/um/barra_r2/{var}/{var}_monthly_*.nc'))
-    barra_r2_mon = xr.open_mfdataset(fl)[var].sel(time=slice(years, yeare))
+    # fl = sorted(glob.glob(f'data/sim/um/barra_r2/{var}/{var}_monthly_*.nc'))
+    # barra_r2_mon = xr.open_mfdataset(fl)[var].sel(time=slice(years, yeare))
     
     if var in ['pr', 'evspsbl', 'evspsblpot']:
         barra_r2_mon = barra_r2_mon * seconds_per_d
