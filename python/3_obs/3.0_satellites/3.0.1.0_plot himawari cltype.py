@@ -440,7 +440,7 @@ pltnorm = plt.Normalize(vmin=0, vmax=len(ISCCP_types) - 1)
 # region plot ISCCP cloud type over c2_domain
 
 # options
-year, month, day, hour, minute = 2020, 6, 2, 3, 0
+year, month, day, hour, minute = 2020, 6, 7, 5, 0
 plt_region = 'c2_domain'
 
 # settings
@@ -467,7 +467,7 @@ pltnorm = BoundaryNorm(pltlevel, len(ISCCP_types))
 opng = f'figures/3_satellites/3.0_hamawari/3.0.1_cltype/3.0.1.1 himawari ISCCP cltype {plt_region} {year}{month:02d}{day:02d}{hour:02d}{minute:02d}.png'
 plt_text = f'{year}-{month:02d}-{day:02d} {hour:02d}:{minute:02d} UTC\nHimawari ISCCP cloud types'
 
-ds_cltype = xr.open_dataset(f'scratch/data/obs/jaxa/clp/{year}{month:02d}/{day:02d}/{hour:02d}/CLTYPE_{year}{month:02d}{day:02d}{hour:02d}{minute:02d}.nc').CLTYPE.squeeze()
+ds_cltype = xr.open_dataset(f'data/obs/jaxa/clp/{year}{month:02d}/{day:02d}/{hour:02d}/CLTYPE_{year}{month:02d}{day:02d}{hour:02d}{minute:02d}.nc').CLTYPE.squeeze()
 
 fig, ax = regional_plot(
     figsize = np.array([6.6+3, 6+1]) / 2.54,

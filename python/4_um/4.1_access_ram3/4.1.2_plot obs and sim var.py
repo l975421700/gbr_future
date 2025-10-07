@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -P v46 -l walltime=3:00:00,ncpus=1,mem=96GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/qx55+gdata/gx60
+# qsub -I -q normal -P v46 -l walltime=0:30:00,ncpus=1,mem=40GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/qx55+gdata/gx60
 
 
 # region import packages
@@ -127,7 +127,7 @@ dsss = [
     # [('CERES',''),('ERA5',''),('u-dq700',1),('u-ds719',1)], #shortTS
     # [('CERES',''),('ERA5',''),('u-ds728',1),('u-ds730',1),('u-ds732',1)],#SA1p1
     # [('CERES',''),('ERA5',''),('u-ds722',1),('u-ds724',1),('u-ds726',1)],#SA1p1
-    [('CERES',''),('ERA5',''),('u-dq700',1),('u-ds921',1),('u-ds922',1)],#Spin
+    [('CERES',''),('ERA5',''),('u-dq700',1),('u-ds922',1),('u-ds921',1),('u-dt038',1),('u-dt039',1),('u-dt040',1)],#Spin
     
     # [('CERES',''),('u-dq700',1),('u-dr091',1)],
     # [('CERES',''),('u-dq700',1),('u-dr041',1)],
@@ -634,7 +634,8 @@ modes = ['difference'] # 'original', 'difference'
 dsss = [
     # [('CERES',''),('ERA5',''),('BARRA-R2',1),('BARRA-C2','')],
     # [('CERES',''),('u-ds714',1),('u-ds718',1),('u-ds717',1),],
-    [('CERES',''),('u-ds722',1),('u-ds724',1),('u-ds726',1),],
+    [('CERES',''),('ERA5',''),('BARRA-C2',''),('u-ds722',1),('u-ds724',1),('u-ds726',1),],
+    [('CERES',''),('ERA5',''),('BARRA-C2',''),('u-ds728',1),('u-ds730',1),('u-ds732',1),],
 ]
 
 min_lon1, max_lon1, min_lat1, max_lat1 = 80, 220, -70, 20

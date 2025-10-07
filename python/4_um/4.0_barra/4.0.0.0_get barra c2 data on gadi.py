@@ -592,7 +592,7 @@ print((data1 == data2).all().values)
 
 var = 'cll' # ['rsdt', 'rsut', 'rlut', 'clivi', 'clwvi', 'prw', 'clh', 'clm', 'cll', 'clt', 'pr', 'tas']
 print(f'#-------------------------------- {var}')
-odir = f'scratch/data/sim/um/barra_c2/{var}'
+odir = f'data/sim/um/barra_c2/{var}'
 os.makedirs(odir, exist_ok=True)
 
 def process_year_month(year, month, var, odir):

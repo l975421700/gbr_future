@@ -1,7 +1,7 @@
 #PBS -N single_job
-#PBS -q hugemem
-#PBS -l walltime=24:00:00
-#PBS -l mem=500GB
+#PBS -q normal
+#PBS -l walltime=1:00:00
+#PBS -l mem=20GB
 #PBS -l jobfs=100MB
 #PBS -l ncpus=1
 #PBS -j oe
@@ -11,7 +11,7 @@
 
 cd $HOME
 source miniconda3/bin/activate lowclouds
-python code/gbr_future/shell/0_runpy/run5.py
+python code/gbr_future/shell/0_runpy/run2.py
 
 # code/gbr_future/shell/2.0_get_clean_jaxa.sh 2015 07
 

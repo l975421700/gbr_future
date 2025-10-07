@@ -1,6 +1,6 @@
 
 
-# qsub -I -q express -l walltime=2:00:00,ncpus=1,mem=192GB,storage=gdata/v46+gdata/rr1+gdata/gx60
+# qsub -I -q normal -l walltime=1:00:00,ncpus=1,mem=10GB,storage=gdata/v46+gdata/rr1+gdata/gx60+gdata/ob53
 
 
 # region import packages
@@ -228,6 +228,7 @@ ax.scatter(
 # region plot Australia [108, 160, -45.7, -5]
 
 fig, ax = regional_plot(
+    # extent=[107.02,  160.9, -46.71, -4.01],
     extent=[108, 160, -45.7, -5],
     figsize = np.array([8.8, 8.1])/2.54, lgrid=False, lw=0.15)
 
@@ -282,6 +283,7 @@ plt_mesh1 = ax.pcolormesh(
 extend='max'
 cbar_label='Topography in BARRA-C2 [$m$]'
 
+
 min_lon, max_lon, min_lat, max_lat = [
     orog.lon.values[int(len(orog.lon)*0.05)],
     orog.lon.values[int(len(orog.lon)*0.95)],
@@ -301,13 +303,70 @@ CS_A3 = [max_lon, min_lat]
 CS_A4 = [min_lon, max_lat]
 
 ax.plot([CS_A1[0], CS_A2[0]], [CS_A1[1], CS_A2[1]], 'o-',
-        color='tab:orange', lw=1, ms=4, transform=ccrs.PlateCarree())
+        color='tab:pink', lw=1, ms=4, transform=ccrs.PlateCarree())
 # ax.plot([CS_A3[0], CS_A4[0]], [CS_A3[1], CS_A4[1]], 'o-',
-#         color='tab:orange', lw=1, ms=4, transform=ccrs.PlateCarree())
+#         color='tab:pink', lw=1, ms=4, transform=ccrs.PlateCarree())
 ax.text(CS_A1[0]+1, CS_A1[1]+1, 'A1', ha='left', va='bottom')
 ax.text(CS_A2[0]-1, CS_A2[1]-1, 'A2', ha='right', va='top')
 # ax.text(CS_A3[0]-1, CS_A3[1]+1, 'A3', ha='right', va='bottom')
 # ax.text(CS_A4[0]+1, CS_A4[1]-1, 'A4', ha='left', va='top')
+
+
+# plot SA large domain
+exp_out = xr.open_dataset('scratch/cylc-run/u-dr091/share/cycle/20200602T0000Z/Australia/d1p1kmsa/RAL3P2/um/umnsaa_pa000.nc')
+min_lon1, max_lon1, min_lat1, max_lat1 = [
+    exp_out['grid_longitude_t'][0].values,
+    exp_out['grid_longitude_t'][-1].values,
+    exp_out['grid_latitude_t'][0].values,
+    exp_out['grid_latitude_t'][-1].values,
+]
+rec_m = ax.add_patch(Rectangle(
+    (min_lon1, min_lat1), max_lon1-min_lon1, max_lat1-min_lat1,
+    ec = 'tab:blue', color = 'None', lw = 1))
+
+
+# plot SA small domain
+exp_out = xr.open_dataset('scratch/cylc-run/u-ds732/share/cycle/20200602T0000Z/Australia/d1p1km/RAL3P2/um/umnsaa_pa000.nc')
+min_lon1, max_lon1, min_lat1, max_lat1 = [
+    exp_out['grid_longitude_t'][0].values,
+    exp_out['grid_longitude_t'][-1].values,
+    exp_out['grid_latitude_t'][0].values,
+    exp_out['grid_latitude_t'][-1].values,
+]
+rec_m = ax.add_patch(Rectangle(
+    (min_lon1, min_lat1), max_lon1-min_lon1, max_lat1-min_lat1,
+    ec = 'tab:blue', color = 'None', lw = 1, ls='--'))
+
+
+# plot NE large domain
+exp_out = xr.open_dataset('scratch/cylc-run/u-dr145/share/cycle/20200602T0000Z/Australia/d1p1km/RAL3P2/um/umnsaa_pa000.nc')
+min_lon1, max_lon1, min_lat1, max_lat1 = [
+    exp_out['grid_longitude_t'][0].values,
+    exp_out['grid_longitude_t'][-1].values,
+    exp_out['grid_latitude_t'][0].values,
+    exp_out['grid_latitude_t'][-1].values,
+]
+rec_m = ax.add_patch(Rectangle(
+    (min_lon1, min_lat1), max_lon1-min_lon1, max_lat1-min_lat1,
+    ec = 'tab:orange', color = 'None', lw = 1))
+
+
+# plot NE small domain
+exp_out = xr.open_dataset('scratch/cylc-run/u-ds726/share/cycle/20200602T0000Z/Australia/d1p1km/RAL3P2/um/umnsaa_pa000.nc')
+min_lon1, max_lon1, min_lat1, max_lat1 = [
+    exp_out['grid_longitude_t'][0].values,
+    exp_out['grid_longitude_t'][-1].values,
+    exp_out['grid_latitude_t'][0].values,
+    exp_out['grid_latitude_t'][-1].values,
+]
+rec_m = ax.add_patch(Rectangle(
+    (min_lon1, min_lat1), max_lon1-min_lon1, max_lat1-min_lat1,
+    ec = 'tab:orange', color = 'None', lw = 1, ls='--'))
+
+
+WillisIsland_loc={'lat':-16.2876,'lon':149.962}
+plot_loc(WillisIsland_loc['lon'], WillisIsland_loc['lat'], ax,
+         marker='*', edgecolors='tab:purple',)
 
 opng='figures/0_gbr/0.1_study region/0.0_Australia1.png'
 

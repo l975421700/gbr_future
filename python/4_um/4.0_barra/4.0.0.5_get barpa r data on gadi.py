@@ -1,6 +1,6 @@
 
 
-# qsub -I -q express -l walltime=4:00:00,ncpus=1,mem=192GB,jobfs=100MB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/py18
+# qsub -I -q normal -l walltime=1:00:00,ncpus=1,mem=20GB,jobfs=100MB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/py18+gdata/gx60
 
 
 # region import packages
@@ -36,16 +36,18 @@ from namelist import zerok, seconds_per_d
 
 
 # region get BARPA-R mon data
-# Memory Used: 2.91GB; Walltime Used: 00:00:41
+# Memory Used: 4.63GB; Walltime Used: 00:02:31, for all variables
 
-for var in ['prw']:
+years = '2016'
+yeare = '2023'
+for var in ['cll', 'clm', 'clh', 'clt', 'rsut', 'rsutcs', 'clwvi', 'clivi', 'rlut', 'rlutcs', 'pr', 'hfls', 'hfss', 'hurs', 'huss']:
     # var = 'pr'
     # ['pr', 'clh', 'clm', 'cll', 'clt', 'evspsbl', 'hfls', 'hfss', 'psl', 'rlds', 'rldscs', 'rlus', 'rluscs', 'rlut', 'rlutcs', 'rsds', 'rsdscs', 'rsdt', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'sfcWind', 'tas', 'ts', 'evspsblpot', 'hurs', 'huss', 'uas', 'vas', 'clivi', 'clwvi']
     print(var)
     
     fl = sorted(glob.glob(f'/g/data/py18/BARPA/output/CMIP6/DD/AUS-15/BOM/ERA5/evaluation/r1i1p1f1/BARPA-R/v1-r1/mon/{var}/latest/*'))
     
-    barpa_r_mon = xr.open_mfdataset(fl)[var].sel(time=slice('1979', '2020'))
+    barpa_r_mon = xr.open_mfdataset(fl, drop_variables=["crs"])[var].sel(time=slice(years, yeare))
     if var in ['pr', 'evspsbl', 'evspsblpot']:
         barpa_r_mon = barpa_r_mon * seconds_per_d
     elif var in ['tas', 'ts']:
@@ -69,30 +71,58 @@ for var in ['prw']:
 
 
 
+'''
+#-------------------------------- check
+ifile = -1
+
+barpa_r_mon_alltime = {}
+for var in ['cll', 'clm', 'clh', 'clt', 'rsut', 'rsutcs', 'clwvi', 'clivi', 'rlut', 'rlutcs', 'pr', 'hfls', 'hfss', 'hurs', 'huss']:
+    # var = 'cll'
+    # ['pr', 'clh', 'clm', 'cll', 'clt', 'evspsbl', 'hfls', 'hfss', 'psl', 'rlds', 'rldscs', 'rlus', 'rluscs', 'rlut', 'rlutcs', 'rsds', 'rsdscs', 'rsdt', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'sfcWind', 'tas', 'ts', 'evspsblpot', 'hurs', 'huss', 'uas', 'vas', 'clivi', 'clwvi']
+    print(f'#-------- {var}')
+    
+    with open(f'data/sim/um/barpa_r/barpa_r_mon_alltime_{var}.pkl','rb') as f:
+        barpa_r_mon_alltime[var] = pickle.load(f)
+    
+    fl = sorted(glob.glob(f'/g/data/py18/BARPA/output/CMIP6/DD/AUS-15/BOM/ERA5/evaluation/r1i1p1f1/BARPA-R/v1-r1/mon/{var}/latest/*'))
+    # fl = sorted(glob.glob(f'data/sim/um/barpa_r/{var}/{var}_monthly_*.nc'))[:96]
+    
+    data1 = xr.open_dataset(fl[ifile])[var][-1]
+    data2 = barpa_r_mon_alltime[var]['mon'][ifile]
+    if var in ['pr', 'evspsbl', 'evspsblpot']:
+        data1 = data1 * seconds_per_d
+    elif var in ['tas', 'ts']:
+        data1 = data1 - zerok
+    elif var in ['rlus', 'rluscs', 'rlut', 'rlutcs', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'hfls', 'hfss']:
+        data1 = data1 * (-1)
+    elif var in ['psl']:
+        data1 = data1 / 100
+    elif var in ['huss']:
+        data1 = data1 * 1000
+    
+    print((data1.squeeze().values.astype(np.float32)[np.isfinite(data1.squeeze().values.astype(np.float32))] == data2.values[np.isfinite(data2.values)]).all())
+    del barpa_r_mon_alltime[var]
+'''
 # endregion
 
 
+# region get BARPA-R hourly data
+# qsub -I -q normal -P v46 -l walltime=00:30:00,ncpus=48,mem=192GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/py18+gdata/gx60
+# Memory Used: 60.32GB; Walltime Used: 00:01:41
 
-
-
-
-# To change
-# region get BARRA-C2 hourly data
-# qsub -I -q normal -l walltime=00:30:00,ncpus=48,mem=192GB,storage=gdata/v46+gdata/ob53+scratch/v46+gdata/rr1+gdata/rt52+gdata/oi10+gdata/hh5+gdata/fs38
-# Memory Used: 161.84GB; Walltime Used: 00:16:55
-
-var = 'cll' # ['rsdt', 'rsut', 'rlut', 'clivi', 'clwvi', 'prw', 'clh', 'clm', 'cll', 'clt', 'pr', 'tas']
+var = 'cll' # ['cll', 'clm', 'clh', 'clt', 'rsut', 'rsutcs', 'clwvi', 'clivi', 'rlut', 'rlutcs', 'pr', 'hfls', 'hfss', 'hurs', 'huss']
 print(f'#-------------------------------- {var}')
-odir = f'scratch/data/sim/um/barra_c2/{var}'
+odir = f'data/sim/um/barpa_r/{var}'
 os.makedirs(odir, exist_ok=True)
 
 def process_year_month(year, month, var, odir):
+    # year=2020;month=6
     print(f'#---------------- {year} {month:02d}')
     
-    ifile = f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/{var}/latest/{var}_AUST-04_ERA5_historical_hres_BOM_BARRA-C2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc'
+    ifile = f'/g/data/py18/BARPA/output/CMIP6/DD/AUS-15/BOM/ERA5/evaluation/r1i1p1f1/BARPA-R/v1-r1/1hr/{var}/latest/{var}_AUS-15_ERA5_evaluation_r1i1p1f1_BOM_BARPA-R_v1-r1_1hr_{year}01-{year}12.nc'
     ofile = f'{odir}/{var}_hourly_{year}{month:02d}.nc'
     
-    ds = xr.open_dataset(ifile, chunks={})[var]
+    ds = xr.open_dataset(ifile, chunks={})[var].sel(time=slice(f'{year}-{month:02d}', f'{year}-{month:02d}'))
     if var in ['pr', 'evspsbl', 'evspsblpot']:
         ds = ds * seconds_per_d
     elif var in ['tas', 'ts']:
@@ -111,94 +141,88 @@ def process_year_month(year, month, var, odir):
     return f'Finished processing {ofile}'
 
 
-joblib.Parallel(n_jobs=48)(joblib.delayed(process_year_month)(year, month, var, odir) for year in range(1979, 2024) for month in range(1, 13))
+joblib.Parallel(n_jobs=48)(joblib.delayed(process_year_month)(year, month, var, odir) for year in range(2016, 2023) for month in range(1, 13))
 
 
 
 
 '''
 #-------------------------------- check
-var = 'rlut'
+
 year = 2020
-month = 1
+month = 6
 
-ds1 = xr.open_dataset(f'scratch/data/sim/um/barra_c2/{var}/{var}_hourly_{year}{month:02d}.nc', chunks={})
-ds2 = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/{var}/latest/{var}_AUST-04_ERA5_historical_hres_BOM_BARRA-C2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc', chunks={})[var]
-if var in ['pr', 'evspsbl', 'evspsblpot']:
-    ds2 = ds2 * seconds_per_d
-elif var in ['tas', 'ts']:
-    ds2 = ds2 - zerok
-elif var in ['rlus', 'rluscs', 'rlut', 'rlutcs', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'hfls', 'hfss']:
-    ds2 = ds2 * (-1)
-elif var in ['psl']:
-    ds2 = ds2 / 100
-elif var in ['huss']:
-    ds2 = ds2 * 1000
-ds2 = ds2.groupby('time.hour').mean().astype(np.float32).compute()
-
-print((ds1[var].squeeze() == ds2).all().values)
-
-
-
-
-# single job
-process_year_month(2020, 1, var, odir)
-
-for var in ['cll']:
+for var in ['cll', 'clm', 'clh', 'rsut', 'rsutcs', 'clwvi', 'clivi', 'rlut', 'rlutcs', 'pr', 'hfls', 'hfss', 'hurs', 'huss']:
     # var = 'cll'
-    # ['clh', 'clm', 'cll', 'clt', 'pr', 'tas']
-    print(f'#-------------------------------- {var}')
+    print(var)
     
-    fl = sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/{var}/latest/*'))[:540]
+    ds1 = xr.open_dataset(f'data/sim/um/barpa_r/{var}/{var}_hourly_{year}{month:02d}.nc', chunks={})
+    ds2 = xr.open_dataset(f'/g/data/py18/BARPA/output/CMIP6/DD/AUS-15/BOM/ERA5/evaluation/r1i1p1f1/BARPA-R/v1-r1/1hr/{var}/latest/{var}_AUS-15_ERA5_evaluation_r1i1p1f1_BOM_BARPA-R_v1-r1_1hr_{year}01-{year}12.nc', chunks={})[var].sel(time=slice(f'{year}-{month:02d}', f'{year}-{month:02d}'))
     
-    def preprocess(ds, var=var):
-        ds_out = ds[var].groupby('time.hour').mean().astype(np.float32).expand_dims(dim={'time': [ds.time[0].values]})
-        return(ds_out)
+    if var in ['pr', 'evspsbl', 'evspsblpot']:
+        ds2 = ds2 * seconds_per_d
+    elif var in ['tas', 'ts']:
+        ds2 = ds2 - zerok
+    elif var in ['rlus', 'rluscs', 'rlut', 'rlutcs', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'hfls', 'hfss']:
+        ds2 = ds2 * (-1)
+    elif var in ['psl']:
+        ds2 = ds2 / 100
+    elif var in ['huss']:
+        ds2 = ds2 * 1000
+    ds2 = ds2.groupby('time.hour').mean().astype(np.float32).compute()
     
-    %timeit xr.open_mfdataset(fl[:6], preprocess=preprocess, parallel=True).compute()
-    
-    ds = xr.open_dataset(fl[3], chunks={})
-    ds[var].groupby('time.hour').mean().astype(np.float32).expand_dims(dim={'time': [ds.time[0].values]})
-    preprocess(ds)
-
-
-    ds = xr.open_dataset(fl[3], chunks={})
-    ds[var].groupby('time.hour').mean().astype(np.float32).expand_dims(dim={'time': [ds.time[0].values]})
-    
-    ds = xr.open_mfdataset(fl[:12], chunks={})[var]
-    ds.groupby(['time.month', 'time.hour']).mean()
-    # (lat: 1018, lon: 1298, month: 12, hour: 24)
-    
-    
-    ds = xr.open_mfdataset(fl[:24], chunks={})[var]
-    ds.groupby(['time.year', 'time.month', 'time.hour']).mean()
-
-
-for var in ['cll']:
-    # var = 'cll'
-    # ['clh', 'clm', 'cll', 'clt', 'pr', 'tas']
-    print(f'#-------------------------------- {var}')
-    
-    odir = f'scratch/data/sim/um/barra_c2/{var}'
-    os.makedirs(odir, exist_ok=True)
-    
-    for year in np.arange(1979, 2024, 1):
-        print(f'#---------------- {year}')
-        for month in np.arange(1, 13, 1):
-            print(f'#-------- {month}')
-            # year=2020; month=1
-            ifile = sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/{var}/latest/{var}_AUST-04_ERA5_historical_hres_BOM_BARRA-C2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc'))[0]
-            ofile = f'{odir}/{var}_hourly_{year}{month:02d}.nc'
-            
-            ds = xr.open_dataset(ifile, chunks={})
-            ds = ds[var].groupby('time.hour').mean().astype(np.float32).expand_dims(dim={'time': [ds.time[0].values]}).compute()
-            
-            if os.path.exists(ofile): os.remove(ofile)
-            ds.to_netcdf(ofile)
+    print((ds1[var].squeeze() == ds2).all().values)
 
 
 
 '''
 # endregion
 
+
+# region get BARPA-R alltime hourly data
+# Memory Used: 8.03GB, Walltime Used: 00:01:46
+
+years = '2016'
+yeare = '2023'
+for var in ['cll']:
+    # var = 'cll'
+    # 'cll', 'clm', 'clh', 'clt', 'rsut', 'rsutcs', 'clwvi', 'clivi', 'rlut', 'rlutcs', 'pr', 'hfls', 'hfss', 'hurs', 'huss'
+    print(f'#-------------------------------- {var}')
+    
+    fl = sorted(glob.glob(f'data/sim/um/barpa_r/{var}/{var}_hourly_*.nc'))
+    barpa_r_hourly = xr.open_mfdataset(fl)[var].sel(time=slice(years, yeare))
+    barpa_r_hourly_alltime = mon_sea_ann(
+        var_monthly=barpa_r_hourly, lcopy=False, mm=True, sm=True, am=True)
+    
+    ofile = f'data/sim/um/barpa_r/barpa_r_hourly_alltime_{var}.pkl'
+    if os.path.exists(ofile): os.remove(ofile)
+    with open(ofile,'wb') as f:
+        pickle.dump(barpa_r_hourly_alltime, f)
+    
+    del barpa_r_hourly, barpa_r_hourly_alltime
+
+
+
+
+'''
+#-------------------------------- check
+ifile = -1
+for var in ['cll', 'clm', 'clh', 'clt', 'rsut', 'rsutcs', 'clwvi', 'clivi', 'rlut', 'rlutcs', 'pr', 'hfls', 'hfss', 'hurs', 'huss']:
+    # var = 'rlut'
+    print(f'#-------------------------------- {var}')
+    
+    with open(f'data/sim/um/barpa_r/barpa_r_hourly_alltime_{var}.pkl','rb') as f:
+        barpa_r_hourly_alltime = pickle.load(f)
+    
+    fl = sorted(glob.glob(f'data/sim/um/barpa_r/{var}/{var}_hourly_*.nc'))
+    ds = xr.open_dataset(fl[ifile])[var]
+    print((barpa_r_hourly_alltime['mon'][ifile] == ds.squeeze()).all().values)
+    
+    del ds, barpa_r_hourly_alltime
+
+
+
+
+'''
+# endregion
 
