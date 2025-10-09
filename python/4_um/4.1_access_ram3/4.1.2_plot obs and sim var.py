@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -P v46 -l walltime=0:30:00,ncpus=1,mem=40GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/qx55+gdata/gx60
+# qsub -I -q normal -P v46 -l walltime=4:00:00,ncpus=1,mem=96GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/qx55+gdata/gx60+gdata/py18
 
 
 # region import packages
@@ -109,16 +109,25 @@ from um_postprocess import (
 
 # region obs vs. sim timestamp
 
-year, month, day, hour = 2020, 6, 2, 5
+year, month, day, hour = 2020, 6, 2, 3
 var2s = ['rsut']
-# 'rsut', 'rlut', 'cll', 'clm', 'clh', 'clt', 'clivi', 'clwvi'
+# 'rsut', 'rlut', 'cll', 'clm', 'clh', 'clt', 'clivi', 'clwvi', 'blh'
 modes = ['difference'] # 'original', 'difference'
 dsss = [
-    # [('CERES',''),('ERA5',''),('BARRA-C2',''),('u-dq700',1)],#control
-    # [('CERES',''),('ERA5',''),('u-dr095',1),('u-dr093',1),('u-dr091',1)],#Sres
-    # [('CERES',''),('ERA5',''),('u-dq700',1),('u-dr040',1),('u-dr041',1)],#CDNC
-    # [('CERES',''),('ERA5',''),('u-dq700',1),('u-dr091',1),('u-dr041',1),('u-dr147',1)],#Sres+CDNC
-    # [('CERES',''),('ERA5',''),('u-dq788',1),('u-dq911',1),('u-dq799',1)],#res
+    # [('CERES',''),('BARRA-C2',''),('u-dq700',1)],#control
+    # [('CERES',''),('u-dq700',1),('u-dr040',1),('u-dr041',1)],#CDNC
+    [('CERES',''),('u-dt042',1),('u-dq700',1),('u-dr040',1),('u-dr041',1),('u-dt020',1)],#CDNC
+    
+    # [('CERES',''),('u-dr095',1),('u-dr093',1),('u-dr091',1)],#Sres
+    # [('CERES',''),('u-dq700',1),('u-dr095',1)],
+    
+    # [('CERES',''),('u-dq700',1),('u-dr091',1),('u-dr041',1),('u-dr147',1)],#Sres+CDNC
+    # [('ERA5',''),('u-dq700',1),('u-dr091',1),('u-dr041',1),('u-dr147',1)],#ERA5
+    # [('ERA5',''),('u-dq700',1),('u-dr041',1)],#ERA5
+    
+    # [('CERES',''),('u-dq788',1),('u-dq911',1),('u-dq799',1)],#res
+    # [('CERES',''),('u-dq700',1),('u-dq788',1)],
+    
     # [('CERES',''),('ERA5',''),('u-dq700',1),('u-dq799',1),('u-dr041',1),('u-dr145',1)],#res+CDNC
     # [('CERES',''),('ERA5',''),('u-dq700',1),('u-dr108',1),('u-dr109',1)],#param
     # [('CERES',''),('ERA5',''),('u-dq700',1),('u-dq912',1)],#LD
@@ -127,9 +136,8 @@ dsss = [
     # [('CERES',''),('ERA5',''),('u-dq700',1),('u-ds719',1)], #shortTS
     # [('CERES',''),('ERA5',''),('u-ds728',1),('u-ds730',1),('u-ds732',1)],#SA1p1
     # [('CERES',''),('ERA5',''),('u-ds722',1),('u-ds724',1),('u-ds726',1)],#SA1p1
-    [('CERES',''),('ERA5',''),('u-dq700',1),('u-ds922',1),('u-ds921',1),('u-dt038',1),('u-dt039',1),('u-dt040',1)],#Spin
+    # [('CERES',''),('ERA5',''),('u-dq700',1),('u-ds922',1),('u-ds921',1),('u-dt038',1),('u-dt039',1),('u-dt040',1)],#Spin
     
-    # [('CERES',''),('u-dq700',1),('u-dr091',1)],
     # [('CERES',''),('u-dq700',1),('u-dr041',1)],
     # [('CERES',''),('u-dq700',1),('u-dr147',1)],
     
@@ -175,14 +183,14 @@ for dss in dsss:
         extend2 = 'neither'
     elif var2 in ['clwvi']:
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=0, cm_max=600, cm_interval1=50, cm_interval2=100, cmap='viridis')
+            cm_min=0, cm_max=600, cm_interval1=50, cm_interval2=100, cmap='Purples_r')
         extend = 'max'
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
             cm_min=-600,cm_max=600,cm_interval1=50,cm_interval2=100,cmap='BrBG_r')
         extend2 = 'both'
     elif var2 in ['clivi']:
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=0, cm_max=1000, cm_interval1=100, cm_interval2=200, cmap='viridis')
+            cm_min=0, cm_max=1000, cm_interval1=100, cm_interval2=200, cmap='Purples_r')
         extend = 'max'
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
             cm_min=-1000,cm_max=1000,cm_interval1=100,cm_interval2=200,cmap='BrBG_r')
@@ -251,16 +259,16 @@ for dss in dsss:
             cm_min=-10,cm_max=10,cm_interval1=1,cm_interval2=2,cmap='BrBG_r')
         extend2 = 'both'
     elif var2 in ['rsut']:
-        # pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-        #     cm_min=-300, cm_max=-50, cm_interval1=25, cm_interval2=50, cmap='Greens')
-        # extend = 'both'
-        # pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-        #     cm_min=-200,cm_max=200,cm_interval1=25,cm_interval2=50,cmap='BrBG')
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=-600, cm_max=0, cm_interval1=50, cm_interval2=100, cmap='Greens')
-        extend = 'min'
+            cm_min=-300, cm_max=-50, cm_interval1=25, cm_interval2=50, cmap='Greens')
+        extend = 'both'
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-300,cm_max=300,cm_interval1=50,cm_interval2=100,cmap='BrBG')
+            cm_min=-200,cm_max=200,cm_interval1=25,cm_interval2=50,cmap='BrBG')
+        # pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+        #     cm_min=-600, cm_max=0, cm_interval1=50, cm_interval2=100, cmap='Greens')
+        # extend = 'min'
+        # pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+        #     cm_min=-300,cm_max=300,cm_interval1=50,cm_interval2=100,cmap='BrBG')
         extend2 = 'both'
     elif var2 in ['rsutcs']:
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
@@ -464,16 +472,26 @@ for dss in dsss:
                 extentl[3] = np.max((extentl[3], ds[ilabel].lat[-1].values))
         elif ids[0] == 'BARRA-R2':
             if var2 in ['psl', 'uas', 'vas', 'prw', 'clwvi', 'clivi', 'sfcWind', 'tas', 'huss', 'hurs']:
-                ds['BARRA-R2'] = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/{var2}/latest/{var2}_AUS-11_ERA5_historical_hres_BOM_BARRA-R2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')[var2].sel(time=pd.Timestamp(year,month,day,hour))
+                ds[ids[0]] = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/{var2}/latest/{var2}_AUS-11_ERA5_historical_hres_BOM_BARRA-R2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')[var2].sel(time=pd.Timestamp(year,month,day,hour))
             elif var2 in ['cll', 'clm', 'clh', 'clt', 'pr', 'evspsbl', 'evspsblpot', 'hfls', 'hfss', 'rsut', 'rlut']:
-                ds['BARRA-R2'] = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/{var2}/latest/{var2}_AUS-11_ERA5_historical_hres_BOM_BARRA-R2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')[var2].sel(time=pd.Timestamp(year,month,day,hour) + pd.Timedelta('30min'))
+                ds[ids[0]] = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/{var2}/latest/{var2}_AUS-11_ERA5_historical_hres_BOM_BARRA-R2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')[var2].sel(time=pd.Timestamp(year,month,day,hour) + pd.Timedelta('30min'))
         elif ids[0] == 'BARRA-C2':
             if var2 in ['psl', 'uas', 'vas', 'prw', 'clwvi', 'clivi', 'sfcWind', 'tas', 'huss', 'hurs']:
-                ds['BARRA-C2'] = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/{var2}/latest/{var2}_AUST-04_ERA5_historical_hres_BOM_BARRA-C2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')[var2].sel(time=pd.Timestamp(year,month,day,hour))
+                ds[ids[0]] = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/{var2}/latest/{var2}_AUST-04_ERA5_historical_hres_BOM_BARRA-C2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')[var2].sel(time=pd.Timestamp(year,month,day,hour))
             elif var2 in ['cll', 'clm', 'clh', 'clt', 'pr', 'evspsbl', 'evspsblpot', 'hfls', 'hfss', 'rsut', 'rlut']:
-                ds['BARRA-C2'] = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/{var2}/latest/{var2}_AUST-04_ERA5_historical_hres_BOM_BARRA-C2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')[var2].sel(time=pd.Timestamp(year,month,day,hour) + pd.Timedelta('30min'))
+                ds[ids[0]] = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/{var2}/latest/{var2}_AUST-04_ERA5_historical_hres_BOM_BARRA-C2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')[var2].sel(time=pd.Timestamp(year,month,day,hour) + pd.Timedelta('30min'))
+        elif ids[0] == 'BARPA-R':
+            if var2 in ['psl', 'uas', 'vas', 'prw', 'clwvi', 'clivi', 'sfcWind', 'tas', 'huss', 'hurs']:
+                ds[ids[0]] = xr.open_dataset(f'/g/data/py18/BARPA/output/CMIP6/DD/AUS-15/BOM/ERA5/evaluation/r1i1p1f1/BARPA-R/v1-r1/1hr/{var2}/latest/{var2}_AUS-15_ERA5_evaluation_r1i1p1f1_BOM_BARPA-R_v1-r1_1hr_{year}01-{year}12.nc')[var2].sel(time=pd.Timestamp(year,month,day,hour))
+            elif var2 in ['cll', 'clm', 'clh', 'clt', 'pr', 'evspsbl', 'evspsblpot', 'hfls', 'hfss', 'rsut', 'rlut']:
+                ds[ids[0]] = xr.open_dataset(f'/g/data/py18/BARPA/output/CMIP6/DD/AUS-15/BOM/ERA5/evaluation/r1i1p1f1/BARPA-R/v1-r1/1hr/{var2}/latest/{var2}_AUS-15_ERA5_evaluation_r1i1p1f1_BOM_BARPA-R_v1-r1_1hr_{year}01-{year}12.nc')[var2].sel(time=pd.Timestamp(year,month,day,hour) + pd.Timedelta('30min'))
+        elif ids[0] == 'BARPA-C':
+            if var2 in ['psl', 'uas', 'vas', 'prw', 'clwvi', 'clivi', 'sfcWind', 'tas', 'huss', 'hurs']:
+                ds[ids[0]] = xr.open_dataset(f'/g/data/py18/BARPA/output/CMIP6/DD/AUST-04/BOM/ERA5/evaluation/r1i1p1f1/BARPA-C/v1-r1/1hr/{var2}/latest/{var2}_AUST-04_ERA5_evaluation_r1i1p1f1_BOM_BARPA-C_v1-r1_1hr_{year}{month:02d}-{year}{month:02d}.nc')[var2].sel(time=pd.Timestamp(year,month,day,hour))
+            elif var2 in ['cll', 'clm', 'clh', 'clt', 'pr', 'evspsbl', 'evspsblpot', 'hfls', 'hfss', 'rsut', 'rlut']:
+                ds[ids[0]] = xr.open_dataset(f'/g/data/py18/BARPA/output/CMIP6/DD/AUST-04/BOM/ERA5/evaluation/r1i1p1f1/BARPA-C/v1-r1/1hr/{var2}/latest/{var2}_AUST-04_ERA5_evaluation_r1i1p1f1_BOM_BARPA-C_v1-r1_1hr_{year}{month:02d}-{year}{month:02d}.nc')[var2].sel(time=pd.Timestamp(year,month,day,hour) + pd.Timedelta('30min'))
         
-        if ids[0] in ['BARRA-R2', 'BARRA-C2']:
+        if ids[0] in ['BARRA-R2', 'BARRA-C2', 'BARPA-R', 'BARPA-C']:
             if var2 in ['pr', 'evspsbl', 'evspsblpot']:
                 ds[ids[0]] *= seconds_per_d / 24
             elif var2 in ['tas', 'ts']:
@@ -628,14 +646,19 @@ ds2 = xr.open_dataset(f'data/obs/CERES/CERES_SYN1deg-1H_Terra-Aqua-NOAA20_Ed4.2_
 # region obs vs. sim monthly data
 
 year, month = 2020, 6
-var2s = ['rsut']
+var2s = ['blh']
 # 'rsut', 'rlut', 'cll', 'clm', 'clh', 'clt', 'clivi', 'clwvi'
 modes = ['difference'] # 'original', 'difference'
 dsss = [
-    # [('CERES',''),('ERA5',''),('BARRA-R2',1),('BARRA-C2','')],
-    # [('CERES',''),('u-ds714',1),('u-ds718',1),('u-ds717',1),],
-    [('CERES',''),('ERA5',''),('BARRA-C2',''),('u-ds722',1),('u-ds724',1),('u-ds726',1),],
-    [('CERES',''),('ERA5',''),('BARRA-C2',''),('u-ds728',1),('u-ds730',1),('u-ds732',1),],
+    # [('CERES',''),('ERA5',''),('BARRA-R2',''),('BARRA-C2',''),('BARPA-R',''),('BARPA-C','')],
+    # [('CERES',''),('BARRA-C2',''),('BARPA-C',''),('u-ds714',1)], # control
+    # [('CERES',''),('u-ds714',1),('u-ds726',1),('u-ds717',1),], # ne1p1+CD50
+    # [('CERES',''),('BARRA-C2',''),('BARPA-C',''),('u-ds714',1),('u-ds722',1),('u-ds726',1),('u-ds717',1),],
+    # [('CERES',''),('u-ds722',1),('u-ds724',1),('u-ds726',1),], # ne1p1+CD50
+    [('ERA5',''),('u-ds714',1),('u-ds718',1),('u-ds717',1),], # CD50
+    
+    # [('CERES',''),('ERA5',''),('BARRA-C2',''),('u-ds722',1),('u-ds724',1),('u-ds726',1),],
+    # [('CERES',''),('ERA5',''),('BARRA-C2',''),('u-ds728',1),('u-ds730',1),('u-ds732',1),],
 ]
 
 min_lon1, max_lon1, min_lat1, max_lat1 = 80, 220, -70, 20
@@ -868,6 +891,13 @@ for dss in dsss:
             if var2 in ['clwvi', 'clivi']:
                 ds[ids[0]] *= 1000
             del barpa_c_mon_alltime
+        elif ids[0] == 'BARPA-R':
+            with open(f'data/sim/um/barpa_r/barpa_r_mon_alltime_{var2}.pkl','rb') as f:
+                barpa_r_mon_alltime = pickle.load(f)
+            ds[ids[0]] = barpa_r_mon_alltime['mon'].sel(time=f'{year}-{month:02d}').squeeze().copy()
+            if var2 in ['clwvi', 'clivi']:
+                ds[ids[0]] *= 1000
+            del barpa_r_mon_alltime
         elif ids[0] in suite_res.keys():
             isuite = ids[0]
             ires = suite_res[isuite][ids[1]]

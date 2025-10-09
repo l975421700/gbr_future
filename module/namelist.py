@@ -248,6 +248,7 @@ cmip6_era5_var = {
     'theta': 'theta',
     'theta_e': 'theta_e',
     'blh': 'blh',
+    'zmla': 'blh',
     'orog': 'orog',
     'ncloud': 'ncloud',
     'CDNC': 'CDNC',

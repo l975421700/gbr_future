@@ -43,13 +43,13 @@ from namelist import cmip6_units, zerok, seconds_per_d, cmip6_era5_var
 # region get era5 sl mon data
 # Memory Used: 14.87GB, Walltime Used: 00:15:42
 
-for var in ['tp', 'hcc', 'mcc', 'lcc', 'tcc', 'tciw', 'tclw', 'mtnswrf', 'mtdwswrf']:
+for var in ['blh']:
     # var = 'tp'
-    # 'tp', 'e', 'cp', 'lsp', 'pev', 'msl', 'sst', '2t', '2d', 'skt', 'hcc', 'mcc', 'lcc', 'tcc', 'z', 'mper',
+    # 'tp', 'e', 'cp', 'lsp', 'pev', 'msl', 'sst', '2t', '2d', 'skt', 'hcc', 'mcc', 'lcc', 'tcc', 'z', 'mper', 'tciw', 'tclw', 'mtnswrf', 'mtdwswrf'
     print(var)
     
     fl = sorted([
-        file for iyear in np.arange(1979, 2024, 1)
+        file for iyear in np.arange(2016, 2024, 1)
         for file in glob.glob(f'/g/data/rt52/era5/single-levels/monthly-averaged/{var}/{iyear}/*.nc')])
     if var == '2t': var='t2m'
     if var == '10si': var='si10'
@@ -114,25 +114,25 @@ for var in ['tciw', 'tclw', 'tcw', 'tcwv', 'tcsw', 'tcrw', 'tcslw']:
 
 itime=-1
 era5_sl_mon_alltime = {}
-for var in ['inversionh', 'LCL', 'LTS', 'EIS']:
+for var in ['blh']:
     # var = 'msnlwrf'
     # 'tp', 'msl', 'sst', 'hcc', 'mcc', 'lcc', 'tcc', '2t', 'msnlwrf', 'msnswrf', 'mtdwswrf', 'mtnlwrf', 'mtnswrf', 'msdwlwrf', 'msdwswrf', 'msdwlwrfcs', 'msdwswrfcs', 'msnlwrfcs', 'msnswrfcs', 'mtnlwrfcs', 'mtnswrfcs', 'cbh', 'tciw', 'tclw', 'e', 'z', 'mslhf', 'msshf', 'tcw', 'tcwv', 'tcsw', 'tcrw', 'tcslw', '10si', '2d', 'cp', 'lsp', 'deg0l', 'mper', 'pev', 'skt', '10u', '10v', '100u', '100v'
     print(f'#---------------- {var}')
     
-    # fl = sorted([
-    #     file for iyear in np.arange(1979, 2024, 1)
-    #     for file in glob.glob(f'/g/data/rt52/era5/single-levels/monthly-averaged/{var}/{iyear}/*.nc')])
-    # if var == '2t': var='t2m'
-    # if var == '10si': var='si10'
-    # if var == '2d': var='d2m'
-    # if var == '10u': var='u10'
-    # if var == '10v': var='v10'
-    # if var == '100u': var='u100'
-    # if var == '100v': var='v100'
-    # ds = xr.open_dataset(fl[itime]).rename({'latitude': 'lat', 'longitude': 'lon'})[var].squeeze()
+    fl = sorted([
+        file for iyear in np.arange(2016, 2024, 1)
+        for file in glob.glob(f'/g/data/rt52/era5/single-levels/monthly-averaged/{var}/{iyear}/*.nc')])
+    if var == '2t': var='t2m'
+    if var == '10si': var='si10'
+    if var == '2d': var='d2m'
+    if var == '10u': var='u10'
+    if var == '10v': var='v10'
+    if var == '100u': var='u100'
+    if var == '100v': var='v100'
+    ds = xr.open_dataset(fl[itime]).rename({'latitude': 'lat', 'longitude': 'lon'})[var].squeeze()
     
-    fl = sorted(glob.glob(f'data/sim/era5/hourly/{var}/{var}_monthly_*.nc'))[:96]
-    ds = xr.open_dataset(fl[itime])[var].squeeze()
+    # fl = sorted(glob.glob(f'data/sim/era5/hourly/{var}/{var}_monthly_*.nc'))[:96]
+    # ds = xr.open_dataset(fl[itime])[var].squeeze()
     
     if var in ['tp', 'e', 'cp', 'lsp', 'pev']:
         ds = ds * 1000

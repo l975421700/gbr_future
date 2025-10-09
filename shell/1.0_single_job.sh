@@ -1,7 +1,7 @@
 #PBS -N single_job
-#PBS -q normal
+#PBS -q hugemem
 #PBS -l walltime=1:00:00
-#PBS -l mem=20GB
+#PBS -l mem=500GB
 #PBS -l jobfs=100MB
 #PBS -l ncpus=1
 #PBS -j oe

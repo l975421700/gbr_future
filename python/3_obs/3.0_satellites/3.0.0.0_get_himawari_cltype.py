@@ -123,7 +123,7 @@ print(((cltype_values == ISCCP_types[icloud]).sum(axis=0) == cltype_count.loc[{'
 
 
 # region get alltime count of each cloud type
-# Memory Used: 367.07GB, Walltime Used: 02:13:41
+# Memory Used: 367.07GB, Walltime Used: 03:49:17
 
 fl = sorted(glob.glob('data/obs/jaxa/clp/??????/??/cltype_count_????????.nc'))
 cltype_count = xr.open_mfdataset(fl).cltype_count
@@ -139,7 +139,7 @@ print('get sea')
 cltype_count_alltime['sea'] = cltype_count_alltime['mon'].resample({'time': 'QE-FEB'}).sum()[1:-1].compute()
 
 print('get ann')
-cltype_count_alltime['ann'] = cltype_count_alltime['mon'].resample({'time': '1YE'}).sum()[1:].compute()
+cltype_count_alltime['ann'] = cltype_count_alltime['mon'].resample({'time': '1YE'}).sum().compute()
 
 print('get mm')
 cltype_count_alltime['mm'] = cltype_count_alltime['mon'].groupby('time.month').sum().compute()

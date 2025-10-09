@@ -47,6 +47,11 @@ def preprocess_umoutput(ds_in):
         'theta80': theta80,
         })
     
+    ds_in = ds_in.isel(lon=slice(int(len(ds_in.lon)*0.05),
+                                 int(len(ds_in.lon)*0.95)),
+                       lat=slice(int(len(ds_in.lat)*0.05),
+                                 int(len(ds_in.lat)*0.95)))
+    
     return(ds_in)
 
 
@@ -184,6 +189,9 @@ suite_res = {
     'u-dt038': ['d11km', 'd4p4km'],
     'u-dt039': ['d11km', 'd4p4km'],
     'u-dt040': ['d11km', 'd4p4km'],
+    'u-dt020': ['d11km', 'd4p4km'],
+    'u-dt041': ['d11km', 'd4p4kml'],
+    'u-dt042': ['d11km', 'd4p4km'],
 }
 
 suite_label = {
@@ -227,6 +235,9 @@ suite_label = {
     'u-dt038': r'$12hSpin$',
     'u-dt039': r'$6hSpin$',
     'u-dt040': r'$0hSpin$',
+    'u-dt020': r'$CN5$',
+    'u-dt041': r'$LD4p4$',
+    'u-dt042': r'$CN500$',
 }
 
 # endregion

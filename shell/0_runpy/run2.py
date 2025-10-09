@@ -2,7 +2,6 @@
 
 # region import packages
 
-# data analysis
 import numpy as np
 import xarray as xr
 import dask
@@ -10,70 +9,60 @@ dask.config.set({"array.slicing.split_large_chunks": True})
 from dask.diagnostics import ProgressBar
 pbar = ProgressBar()
 pbar.register()
-import joblib
-
-# management
-import os
-import sys  # print(sys.path)
-sys.path.append(os.getcwd() + '/code/gbr_future/module')
+import pandas as pd
 import glob
+from datetime import datetime
+import os
+import calendar
 import pickle
-import datetime
-# import psutil
-# process = psutil.Process()
-# print(process.memory_info().rss / 2**30)
 
-from calculations import (
-    mon_sea_ann,
-    )
-
-from namelist import zerok, seconds_per_d
+import sys  # print(sys.path)
+sys.path.append('/home/563/qg8515/code/gbr_future/module')
+from calculations import mon_sea_ann
 
 # endregion
 
 
-# region get BARPA-R alltime hourly data
-# Memory Used: 47.5GB, Walltime Used: 00:42:54
+# region get alltime frequency of each cloud type
+# Memory Used: 323.52GB, Walltime Used: 00:11:15
 
-years = '2016'
-yeare = '2023'
-for var in ['clm']:
-    # var = 'cll'
-    # 'cll', 'clm', 'clh', 'clt', 'rsut', 'rsutcs', 'clwvi', 'clivi', 'rlut', 'rlutcs', 'pr', 'hfls', 'hfss', 'hurs', 'huss'
-    print(f'#-------------------------------- {var}')
-    
-    fl = sorted(glob.glob(f'data/sim/um/barpa_r/{var}/{var}_hourly_*.nc'))
-    barpa_r_hourly = xr.open_mfdataset(fl)[var].sel(time=slice(years, yeare))
-    barpa_r_hourly_alltime = mon_sea_ann(
-        var_monthly=barpa_r_hourly, lcopy=False, mm=True, sm=True, am=True)
-    
-    ofile = f'data/sim/um/barpa_r/barpa_r_hourly_alltime_{var}.pkl'
-    if os.path.exists(ofile): os.remove(ofile)
-    with open(ofile,'wb') as f:
-        pickle.dump(barpa_r_hourly_alltime, f)
-    
-    del barpa_r_hourly, barpa_r_hourly_alltime
+with open('data/obs/jaxa/clp/cltype_count_alltime.pkl', 'rb') as f:
+    cltype_count_alltime = pickle.load(f)
 
+cltype_frequency_alltime = {}
+for ialltime in ['mon', 'sea', 'ann', 'mm', 'sm', 'am']:
+    # ialltime = 'mon'
+    print(f'#-------------------------------- {ialltime}')
+    
+    cltype_frequency_alltime[ialltime] = xr.zeros_like(cltype_count_alltime[ialltime][:, 1:]).rename('cltype_frequency')
+    
+    for itype in cltype_frequency_alltime[ialltime].types.values:
+        # itype='Stratocumulus'
+        print(f'#---------------- {itype}')
+        cltype_frequency_alltime[ialltime].loc[{'types': itype}][:] = (cltype_count_alltime[ialltime].loc[{'types': itype}] / cltype_count_alltime[ialltime].loc[{'types': 'finite'}] * 100).compute().astype(np.float32)
 
+ofile='data/obs/jaxa/clp/cltype_frequency_alltime.pkl'
+if os.path.exists(ofile): os.remove(ofile)
+with open(ofile, 'wb') as f:
+    pickle.dump(cltype_frequency_alltime, f)
 
 
 '''
 #-------------------------------- check
-ifile = -1
-for var in ['rlut', 'rlutcs', 'pr', 'cll', 'clm', 'clh', 'clt', 'rsut', 'rsutcs', 'clwvi', 'clivi']:
-    print(f'#-------------------------------- {var}')
-    
-    with open(f'data/sim/um/barpa_c/barpa_c_hourly_alltime_{var}.pkl','rb') as f:
-        barpa_c_hourly_alltime = pickle.load(f)
-    
-    fl = sorted(glob.glob(f'data/sim/um/barpa_c/{var}/{var}_hourly_*.nc'))
-    ds = xr.open_dataset(fl[ifile])[var]
-    print((barpa_c_hourly_alltime['mon'][ifile] == ds.squeeze()).all().values)
-    
-    del ds, barpa_c_hourly_alltime
+with open('data/obs/jaxa/clp/cltype_count_alltime.pkl', 'rb') as f:
+    cltype_count_alltime = pickle.load(f)
+with open('data/obs/jaxa/clp/cltype_frequency_alltime.pkl', 'rb') as f:
+    cltype_frequency_alltime = pickle.load(f)
 
+ialltime = 'mon'
+itype = 'Stratocumulus'
+ilat = 100
+ilon = 100
 
-
+data1 = cltype_frequency_alltime[ialltime].loc[{'types': itype}][:, ilat, ilon]
+data2 = (cltype_count_alltime[ialltime].loc[{'types': itype}][:, ilat, ilon] / cltype_count_alltime[ialltime].loc[{'types': 'finite'}][:, ilat, ilon] * 100).compute().astype(np.float32)
+print((data1[np.isfinite(data1)] == data2[np.isfinite(data2)]).all().values)
 
 '''
 # endregion
+

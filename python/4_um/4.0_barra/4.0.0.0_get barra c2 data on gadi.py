@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -P v46 -l walltime=3:00:00,ncpus=1,mem=20GB,jobfs=100MB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22
+# qsub -I -q normal -P v46 -l walltime=3:00:00,ncpus=1,mem=20GB,jobfs=100MB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/gx60+gdata/py18
 
 
 # region import packages
@@ -48,8 +48,9 @@ from namelist import zerok, seconds_per_d
 
 years = '2016'
 yeare = '2023'
-for var in ['pr', 'clh', 'clm', 'cll', 'clt', 'rsut', 'clivi', 'clwvi', ]:
+for var in ['zmla', ]:
     # var = 'inversionh'
+    # 'pr', 'clh', 'clm', 'cll', 'clt', 'rsut', 'clivi', 'clwvi'
     print(var)
     
     fl = sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/mon/{var}/latest/*')) #[:540]

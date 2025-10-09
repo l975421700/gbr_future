@@ -1,6 +1,6 @@
 
 
-# qsub -I -q express -P gb02 -l walltime=3:00:00,ncpus=1,mem=40GB,jobfs=100MB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/py18+gdata/gx60
+# qsub -I -q normal -P v46 -l walltime=3:00:00,ncpus=1,mem=96GB,jobfs=100MB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/py18+gdata/gx60
 
 
 # region import packages
@@ -47,12 +47,12 @@ from namelist import zerok, seconds_per_d
 
 years = '2016'
 yeare = '2023'
-for var in ['rlut', 'rlutcs', 'pr', ]:
+for var in ['zmla']:
     # var = 'cll'
-    # 'cll', 'clm', 'clh', 'clt', 'rsut', 'rsutcs', 'clwvi', 'clivi'
+    # 'cll', 'clm', 'clh', 'clt', 'rsut', 'rsutcs', 'clwvi', 'clivi', 'rlut', 'rlutcs', 'pr',
     print(var)
     
-    fl = sorted(glob.glob(f'/g/data/py18/BARPA/output/CMIP6/DD/AUST-04/BOM/ERA5/evaluation/r1i1p1f1/BARPA-C/v1-r1/mon/{var}/latest/*'))
+    fl = sorted(glob.glob(f'/g/data/py18/BARPA/output/CMIP6/DD/AUST-04/BOM/ERA5/evaluation/r1i1p1f1/BARPA-C/v1-r1/mon/{var}/latest/*.nc'))
     # fl = sorted(glob.glob(f'data/sim/um/barpa_c/{var}/{var}_monthly_*.nc'))
     
     barpa_c_mon = xr.open_mfdataset(fl)[var].sel(time=slice(years, yeare))
@@ -241,6 +241,103 @@ for var in ['rlut', 'rlutcs', 'pr', 'cll', 'clm', 'clh', 'clt', 'rsut', 'rsutcs'
 # endregion
 
 
+# region derive BARPA-C mon data
+
+
+barpa_c_mon_alltime = {}
+for var1, var2, var3 in zip(['rlutcl', 'rsutcl'], ['rlut', 'rsut'], ['rlutcs', 'rsutcs']):
+    # ['rlutcl', 'rsntcl', 'rsutcl'], ['rlut', 'rsnt', 'rsut'], ['rlutcs', 'rsntcs', 'rsutcs']
+    # ['rsntcs'], ['rsdt'], ['rsutcs']
+    # ['rsnt'], ['rsdt'], ['rsut']
+    # ['rluscl', 'rsuscl'], ['rlus', 'rsus'], ['rluscs', 'rsuscs']
+    # ['rlnscl', 'rsnscl', 'rldscl', 'rsdscl'], ['rlns', 'rsns', 'rlds', 'rsds'], ['rlnscs', 'rsnscs', 'rldscs', 'rsdscs']
+    # ['rlnscs', 'rsnscs'], ['rldscs', 'rsdscs'], ['rluscs', 'rsuscs']
+    # ['rsns'], ['rsds'], ['rsus']
+    # ['rlns'], ['rlds'], ['rlus']
+    print(f'Derive {var1} from {var2} and {var3}')
+    print(str(datetime.datetime.now())[11:19])
+    
+    with open(f'data/sim/um/barpa_c/barpa_c_mon_alltime_{var2}.pkl','rb') as f:
+        barpa_c_mon_alltime[var2] = pickle.load(f)
+    with open(f'data/sim/um/barpa_c/barpa_c_mon_alltime_{var3}.pkl','rb') as f:
+        barpa_c_mon_alltime[var3] = pickle.load(f)
+    
+    if var1 in ['rlnscl', 'rsnscl', 'rldscl', 'rsdscl', 'rluscl', 'rsuscl', 'rlutcl', 'rsntcl', 'rsutcl']:
+        # print('var2 - var3')
+        barpa_c_mon = (barpa_c_mon_alltime[var2]['mon'] - barpa_c_mon_alltime[var3]['mon']).rename(var1)
+    elif var1 in ['rlns', 'rsns', 'rlnscs', 'rsnscs', 'rsnt', 'rsntcs']:
+        # print('var2 + var3')
+        barpa_c_mon = (barpa_c_mon_alltime[var2]['mon'] + barpa_c_mon_alltime[var3]['mon']).rename(var1)
+    
+    barpa_c_mon_alltime[var1] = mon_sea_ann(
+        var_monthly=barpa_c_mon, lcopy=False, mm=True, sm=True, am=True,)
+    
+    ofile = f'data/sim/um/barpa_c/barpa_c_mon_alltime_{var1}.pkl'
+    if os.path.exists(ofile): os.remove(ofile)
+    with open(ofile,'wb') as f:
+        pickle.dump(barpa_c_mon_alltime[var1], f)
+    
+    del barpa_c_mon_alltime[var2], barpa_c_mon_alltime[var3], barpa_c_mon_alltime[var1], barpa_c_mon
+    print(str(datetime.datetime.now())[11:19])
+
+
+
+
+'''
+
+#-------------------------------- check
+itime = -1
+barpa_c_mon_alltime = {}
+for var1, var2, var3 in zip(
+    ['rlutcl', 'rsutcl'], ['rlut', 'rsut'], ['rlutcs', 'rsutcs']):
+    # var1 = 'rluscl'; var2 = 'rlus'; var3 = 'rluscs'
+    # ['rlns',  'rsns',  'rlnscs', 'rsnscs',  'rlnscl', 'rsnscl', 'rldscl', 'rsdscl',  'rluscl', 'rsuscl',  'rsnt',  'rsntcs',  'rlutcl', 'rsntcl', 'rsutcl'],
+    # ['rlds',  'rsds',  'rldscs', 'rsdscs',  'rlns', 'rsns', 'rlds', 'rsds',  'rlus', 'rsus',  'rsdt',  'rsdt',  'rlut', 'rsnt', 'rsut'],
+    # ['rlus',  'rsus',  'rluscs', 'rsuscs',  'rlnscs', 'rsnscs', 'rldscs', 'rsdscs',  'rluscs', 'rsuscs',  'rsut',  'rsutcs',  'rlutcs', 'rsntcs', 'rsutcs']
+    print(f'Derive {var1} from {var2} and {var3}')
+    
+    with open(f'data/sim/um/barpa_c/barpa_c_mon_alltime_{var1}.pkl','rb') as f:
+        barpa_c_mon_alltime[var1] = pickle.load(f)
+    with open(f'data/sim/um/barpa_c/barpa_c_mon_alltime_{var2}.pkl','rb') as f:
+        barpa_c_mon_alltime[var2] = pickle.load(f)
+    with open(f'data/sim/um/barpa_c/barpa_c_mon_alltime_{var3}.pkl','rb') as f:
+        barpa_c_mon_alltime[var3] = pickle.load(f)
+    
+    data1 = barpa_c_mon_alltime[var1]['mon'][itime]
+    if var1 in ['rlnscl', 'rsnscl', 'rldscl', 'rsdscl', 'rluscl', 'rsuscl', 'rlutcl', 'rsntcl', 'rsutcl']:
+        # print('var2 - var3')
+        data2 = barpa_c_mon_alltime[var2]['mon'][itime] - barpa_c_mon_alltime[var3]['mon'][itime]
+    elif var1 in ['rlns', 'rsns', 'rlnscs', 'rsnscs', 'rsnt', 'rsntcs']:
+        # print('var2 + var3')
+        data2 = barpa_c_mon_alltime[var2]['mon'][itime] + barpa_c_mon_alltime[var3]['mon'][itime]
+    
+    print((data1.values[np.isfinite(data1.values)] == data2.values[np.isfinite(data2.values)]).all())
+    
+    del barpa_c_mon_alltime[var1], barpa_c_mon_alltime[var2], barpa_c_mon_alltime[var3]
+
+
+
+
+
+
+# check
+barpa_c_mon_alltime = {}
+with open(f'data/sim/um/barpa_c/barpa_c_mon_alltime_rsntcl.pkl','rb') as f:
+    barpa_c_mon_alltime['rsntcl'] = pickle.load(f)
+with open(f'data/sim/um/barpa_c/barpa_c_mon_alltime_rsutcl.pkl','rb') as f:
+    barpa_c_mon_alltime['rsutcl'] = pickle.load(f)
+
+print(np.max(np.abs(barpa_c_mon_alltime['rsntcl']['am'].values + barpa_c_mon_alltime['rsutcl']['am'].values)))
+
+del barpa_c_mon_alltime['rsntcl'], barpa_c_mon_alltime['rsutcl']
+
+'''
+# endregion
+
+
+
+
+
 
 # Not finished because hourly data not available
 # region get hourly BARPA-C LCL, LTS, EIS
@@ -294,7 +391,7 @@ for ivar in vars:
     elif ivar in ['tas', 'ps', 'hurs', 'ta700', 'zg700']:
         dss[ivar] = xr.open_dataset(f'/g/data/py18/BARPA/output/CMIP6/DD/AUST-04/BOM/ERA5/evaluation/r1i1p1f1/BARPA-C/v1-r1/3hr/{ivar}/latest/{ivar}_AUST-04_ERA5_historical_hres_BOM_BARRA-C2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')[ivar]
     elif ivar in ['LCL', 'LTS']:
-        dss[ivar] = xr.open_dataset(f'data/sim/um/barra_c2/{ivar}/{ivar}_hourly_{year}{month:02d}.nc')[ivar]
+        dss[ivar] = xr.open_dataset(f'data/sim/um/barpa_c/{ivar}/{ivar}_hourly_{year}{month:02d}.nc')[ivar]
     
     # if ivar == 'orog':
     #     dss[ivar] = dss[ivar].isel(lat=slice(0, 10), lon=slice(0, 10))
@@ -357,7 +454,7 @@ for ivar in vars:
     elif ivar in ['tas', 'ps', 'hurs', 'ta700', 'zg700']:
         dss[ivar] = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/{ivar}/latest/{ivar}_AUST-04_ERA5_historical_hres_BOM_BARRA-C2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')[ivar]
     elif ivar in ['inversionh', 'LCL', 'LTS', 'EIS']:
-        dss[ivar] = xr.open_dataset(f'data/sim/um/barra_c2/{ivar}/{ivar}_hourly_{year}{month:02d}.nc')[ivar]
+        dss[ivar] = xr.open_dataset(f'data/sim/um/barpa_c/{ivar}/{ivar}_hourly_{year}{month:02d}.nc')[ivar]
 
 itime = 30
 ilat  = 5
@@ -413,11 +510,11 @@ for var in ['LTS', 'EIS', 'inversionh', 'LCL', ]: #
 
 
 # check two get_inversionh methods
-ds1 = xr.open_dataset('data/sim/um/barra_c2/inversionh/inversionh_hourly_202401.nc')
-ds2 = xr.open_dataset('data/sim/um/barra_c2/inversionh/inversionh_hourly_2024012.nc')
+ds1 = xr.open_dataset('data/sim/um/barpa_c/inversionh/inversionh_hourly_202401.nc')
+ds2 = xr.open_dataset('data/sim/um/barpa_c/inversionh/inversionh_hourly_2024012.nc')
 np.max(np.abs(ds1['inversionh'].values - ds2['inversionh'].values))
 
-ds = xr.open_dataset('data/sim/um/barra_c2/LTS/LTS_hourly_202312.nc')['LTS']
+ds = xr.open_dataset('data/sim/um/barpa_c/LTS/LTS_hourly_202312.nc')['LTS']
 
 for ivar in vars:
     print(f'#---------------- {ivar}')

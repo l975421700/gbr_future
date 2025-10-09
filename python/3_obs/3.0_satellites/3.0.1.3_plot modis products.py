@@ -283,11 +283,11 @@ for iproduct in products:
 # 'MYD05_L2', 'MYD06_L2', 'MYD07_L2', 'MYDATML2', 'MYD08_D3'
 products_vars = {
     # 'MYD05_L2': ['Water_Vapor_Near_Infrared', 'Water_Vapor_Infrared'],
-    'MYD06_L2': ['Cloud_Fraction', 'Cloud_Water_Path', 'Cloud_Water_Path_Uncertainty',], # 'Cloud_Fraction', 'Cloud_Water_Path', 'Cloud_Water_Path_Uncertainty', 'Brightness_Temperature', 'Cloud_Top_Height', 'Cloud_Top_Pressure', 'Cloud_Top_Temperature', 'Cloud_Effective_Radius', 'Cloud_Optical_Thickness', 'Cloud_Phase_Infrared'
+    'MYD06_L2': ['Cloud_Water_Path'], # 'Cloud_Fraction', 'Cloud_Water_Path', 'Cloud_Water_Path_Uncertainty', 'Brightness_Temperature', 'Cloud_Top_Height', 'Cloud_Top_Pressure', 'Cloud_Top_Temperature', 'Cloud_Effective_Radius', 'Cloud_Optical_Thickness', 'Cloud_Phase_Infrared'
     # 'MYD07_L2': ['Water_Vapor'],
     # 'MYDATML2': ['Cloud_Water_Path', 'Cloud_Fraction', 'Precipitable_Water_Infrared_ClearSky', 'Precipitable_Water_Near_Infrared_ClearSky']
     }
-year, month, day, hour, minute = 2020, 6, 2, 3, 0
+year, month, day, hour, minute = 2020, 6, 2, 5, 0
 doy = datetime(year, month, day).timetuple().tm_yday
 plt_regions = ['c2_domain'] # 'global', 'c2_domain'
 plt_scene = 'hourly' # 'minutely'
@@ -298,9 +298,9 @@ for iproduct in products_vars.keys():
     print(f'#-------------------------------- {iproduct}')
     
     if plt_scene == 'hourly':
-        fl = sorted(glob.glob(f'scratch/data/obs/MODIS/{iproduct}/{year}/{doy:03d}/*.{hour:02d}??.061.*.hdf'))
+        fl = sorted(glob.glob(f'data/obs/MODIS/{iproduct}/{year}/{doy:03d}/*.{hour:02d}??.061.*.hdf'))
     elif plt_scene == 'minutely':
-        fl = sorted(glob.glob(f'scratch/data/obs/MODIS/{iproduct}/{year}/{doy:03d}/*.{hour:02d}{minute:02d}.061.*.hdf'))
+        fl = sorted(glob.glob(f'data/obs/MODIS/{iproduct}/{year}/{doy:03d}/*.{hour:02d}{minute:02d}.061.*.hdf'))
     if len(fl)==0: print('Warning: no file found')
     
     for ivar in products_vars[iproduct]:
@@ -318,7 +318,7 @@ for iproduct in products_vars.keys():
             extend = 'neither'
         elif ivar in ['Cloud_Water_Path']:
             pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-                cm_min=0, cm_max=600, cm_interval1=50, cm_interval2=100, cmap='viridis')
+                cm_min=0, cm_max=600, cm_interval1=50, cm_interval2=100, cmap='Purples_r')
             extend = 'max'
             var_labels = r'CWP [$g \; m^{-2}$]'
         elif ivar in ['Cloud_Water_Path_Uncertainty']:
