@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -P v46 -l walltime=4:00:00,ncpus=1,mem=96GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/qx55+gdata/gx60+gdata/py18
+# qsub -I -q normal -P v46 -l walltime=8:00:00,ncpus=1,mem=192GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/qx55+gdata/gx60+gdata/py18
 
 
 # region import packages
@@ -77,6 +77,7 @@ from namelist import (
     zerok,
     era5_varlabels,
     cmip6_era5_var,
+    ds_color,
     )
 
 from component_plot import (
@@ -637,10 +638,11 @@ plt_data[ids].weighted(np.cos(np.deg2rad(plt_data[ids].lat))).mean()
 # options
 years = '2016'; yeare = '2023'
 # ['rsut', 'rlut', 'rsdt', 'cll', 'clm', 'clh', 'clt', 'clwvi', 'clivi', 'LCL', 'LTS', 'EIS', 'pr']
-vars = ['rsut']
-ds_names = ['CERES', 'ERA5', 'BARRA-R2', 'BARRA-C2', 'BARPA-R', 'BARPA-C']
+vars = ['clm', 'clh', 'clt']
+ds_names = ['Himawari', 'ERA5', 'BARRA-R2', 'BARRA-C2', 'BARPA-R', 'BARPA-C']
 plt_regions = ['c2_domain'] # ['global', 'c2_domain', 'h9_domain']
-plt_modes = ['annual', 'monthly', 'hourly']
+plt_modes = ['annual', 'monthly'] # ['annual', 'monthly', 'hourly']
+plt_types = ['original', 'MD'] # ['original', 'MD', 'RMSD']
 
 # settings
 min_lon, max_lon, min_lat, max_lat = [110.58, 157.34, -43.69, -7.01]
@@ -691,7 +693,7 @@ for ivar in vars:
             if plt_mode == 'annual':
                 ds_data[plt_mode][ids] = ceres[cmip6_era5_var[ivar]].resample({'time': '1YE'}).map(time_weighted_mean).compute()
             elif plt_mode == 'monthly':
-                ds_data[plt_mode][ids] = ceres[cmip6_era5_var[ivar]].groupby('time.month').map(time_weighted_mean).compute()
+                ds_data[plt_mode][ids] = ceres[cmip6_era5_var[ivar]].groupby('time.month').map(time_weighted_mean).compute().rename({'month': 'time'})
             elif plt_mode == 'hourly':
                 print('to_change')
         elif ids == 'ERA5':
@@ -702,7 +704,7 @@ for ivar in vars:
                 if plt_mode == 'annual':
                     ds_data[plt_mode][ids] = era5_sl_mon_alltime['ann'].sel(time=slice(years, yeare))
                 elif plt_mode == 'monthly':
-                    ds_data[plt_mode][ids] = era5_sl_mon_alltime['mon'].sel(time=slice(years, yeare)).groupby('time.month').map(time_weighted_mean).compute()
+                    ds_data[plt_mode][ids] = era5_sl_mon_alltime['mon'].sel(time=slice(years, yeare)).groupby('time.month').map(time_weighted_mean).compute().rename({'month': 'time'})
             elif plt_mode == 'hourly':
                 print('to_change')
             
@@ -716,7 +718,7 @@ for ivar in vars:
                 if plt_mode == 'annual':
                     ds_data[plt_mode][ids] = barra_r2_mon_alltime['ann'].sel(time=slice(years, yeare))
                 elif plt_mode == 'monthly':
-                    ds_data[plt_mode][ids] = barra_r2_mon_alltime['mon'].sel(time=slice(years, yeare)).groupby('time.month').map(time_weighted_mean).compute()
+                    ds_data[plt_mode][ids] = barra_r2_mon_alltime['mon'].sel(time=slice(years, yeare)).groupby('time.month').map(time_weighted_mean).compute().rename({'month': 'time'})
             elif plt_mode == 'hourly':
                 print('to_change')
             
@@ -730,7 +732,7 @@ for ivar in vars:
                 if plt_mode == 'annual':
                     ds_data[plt_mode][ids] = barra_c2_mon_alltime['ann'].sel(time=slice(years, yeare))
                 elif plt_mode == 'monthly':
-                    ds_data[plt_mode][ids] = barra_c2_mon_alltime['mon'].sel(time=slice(years, yeare)).groupby('time.month').map(time_weighted_mean).compute()
+                    ds_data[plt_mode][ids] = barra_c2_mon_alltime['mon'].sel(time=slice(years, yeare)).groupby('time.month').map(time_weighted_mean).compute().rename({'month': 'time'})
             elif plt_mode == 'hourly':
                 print('to_change')
             
@@ -744,7 +746,7 @@ for ivar in vars:
                 if plt_mode == 'annual':
                     ds_data[plt_mode][ids] = barpa_c_mon_alltime['ann'].sel(time=slice(years, yeare))
                 elif plt_mode == 'monthly':
-                    ds_data[plt_mode][ids] = barpa_c_mon_alltime['mon'].sel(time=slice(years, yeare)).groupby('time.month').map(time_weighted_mean).compute()
+                    ds_data[plt_mode][ids] = barpa_c_mon_alltime['mon'].sel(time=slice(years, yeare)).groupby('time.month').map(time_weighted_mean).compute().rename({'month': 'time'})
             elif plt_mode == 'hourly':
                 print('to_change')
             
@@ -758,7 +760,7 @@ for ivar in vars:
                 if plt_mode == 'annual':
                     ds_data[plt_mode][ids] = barpa_r_mon_alltime['ann'].sel(time=slice(years, yeare))
                 elif plt_mode == 'monthly':
-                    ds_data[plt_mode][ids] = barpa_r_mon_alltime['mon'].sel(time=slice(years, yeare)).groupby('time.month').map(time_weighted_mean).compute()
+                    ds_data[plt_mode][ids] = barpa_r_mon_alltime['mon'].sel(time=slice(years, yeare)).groupby('time.month').map(time_weighted_mean).compute().rename({'month': 'time'})
             elif plt_mode == 'hourly':
                 print('to_change')
             
@@ -773,7 +775,7 @@ for ivar in vars:
                 if plt_mode == 'annual':
                     ds_data[plt_mode][ids] = cltype_frequency_alltime['ann'].sel(types=cltypes[cmip6_era5_var[ivar]], time=slice(years, yeare)).sum(dim='types')
                 elif plt_mode == 'monthly':
-                    ds_data[plt_mode][ids] = cltype_frequency_alltime['mon'].sel(types=cltypes[cmip6_era5_var[ivar]], time=slice(years, yeare)).sum(dim='types').groupby('time.month').map(time_weighted_mean).compute()
+                    ds_data[plt_mode][ids] = cltype_frequency_alltime['mon'].sel(types=cltypes[cmip6_era5_var[ivar]], time=slice(years, yeare)).sum(dim='types').groupby('time.month').map(time_weighted_mean).compute().rename({'month': 'time'})
             elif plt_mode == 'hourly':
                 print('to_change')
         elif ids == 'IMERG':
@@ -784,7 +786,7 @@ for ivar in vars:
                 if plt_mode == 'annual':
                     ds_data[plt_mode][ids] = imerg_mon_alltime['ann'].sel(time=slice(years, yeare))
                 elif plt_mode == 'monthly':
-                    ds_data[plt_mode][ids] = imerg_mon_alltime['mon'].sel(time=slice(years, yeare)).groupby('time.month').map(time_weighted_mean).compute()
+                    ds_data[plt_mode][ids] = imerg_mon_alltime['mon'].sel(time=slice(years, yeare)).groupby('time.month').map(time_weighted_mean).compute().rename({'month': 'time'})
             elif plt_mode == 'hourly':
                 print('to_change')
         else:
@@ -792,6 +794,65 @@ for ivar in vars:
         
         ds_data[plt_mode][ids]['lon'] = ds_data[plt_mode][ids]['lon'] % 360
         ds_data[plt_mode][ids] = ds_data[plt_mode][ids].sortby(['lon', 'lat'])
+    
+    for plt_region in plt_regions:
+        # plt_region = 'global'
+        print(f'#-------- {plt_region}')
+        
+        # if plt_region == 'c2_domain':
+        #     if ivar in ['rsut']:
+        #     elif ivar in ['cll']:
+        #     elif ivar in ['clwvi']:
+        # else:
+        #     print('unknown plt_region')
+        
+        plt_dm = {}
+        for ids in ds_names:
+            # print(f'get dm: {ids}')
+            if plt_region == 'c2_domain':
+                plt_dm[ids] = ds_data[plt_mode][ids].sel(lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat)).weighted(np.cos(np.deg2rad(ds_data[plt_mode][ids].sel(lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat)).lat))).mean(dim=['lat', 'lon'])
+        
+        plt_md = {}
+        for ids in ds_names[1:]:
+            # print(f'get md: {ids}')
+            plt_md[ids] = plt_dm[ids] - plt_dm[ds_names[0]]
+        
+        for plt_type in plt_types:
+            # plt_type = 'MD'
+            print(f'#---- {plt_type}')
+            opng = f"figures/4_um/4.0_barra/4.0.7_obs_sim/4.0.7.1 {ivar} {plt_mode} dm {plt_type} {plt_region} {', '.join(ds_names)} {years}-{yeare}.png"
+            fig, ax = plt.subplots(1, 1, figsize=np.array([8.8, 8]) / 2.54)
+            
+            if plt_type == 'MD':
+                for ids in ds_names[1:]:
+                    print(f'plot {ids}')
+                    plt1 = ax.plot(
+                        plt_md[ids].time, plt_md[ids], '.-', lw=0.75,
+                        markersize=6, label=ids, color=ds_color[ids])
+                ax.set_ylabel(f'Area-weighted $MD$ in {era5_varlabels[cmip6_era5_var[ivar]]}')
+            elif plt_type == 'original':
+                for ids in ds_names:
+                    print(f'plot {ids}')
+                    plt1 = ax.plot(
+                        plt_dm[ids].time, plt_dm[ids], '.-', lw=0.75,
+                        markersize=6, label=ids, color=ds_color[ids])
+                ax.set_ylabel(f'Area-weighted mean {era5_varlabels[cmip6_era5_var[ivar]]}')
+            
+            if plt_mode == 'annual':
+                ax.set_xticks(plt_dm[ds_names[0]].time[::2])
+                ax.set_xticklabels(plt_dm[ds_names[0]].time[::2].dt.year.values)
+            elif plt_mode == 'monthly':
+                ax.set_xticks(plt_dm[ds_names[0]].time[::2])
+                ax.set_xticklabels(month_jan[::2])
+            
+            ax.xaxis.set_minor_locator(AutoMinorLocator(2))
+            ax.yaxis.set_minor_locator(AutoMinorLocator(2))
+            ax.yaxis.set_major_formatter(remove_trailing_zero_pos)
+            ax.grid(True, which='both', linewidth=0.5, color='gray',
+                    alpha=0.5, linestyle='--')
+            fig.subplots_adjust(left=0.2, right=0.98, bottom=0.08, top=0.98)
+            fig.savefig(opng)
+
 
 
 
