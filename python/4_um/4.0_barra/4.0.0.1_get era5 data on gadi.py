@@ -43,9 +43,9 @@ from namelist import cmip6_units, zerok, seconds_per_d, cmip6_era5_var
 # region get era5 sl mon data
 # Memory Used: 14.87GB, Walltime Used: 00:15:42
 
-for var in ['blh']:
+for var in ['mtdwswrf', 'mtnlwrf', 'mtnswrf', 'mtnlwrfcs', 'mtnswrfcs']:
     # var = 'tp'
-    # 'tp', 'e', 'cp', 'lsp', 'pev', 'msl', 'sst', '2t', '2d', 'skt', 'hcc', 'mcc', 'lcc', 'tcc', 'z', 'mper', 'tciw', 'tclw', 'mtnswrf', 'mtdwswrf'
+    # 'tp', 'e', 'cp', 'lsp', 'pev', 'msl', 'sst', '2t', '2d', 'skt', 'hcc', 'mcc', 'lcc', 'tcc', 'z', 'mper', 'tciw', 'tclw', 'mtdwswrf', 'mtnlwrf', 'mtnswrf', 'mtnlwrfcs', 'mtnswrfcs'
     print(var)
     
     fl = sorted([
@@ -265,7 +265,7 @@ for var in ['pv', 'q', 'r', 't', 'u', 'v', 'w', 'z']:
 
 
 era5_sl_mon_alltime = {}
-for var1, var2, var3 in zip(['mtuwswrf'], ['mtnswrf'], ['mtdwswrf']):
+for var1, var2, var3 in zip(['mtnlwrfcl', 'mtnswrfcl', 'mtuwswrfcl'], ['mtnlwrf', 'mtnswrf', 'mtuwswrf'], ['mtnlwrfcs', 'mtnswrfcs', 'mtuwswrfcs']):
     # ['mtnlwrfcl', 'mtnswrfcl', 'mtuwswrfcl'], ['mtnlwrf', 'mtnswrf', 'mtuwswrf'], ['mtnlwrfcs', 'mtnswrfcs', 'mtuwswrfcs']
     # ['mtuwswrfcs'], ['mtnswrfcs'], ['mtdwswrf']
     # ['mtuwswrf'], ['mtnswrf'], ['mtdwswrf']

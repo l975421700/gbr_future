@@ -47,9 +47,9 @@ from namelist import cmip6_units, zerok, seconds_per_d
 
 years = '2016'
 yeare = '2023'
-for var in ['zmla']:
+for var in ['rlut', 'rsdt']:
     # var = 'rsut'
-    # 'pr', 'clh', 'clm', 'cll', 'clt', 'rsut', 'clivi', 'clwvi',
+    # 'pr', 'clh', 'clm', 'cll', 'clt', 'rsut', 'clivi', 'clwvi', 'zmla', 'rlut', 'rsdt'
     print(var)
     
     fl = sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/mon/{var}/latest/*')) #[:540]

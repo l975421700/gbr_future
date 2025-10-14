@@ -1,6 +1,6 @@
 
 
-# qsub -I -q express -l walltime=4:00:00,ncpus=1,mem=192GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+gdata/zv2+gdata/ra22
+# qsub -I -q normal -l walltime=1:00:00,ncpus=1,mem=40GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+gdata/zv2+gdata/ra22+gdata/gx60
 
 
 # region import packages
@@ -316,7 +316,7 @@ print(f"Execution time: {end_time - start_time:.1f} seconds")
 # region plot himawari true color and night microphysics over c2_domain
 
 # options
-year, month, day, hour, minute = 2020, 6, 2, 4, 0
+year, month, day, hour, minute = 2020, 6, 2, 3, 0
 dfolder = Path('/g/data/ra22/satellite-products/arc/obs/himawari-ahi/fldk/latest')
 # dfolder = Path('/g/data/ra22/satellite-products/nrt/obs/himawari-ahi/fldk/latest')
 plt_region = 'c2_domain'
@@ -324,10 +324,9 @@ plt_region = 'c2_domain'
 # settings
 extent = [110.58, 157.34, -43.69, -7.01]
 min_lon, max_lon, min_lat, max_lat = extent
-opng = f'figures/3_satellites/3.0_hamawari/3.0.0_image/3.0.0.1 Himawari image {plt_region} {year}-{month:02d}-{day:02d} {hour:02d}:{minute:02d}.png'
 
 # get data: to make it a function
-bands=['B03', 'B02', 'B01', 'B07', 'B13', 'B15']
+bands=['B03', 'B02', 'B01'] #, 'B07', 'B13', 'B15'
 channels = {}
 for iband in bands:
     # iband='B07'
@@ -349,30 +348,32 @@ for iband in bands:
     if iband == 'B03':
         channels[iband] = block_reduce(channels[iband], block_size=(2, 2), func=np.mean)
 
-channels['B15-B13'] = channels['B15']-channels['B13']
-channels['B13-B07'] = channels['B13']-channels['B07']
+# channels['B15-B13'] = channels['B15']-channels['B13']
+# channels['B13-B07'] = channels['B13']-channels['B07']
 
-channels['B15-B13'] = (channels['B15-B13'] + 4) / (2 + 4)
-channels['B13-B07'] = (channels['B13-B07'] + 0) / (10 + 0)
-channels['B13'] = (channels['B13'] - 243) / (293 - 243)
+# channels['B15-B13'] = (channels['B15-B13'] + 4) / (2 + 4)
+# channels['B13-B07'] = (channels['B13-B07'] + 0) / (10 + 0)
+# channels['B13'] = (channels['B13'] - 243) / (293 - 243)
 
-for iband in ['B15-B13', 'B13-B07', 'B13']:
-    channels[iband] = channels[iband].filled(0)
+# for iband in ['B15-B13', 'B13-B07', 'B13']:
+#     channels[iband] = channels[iband].filled(0)
 
 rgb1 = np.zeros(channels['B03'].shape + (3,), dtype=np.float32)
 for idx, iband in enumerate(['B03', 'B02', 'B01']):
     rgb1[:, :, idx] = channels[iband]
 rgb1 = np.clip(rgb1, 0, 1, out=rgb1)
-rgb1 **= (1 / 2.2)
+gamma = 4
+rgb1 **= (1 / gamma)
 
-rgb2 = np.zeros(channels['B15-B13'].shape + (3,), dtype=np.float32)
-for idx, iband in enumerate(['B15-B13', 'B13-B07', 'B13']):
-    rgb2[:, :, idx] = channels[iband]
-rgb2 = np.clip(rgb2, 0, 1, out=rgb2)
-rgb2 = np.kron(rgb2, np.ones((2, 2, 1)))
+# rgb2 = np.zeros(channels['B15-B13'].shape + (3,), dtype=np.float32)
+# for idx, iband in enumerate(['B15-B13', 'B13-B07', 'B13']):
+#     rgb2[:, :, idx] = channels[iband]
+# rgb2 = np.clip(rgb2, 0, 1, out=rgb2)
+# rgb2 = np.kron(rgb2, np.ones((2, 2, 1)))
 
-luminance = 0.2126 * rgb1[..., 0] + 0.7152 * rgb1[..., 1] + 0.0722 * rgb1[..., 2]
-rgb = np.where((luminance > 0.15)[..., None], rgb1, rgb2).astype('float32')
+# luminance = 0.2126 * rgb1[..., 0] + 0.7152 * rgb1[..., 1] + 0.0722 * rgb1[..., 2]
+# rgb = np.where((luminance > 0.15)[..., None], rgb1, rgb2).astype('float32')
+rgb = rgb1.astype('float32')
 
 fig, ax = regional_plot(
     figsize = np.array([6.6, 6]) / 2.54,
@@ -385,6 +386,7 @@ ax.imshow(
 fig.text(0.5, 0.01, f'{year}-{month:02d}-{day:02d} {hour:02d}:{minute:02d} UTC\nHimawari True Color RGB',
          ha='center', va='bottom', linespacing=1.3)
 fig.subplots_adjust(left=0.005, right=0.995, bottom=0.15, top=0.95)
+opng = f'figures/3_satellites/3.0_hamawari/3.0.0_image/3.0.0.1 Himawari image {plt_region} {year}-{month:02d}-{day:02d} {hour:02d}:{minute:02d} {gamma}.png'
 fig.savefig(opng)
 
 

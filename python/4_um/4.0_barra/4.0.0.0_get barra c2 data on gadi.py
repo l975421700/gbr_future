@@ -48,9 +48,9 @@ from namelist import zerok, seconds_per_d
 
 years = '2016'
 yeare = '2023'
-for var in ['zmla', ]:
+for var in ['hfls', 'hfss', 'rlutcs', 'rsutcs', ]:
     # var = 'inversionh'
-    # 'pr', 'clh', 'clm', 'cll', 'clt', 'rsut', 'clivi', 'clwvi'
+    # 'pr', 'clh', 'clm', 'cll', 'clt', 'rsut', 'clivi', 'clwvi', 'rlut', 'rsdt'
     print(var)
     
     fl = sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/mon/{var}/latest/*')) #[:540]
@@ -425,7 +425,7 @@ for var in ['hur', 'wap']:
 
 
 barra_c2_mon_alltime = {}
-for var1, var2, var3 in zip(['rluscl', 'rsuscl', 'rlutcl', 'rsutcl'], ['rlus', 'rsus', 'rlut', 'rsut'], ['rluscs', 'rsuscs', 'rlutcs', 'rsutcs']):
+for var1, var2, var3 in zip(['rlutcl', 'rsutcl'], ['rlut', 'rsut'], ['rlutcs', 'rsutcs']):
     # ['rlutcl', 'rsntcl', 'rsutcl'], ['rlut', 'rsnt', 'rsut'], ['rlutcs', 'rsntcs', 'rsutcs']
     # ['rsntcs'], ['rsdt'], ['rsutcs']
     # ['rsnt'], ['rsdt'], ['rsut']

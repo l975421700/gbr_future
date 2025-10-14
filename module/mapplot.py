@@ -223,7 +223,7 @@ def regional_plot(
     import cartopy as ctp
     import matplotlib.pyplot as plt
     import matplotlib as mpl
-    mpl.rc('font', family='Times New Roman', size=fontsize)
+    # mpl.rc('font', family='Times New Roman', size=fontsize)
     
     ticklabel=ticks_labels(extent[0], extent[1], extent[2], extent[3],
                            xmajortick_int, ymajortick_int)

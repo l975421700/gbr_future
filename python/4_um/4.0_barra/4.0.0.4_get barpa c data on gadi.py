@@ -47,9 +47,9 @@ from namelist import zerok, seconds_per_d
 
 years = '2016'
 yeare = '2023'
-for var in ['zmla']:
+for var in ['rlut', 'rsdt']:
     # var = 'cll'
-    # 'cll', 'clm', 'clh', 'clt', 'rsut', 'rsutcs', 'clwvi', 'clivi', 'rlut', 'rlutcs', 'pr',
+    # 'cll', 'clm', 'clh', 'clt', 'rsut', 'rsutcs', 'clwvi', 'clivi', 'rlut', 'rlutcs', 'pr', 'rsdt',
     print(var)
     
     fl = sorted(glob.glob(f'/g/data/py18/BARPA/output/CMIP6/DD/AUST-04/BOM/ERA5/evaluation/r1i1p1f1/BARPA-C/v1-r1/mon/{var}/latest/*.nc'))

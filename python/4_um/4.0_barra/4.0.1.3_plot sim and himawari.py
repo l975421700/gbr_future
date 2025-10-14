@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -P v46 -l walltime=2:00:00,ncpus=1,mem=192GB,jobfs=100MB,storage=gdata/v46+gdata/rt52+gdata/ob53+gdata/zv2+scratch/v46+gdata/gx60
+# qsub -I -q normal -P v46 -l walltime=3:00:00,ncpus=1,mem=192GB,jobfs=100MB,storage=gdata/v46+gdata/rt52+gdata/ob53+gdata/zv2+scratch/v46+gdata/gx60
 
 
 # region import packages
@@ -606,8 +606,8 @@ for icltype2 in ['clm', 'clh', 'clt']:
 
 # region plot overlapping of am clouds in ERA5, BARRA-R2, and BARRA-C2
 
-mpl.rc('font', family='Times New Roman', size=8)
-plt_colnames = ['ERA5', 'BARRA-R2', 'BARRA-C2']
+mpl.rc('font', family='Times New Roman', size=9)
+plt_colnames = ['ERA5', 'BARRA-R2', 'BARRA-C2', 'BARPA-R', 'BARPA-C']
 extent = [110.58, 157.34, -43.69, -7.01]
 min_lon, max_lon, min_lat, max_lat = extent
 
@@ -615,17 +615,23 @@ min_lon, max_lon, min_lat, max_lat = extent
 era5_sl_mon_alltime = {}
 barra_r2_mon_alltime = {}
 barra_c2_mon_alltime = {}
+barpa_r_mon_alltime = {}
+barpa_c_mon_alltime = {}
 for var2 in ['cll', 'clm', 'clh', 'clt']:
     # var2='cll'
     var1 = cmip6_era5_var[var2]
     print(f'#-------------------------------- {var1} and {var2}')
     
-    with open(f'data/obs/era5/mon/era5_sl_mon_alltime_{var1}.pkl', 'rb') as f:
+    with open(f'data/sim/era5/mon/era5_sl_mon_alltime_{var1}.pkl', 'rb') as f:
         era5_sl_mon_alltime[var1] = pickle.load(f)
     with open(f'data/sim/um/barra_r2/barra_r2_mon_alltime_{var2}.pkl','rb') as f:
         barra_r2_mon_alltime[var2] = pickle.load(f)
     with open(f'data/sim/um/barra_c2/barra_c2_mon_alltime_{var2}.pkl','rb') as f:
         barra_c2_mon_alltime[var2] = pickle.load(f)
+    with open(f'data/sim/um/barpa_r/barpa_r_mon_alltime_{var2}.pkl','rb') as f:
+        barpa_r_mon_alltime[var2] = pickle.load(f)
+    with open(f'data/sim/um/barpa_c/barpa_c_mon_alltime_{var2}.pkl','rb') as f:
+        barpa_c_mon_alltime[var2] = pickle.load(f)
 
 plt_data = {}
 plt_mean = {}
@@ -638,12 +644,18 @@ plt_mean['BARRA-R2'] = plt_data['BARRA-R2'].weighted(np.cos(np.deg2rad(plt_data[
 plt_data['BARRA-C2'] = (barra_c2_mon_alltime['cll']['ann'] + barra_c2_mon_alltime['clm']['ann'] + barra_c2_mon_alltime['clh']['ann'] - barra_c2_mon_alltime['clt']['ann']).sel(time=slice('2016', '2023'), lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat)).mean(dim='time')
 plt_mean['BARRA-C2'] = plt_data['BARRA-C2'].weighted(np.cos(np.deg2rad(plt_data['BARRA-C2'].lat))).mean().values
 
+plt_data['BARPA-R'] = (barpa_r_mon_alltime['cll']['ann'] + barpa_r_mon_alltime['clm']['ann'] + barpa_r_mon_alltime['clh']['ann'] - barpa_r_mon_alltime['clt']['ann']).sel(time=slice('2016', '2023'), lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat)).mean(dim='time')
+plt_mean['BARPA-R'] = plt_data['BARPA-R'].weighted(np.cos(np.deg2rad(plt_data['BARPA-R'].lat))).mean().values
 
-cbar_label = r'Difference in 2016-2023 (low+middle+high) and total cloud cover [$\%$]'
+plt_data['BARPA-C'] = (barpa_c_mon_alltime['cll']['ann'] + barpa_c_mon_alltime['clm']['ann'] + barpa_c_mon_alltime['clh']['ann'] - barpa_c_mon_alltime['clt']['ann']).sel(time=slice('2016', '2023'), lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat)).mean(dim='time')
+plt_mean['BARPA-C'] = plt_data['BARPA-C'].weighted(np.cos(np.deg2rad(plt_data['BARPA-C'].lat))).mean().values
+
+
+cbar_label = r'Difference between LCC+MCC+HCC and TCC 2016-2023 [$\%$]'
 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-    cm_min=0, cm_max=80, cm_interval1=5, cm_interval2=10, cmap='viridis_r',)
+    cm_min=0, cm_max=50, cm_interval1=5, cm_interval2=10, cmap='BrBG_r', asymmetric=True)
 nrow=1
-ncol=3
+ncol=5
 fm_bottom=1.5/(4*nrow+1.5)
 
 

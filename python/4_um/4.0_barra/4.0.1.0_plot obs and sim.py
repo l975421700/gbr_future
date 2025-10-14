@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -P v46 -l walltime=8:00:00,ncpus=1,mem=192GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/qx55+gdata/gx60+gdata/py18
+# qsub -I -q normal -P v46 -l walltime=3:00:00,ncpus=1,mem=192GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/qx55+gdata/gx60+gdata/py18
 
 
 # region import packages
@@ -35,7 +35,7 @@ import cartopy.crs as ccrs
 from matplotlib import cm
 plt.rcParams['pcolor.shading'] = 'auto'
 mpl.rcParams['figure.dpi'] = 600
-mpl.rc('font', family='Times New Roman', size=12)
+mpl.rc('font', family='Times New Roman', size=9)
 mpl.rcParams['axes.linewidth'] = 0.2
 plt.rcParams.update({"mathtext.fontset": "stix"})
 import matplotlib.animation as animation
@@ -114,17 +114,17 @@ from um_postprocess import (
 # options
 years = '2016'; yeare = '2023'
 # ['rsut', 'rlut'， 'cll', 'clm', 'clh', 'clt', 'clwvi', 'clivi', 'inversionh', 'LCL', 'LTS', 'EIS', 'pr']
-vars = ['rsutcl', 'rlutcl']
-# ['CERES', 'CM SAF', 'Himawari', 'ERA5', 'BARRA-R2', 'BARRA-C2', 'BARPA-R', 'BARPA-C', 'MOD08_M3', 'MYD08_M3', 'IMERG']
-ds_names = ['CERES', 'ERA5', 'BARRA-R2', 'BARRA-C2', 'BARPA-R', 'BARPA-C']
+vars = ['cll']
+# ['CERES', 'CM SAF', 'Himawari', 'BARRA-C2', 'BARPA-C', 'ERA5', 'BARRA-R2', 'BARPA-R', 'MOD08_M3', 'MYD08_M3', 'IMERG']
+ds_names = ['Himawari', 'BARRA-C2', 'BARPA-C', 'ERA5', 'BARRA-R2', 'BARPA-R']
 plt_regions = ['c2_domain'] # ['global', 'c2_domain', 'h9_domain']
 plt_modes = ['difference'] # ['original', 'difference']
+nrow = 2
+ncol = 3 # len(ds_names)
 
 # settings
 min_lon, max_lon, min_lat, max_lat = [110.58, 157.34, -43.69, -7.01]
 min_lonh9, max_lonh9, min_lath9, max_lath9 = [80, 200, -60, 60]
-nrow = 1
-ncol = len(ds_names)
 cm_saf_varnames = {'rlut': 'LW_flux', 'rsut': 'SW_flux', 'CDNC': 'cdnc_liq',
                    'clwvi': 'lwp_allsky', 'clivi': 'iwp_allsky',}
 cltypes = {
@@ -292,7 +292,7 @@ for ivar in vars:
         elif plt_region == 'c2_domain':
             if ivar in ['rsut']:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-                    cm_min=-150, cm_max=-50, cm_interval1=5, cm_interval2=10,
+                    cm_min=-140, cm_max=-60, cm_interval1=5, cm_interval2=10,
                     cmap='Greens',)
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
                     # cm_min=-10, cm_max=10, cm_interval1=1, cm_interval2=2,
@@ -360,7 +360,7 @@ for ivar in vars:
                     cmap='Purples_r',)
                 extend1 = 'max'
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-                    cm_min=-100, cm_max=100, cm_interval1=10, cm_interval2=20,
+                    cm_min=-80, cm_max=80, cm_interval1=10, cm_interval2=20,
                     cmap='BrBG_r')
             elif ivar in ['clivi']:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
@@ -501,12 +501,18 @@ for ivar in vars:
                     nrow, ncol,
                     figsize=np.array([4.4*ncol, 4*nrow+1.6])/2.54,
                     subplot_kw={'projection': ccrs.PlateCarree(central_longitude=180)},
-                    gridspec_kw={'hspace': 0.01, 'wspace': 0.01},)
-                for jcol in range(ncol):
+                    gridspec_kw={'hspace': 0.1, 'wspace': 0.05},)
+                fm_bottom = 1.6 / (4*nrow+1.6)
+                if nrow == 1:
                     if ncol == 1:
                         axs = regional_plot(extent=[min_lon, max_lon, min_lat, max_lat], central_longitude=180, ax_org=axs)
                     else:
-                        axs[jcol] = regional_plot(extent=[min_lon, max_lon, min_lat, max_lat], central_longitude=180, ax_org=axs[jcol])
+                        for jcol in range(ncol):
+                            axs[jcol] = regional_plot(extent=[min_lon, max_lon, min_lat, max_lat], central_longitude=180, ax_org=axs[jcol])
+                else:
+                    for irow in range(nrow):
+                        for jcol in range(ncol):
+                            axs[irow, jcol] = regional_plot(extent=[min_lon, max_lon, min_lat, max_lat], central_longitude=180, ax_org=axs[irow, jcol])
             elif plt_region == 'h9_domain':
                 # plt_region = 'h9_domain'
                 fig, axs = plt.subplots(
@@ -533,34 +539,51 @@ for ivar in vars:
                 plt_colnames += [f'{ids} - {ds_names[0]}' for ids in ds_names[2:]]
                 plt_text += [f'{str(np.round(plt_rmsd[ids], 1))}, {str(np.round(plt_md[ids], 1))}' for ids in ds_names[2:]]
             
-            for jcol in range(ncol):
+            if nrow == 1:
                 if ncol == 1:
                     cbar_label1 = f'{plt_colnames[0]} {cbar_label1}'
-                    # axs.text(
-                    #     0, 1.02,
-                    #     f'({string.ascii_lowercase[jcol]}) {plt_colnames[jcol]}',
-                    #     ha='left',va='bottom',transform=axs.transAxes)
                     axs.text(
                         0.01, 0.01, plt_text[jcol], ha='left', va='bottom',
                         transform=axs.transAxes, size=8)
                 else:
-                    axs[jcol].text(
-                        0, 1.02,
-                        f'({string.ascii_lowercase[jcol]}) {plt_colnames[jcol]}',
-                        ha='left',va='bottom',transform=axs[jcol].transAxes)
-                    axs[jcol].text(
-                        0.01, 0.01, plt_text[jcol], ha='left', va='bottom',
-                        transform=axs[jcol].transAxes,)
-            
-            if ncol == 1:
-                plt_mesh1 = axs.pcolormesh(
-                    plt_org[ds_names[0]].lon,
-                    plt_org[ds_names[0]].lat,
-                    plt_org[ds_names[0]],
-                    norm=pltnorm1, cmap=pltcmp1,
-                    transform=ccrs.PlateCarree(), zorder=1)
+                    for jcol in range(ncol):
+                        axs[jcol].text(
+                            0, 1.02,
+                            f'({string.ascii_lowercase[jcol]}) {plt_colnames[jcol]}',
+                            ha='left',va='bottom',transform=axs[jcol].transAxes)
+                        axs[jcol].text(
+                            0.01, 0.01, plt_text[jcol], ha='left', va='bottom',
+                            transform=axs[jcol].transAxes,)
             else:
-                plt_mesh1 = axs[0].pcolormesh(
+                for irow in range(nrow):
+                    for jcol in range(ncol):
+                        axs[irow, jcol].text(
+                            0, 1.02,
+                            f'({string.ascii_lowercase[irow * ncol + jcol]}) {plt_colnames[irow * ncol + jcol]}',
+                            ha='left',va='bottom',
+                            transform=axs[irow, jcol].transAxes)
+                        axs[irow, jcol].text(
+                            0.01, 0.01, plt_text[irow * ncol + jcol],
+                            ha='left', va='bottom',
+                            transform=axs[irow, jcol].transAxes)
+            
+            if nrow == 1:
+                if ncol == 1:
+                    plt_mesh1 = axs.pcolormesh(
+                        plt_org[ds_names[0]].lon,
+                        plt_org[ds_names[0]].lat,
+                        plt_org[ds_names[0]],
+                        norm=pltnorm1, cmap=pltcmp1,
+                        transform=ccrs.PlateCarree(), zorder=1)
+                else:
+                    plt_mesh1 = axs[0].pcolormesh(
+                        plt_org[ds_names[0]].lon,
+                        plt_org[ds_names[0]].lat,
+                        plt_org[ds_names[0]],
+                        norm=pltnorm1, cmap=pltcmp1,
+                        transform=ccrs.PlateCarree(), zorder=1)
+            else:
+                plt_mesh1 = axs[0, 0].pcolormesh(
                     plt_org[ds_names[0]].lon,
                     plt_org[ds_names[0]].lat,
                     plt_org[ds_names[0]],
@@ -568,13 +591,24 @@ for ivar in vars:
                     transform=ccrs.PlateCarree(), zorder=1)
             
             if plt_mode in ['original']:
-                for jcol in range(ncol-1):
-                    plt_mesh1 = axs[jcol+1].pcolormesh(
-                        plt_org[ds_names[jcol+1]].lon,
-                        plt_org[ds_names[jcol+1]].lat,
-                        plt_org[ds_names[jcol+1]],
-                        norm=pltnorm1, cmap=pltcmp1,
-                        transform=ccrs.PlateCarree(),zorder=1)
+                if nrow == 1:
+                    for jcol in range(ncol-1):
+                        plt_mesh1 = axs[jcol+1].pcolormesh(
+                            plt_org[ds_names[jcol+1]].lon,
+                            plt_org[ds_names[jcol+1]].lat,
+                            plt_org[ds_names[jcol+1]],
+                            norm=pltnorm1, cmap=pltcmp1,
+                            transform=ccrs.PlateCarree(),zorder=1)
+                else:
+                    for irow in range(nrow):
+                        for jcol in range(ncol):
+                            if ((irow != 0) & (jcol != 0)):
+                                plt_mesh1 = axs[irow, jcol].pcolormesh(
+                                    plt_org[ds_names[irow * ncol + jcol]].lon,
+                                    plt_org[ds_names[irow * ncol + jcol]].lat,
+                                    plt_org[ds_names[irow * ncol + jcol]],
+                                    norm=pltnorm1, cmap=pltcmp1,
+                                    transform=ccrs.PlateCarree(),zorder=1)
                 if ncol == 1:
                     cbar1 = fig.colorbar(
                         plt_mesh1,#cm.ScalarMappable(norm=pltnorm1, cmap=pltcmp1),#
@@ -591,30 +625,41 @@ for ivar in vars:
                         cax=fig.add_axes([0.26, 0.2, 0.48, 0.04]))
                     cbar1.ax.set_xlabel(cbar_label1)
             elif plt_mode in ['difference']:
-                for jcol in range(ncol-1):
-                    plt_mesh2 = axs[jcol+1].pcolormesh(
-                        plt_diff[ds_names[jcol+1]].lon,
-                        plt_diff[ds_names[jcol+1]].lat,
-                        plt_diff[ds_names[jcol+1]],
-                        norm=pltnorm2, cmap=pltcmp2,
-                        transform=ccrs.PlateCarree(),zorder=1)
+                if nrow == 1:
+                    for jcol in range(ncol-1):
+                        plt_mesh2 = axs[jcol+1].pcolormesh(
+                            plt_diff[ds_names[jcol+1]].lon,
+                            plt_diff[ds_names[jcol+1]].lat,
+                            plt_diff[ds_names[jcol+1]],
+                            norm=pltnorm2, cmap=pltcmp2,
+                            transform=ccrs.PlateCarree(),zorder=1)
+                else:
+                    for irow in range(nrow):
+                        for jcol in range(ncol):
+                            if ((irow != 0) | (jcol != 0)):
+                                plt_mesh2 = axs[irow, jcol].pcolormesh(
+                                    plt_diff[ds_names[irow * ncol + jcol]].lon,
+                                    plt_diff[ds_names[irow * ncol + jcol]].lat,
+                                    plt_diff[ds_names[irow * ncol + jcol]],
+                                    norm=pltnorm2, cmap=pltcmp2,
+                                    transform=ccrs.PlateCarree(),zorder=1)
                 cbar1 = fig.colorbar(
                     plt_mesh1,#cm.ScalarMappable(norm=pltnorm1, cmap=pltcmp1),#
                     format=remove_trailing_zero_pos,
                     orientation="horizontal", ticks=pltticks1, extend=extend1,
-                    cax=fig.add_axes([0.01, 0.2, 0.48, 0.04]))
+                    cax=fig.add_axes([0.01, fm_bottom*0.8, 0.48, fm_bottom / 6]))
                 cbar1.ax.set_xlabel(cbar_label1)
                 cbar2 = fig.colorbar(
                     plt_mesh2,#cm.ScalarMappable(norm=pltnorm2, cmap=pltcmp2),#
                     format=remove_trailing_zero_pos,
                     orientation="horizontal", ticks=pltticks2, extend=extend2,
-                    cax=fig.add_axes([0.51, 0.2, 0.48, 0.04]))
+                    cax=fig.add_axes([0.51, fm_bottom*0.8, 0.48, fm_bottom / 6]))
                 cbar2.ax.set_xlabel(cbar_label2)
             else:
                 print('Warning: unspecified plot mode')
             
             opng = f'figures/4_um/4.0_barra/4.0.7_obs_sim/4.0.7.0 {ivar} {', '.join(ds_names)} {plt_region} {plt_mode} {years}-{yeare}.png'
-            fig.subplots_adjust(left=0.005, right=0.995, bottom=0.2, top=0.97)
+            fig.subplots_adjust(left=0.005, right=0.995, bottom=fm_bottom, top=0.96)
             fig.savefig(opng)
     
     del ds_data
@@ -636,15 +681,16 @@ plt_data[ids].weighted(np.cos(np.deg2rad(plt_data[ids].lat))).mean()
 # region plot obs and sim annual, monthly and hourly dm
 
 # options
-years = '2016'; yeare = '2023'
-# ['rsut', 'rlut', 'rsdt', 'cll', 'clm', 'clh', 'clt', 'clwvi', 'clivi', 'LCL', 'LTS', 'EIS', 'pr']
-vars = ['clm', 'clh', 'clt']
-ds_names = ['Himawari', 'ERA5', 'BARRA-R2', 'BARRA-C2', 'BARPA-R', 'BARPA-C']
-plt_regions = ['c2_domain'] # ['global', 'c2_domain', 'h9_domain']
-plt_modes = ['annual', 'monthly'] # ['annual', 'monthly', 'hourly']
-plt_types = ['original', 'MD'] # ['original', 'MD', 'RMSD']
+# ['rsut', 'clwvi', 'clivi', 'cll', 'clm', 'clh', 'clt', 'rsut', 'rlut', 'rsdt']
+vars = ['cll']
+# ['CERES', 'Himawari']
+ds_names = ['ERA5', 'BARRA-R2', 'BARRA-C2', 'BARPA-R', 'BARPA-C', 'Himawari', ]
+plt_modes = ['hourly'] # ['annual', 'monthly', 'hourly']
 
 # settings
+years = '2016'; yeare = '2023'
+plt_regions = ['c2_domain']
+plt_types = ['original', 'MD']
 min_lon, max_lon, min_lat, max_lat = [110.58, 157.34, -43.69, -7.01]
 cltypes = {
     'hcc': ['Cirrus', 'Cirrostratus', 'Deep convection'],
@@ -653,7 +699,7 @@ cltypes = {
     'tcc': ['Cirrus', 'Cirrostratus', 'Deep convection', 'Altocumulus', 'Altostratus', 'Nimbostratus', 'Cumulus', 'Stratocumulus', 'Stratus']}
 
 for ivar in vars:
-  # ivar = 'cll'
+  # ivar = 'rsutcs'
   print(f'#-------------------------------- {ivar}')
   for plt_mode in plt_modes:
     # plt_mode = 'annual'
@@ -677,7 +723,9 @@ for ivar in vars:
                     ceres['mtuwswrfcl'] = ceres['mtuwswrf'] - ceres['mtuwswrfcs']
                     ceres['mtnlwrfcl'] = ceres['mtnlwrf'] - ceres['mtnlwrfcs']
                 elif plt_mode in ['hourly']:
-                    print('to_change')
+                    ceres = xr.open_mfdataset(sorted(glob.glob(f'data/obs/CERES/CERES_SYN1deg-1H/{cmip6_era5_var[ivar]}/*.nc'))).sel(time=slice(years, yeare))
+                    if cmip6_era5_var[ivar] == 'mtuwswrf':
+                        ceres = ceres.rename({'toa_sw_all_1h': 'mtuwswrf'})
             elif cmip6_era5_var[ivar] in ['tclw', 'tciw']:
                 if plt_mode in ['annual', 'monthly']:
                     ceres = xr.open_dataset('data/obs/CERES/CERES_SYN1deg-Month_Terra-Aqua-NOAA20_Ed4.2_Subset_201601-202412.nc').sel(time=slice(years, yeare))
@@ -685,7 +733,11 @@ for ivar in vars:
                         'lwp_total_mon': 'tclw',
                         'iwp_total_mon': 'tciw'})
                 elif plt_mode in ['hourly']:
-                    print('to_change')
+                    ceres = xr.open_mfdataset(sorted(glob.glob(f'data/obs/CERES/CERES_SYN1deg-1H/{cmip6_era5_var[ivar]}/*.nc'))).sel(time=slice(years, yeare))
+                    if cmip6_era5_var[ivar] == 'tclw':
+                        ceres = ceres.rename({'lwp_total_1h': 'tclw'})
+                    elif cmip6_era5_var[ivar] == 'tciw':
+                        ceres = ceres.rename({'iwp_total_1h': 'tciw'})
             
             if cmip6_era5_var[ivar] in ['mtuwswrf', 'mtnlwrf', 'msuwswrf', 'msuwlwrf', 'mtuwswrfcs', 'mtnlwrfcs', 'mtuwswrfcl', 'mtnlwrfcl']:
                 ceres[cmip6_era5_var[ivar]] *= (-1)
@@ -695,7 +747,7 @@ for ivar in vars:
             elif plt_mode == 'monthly':
                 ds_data[plt_mode][ids] = ceres[cmip6_era5_var[ivar]].groupby('time.month').map(time_weighted_mean).compute().rename({'month': 'time'})
             elif plt_mode == 'hourly':
-                print('to_change')
+                ds_data[plt_mode][ids] = ceres[cmip6_era5_var[ivar]].groupby('time.hour').mean().compute().rename({'hour': 'time'})
         elif ids == 'ERA5':
             # ids = 'ERA5'
             if plt_mode in ['annual', 'monthly']:
@@ -706,8 +758,10 @@ for ivar in vars:
                 elif plt_mode == 'monthly':
                     ds_data[plt_mode][ids] = era5_sl_mon_alltime['mon'].sel(time=slice(years, yeare)).groupby('time.month').map(time_weighted_mean).compute().rename({'month': 'time'})
             elif plt_mode == 'hourly':
-                print('to_change')
-            
+                with open(f'data/sim/era5/hourly/era5_hourly_alltime_{cmip6_era5_var[ivar]}.pkl','rb') as f:
+                    era5_hourly_alltime = pickle.load(f)
+                ds_data[plt_mode][ids] = era5_hourly_alltime['ann'].sel(time=slice(years, yeare)).mean(dim='time').compute().rename({'hour': 'time'})
+                ds_data[plt_mode][ids] = ds_data[plt_mode][ids].roll(time=-1)
             if ivar in ['clwvi', 'clivi']:
                 ds_data[plt_mode][ids] *= 1000
         elif ids == 'BARRA-R2':
@@ -720,8 +774,9 @@ for ivar in vars:
                 elif plt_mode == 'monthly':
                     ds_data[plt_mode][ids] = barra_r2_mon_alltime['mon'].sel(time=slice(years, yeare)).groupby('time.month').map(time_weighted_mean).compute().rename({'month': 'time'})
             elif plt_mode == 'hourly':
-                print('to_change')
-            
+                with open(f'data/sim/um/barra_r2/barra_r2_hourly_alltime_{ivar}.pkl','rb') as f:
+                    barra_r2_hourly_alltime = pickle.load(f)
+                ds_data[plt_mode][ids] = barra_r2_hourly_alltime['ann'].sel(time=slice(years, yeare)).mean(dim='time').compute().rename({'hour': 'time'})
             if ivar in ['clwvi', 'clivi']:
                 ds_data[plt_mode][ids] *= 1000
         elif ids == 'BARRA-C2':
@@ -734,8 +789,9 @@ for ivar in vars:
                 elif plt_mode == 'monthly':
                     ds_data[plt_mode][ids] = barra_c2_mon_alltime['mon'].sel(time=slice(years, yeare)).groupby('time.month').map(time_weighted_mean).compute().rename({'month': 'time'})
             elif plt_mode == 'hourly':
-                print('to_change')
-            
+                with open(f'data/sim/um/barra_c2/barra_c2_hourly_alltime_{ivar}.pkl','rb') as f:
+                    barra_c2_hourly_alltime = pickle.load(f)
+                ds_data[plt_mode][ids] = barra_c2_hourly_alltime['ann'].sel(time=slice(years, yeare)).mean(dim='time').compute().rename({'hour': 'time'})
             if ivar in ['clwvi', 'clivi']:
                 ds_data[plt_mode][ids] *= 1000
         elif ids == 'BARPA-C':
@@ -748,8 +804,9 @@ for ivar in vars:
                 elif plt_mode == 'monthly':
                     ds_data[plt_mode][ids] = barpa_c_mon_alltime['mon'].sel(time=slice(years, yeare)).groupby('time.month').map(time_weighted_mean).compute().rename({'month': 'time'})
             elif plt_mode == 'hourly':
-                print('to_change')
-            
+                with open(f'data/sim/um/barpa_c/barpa_c_hourly_alltime_{ivar}.pkl','rb') as f:
+                    barpa_c_hourly_alltime = pickle.load(f)
+                ds_data[plt_mode][ids] = barpa_c_hourly_alltime['ann'].sel(time=slice(years, yeare)).mean(dim='time').compute().rename({'hour': 'time'})
             if ivar in ['clwvi', 'clivi']:
                 ds_data[plt_mode][ids] *= 1000
         elif ids == 'BARPA-R':
@@ -762,8 +819,9 @@ for ivar in vars:
                 elif plt_mode == 'monthly':
                     ds_data[plt_mode][ids] = barpa_r_mon_alltime['mon'].sel(time=slice(years, yeare)).groupby('time.month').map(time_weighted_mean).compute().rename({'month': 'time'})
             elif plt_mode == 'hourly':
-                print('to_change')
-            
+                with open(f'data/sim/um/barpa_r/barpa_r_hourly_alltime_{ivar}.pkl','rb') as f:
+                    barpa_r_hourly_alltime = pickle.load(f)
+                ds_data[plt_mode][ids] = barpa_r_hourly_alltime['ann'].sel(time=slice(years, yeare)).mean(dim='time').compute().rename({'hour': 'time'})
             if ivar in ['clwvi', 'clivi']:
                 ds_data[plt_mode][ids] *= 1000
         elif ids == 'Himawari':
@@ -777,7 +835,11 @@ for ivar in vars:
                 elif plt_mode == 'monthly':
                     ds_data[plt_mode][ids] = cltype_frequency_alltime['mon'].sel(types=cltypes[cmip6_era5_var[ivar]], time=slice(years, yeare)).sum(dim='types').groupby('time.month').map(time_weighted_mean).compute().rename({'month': 'time'})
             elif plt_mode == 'hourly':
-                print('to_change')
+                if 'cltype_hourly_frequency_alltime' not in globals():
+                    with open('data/obs/jaxa/clp/cltype_hourly_frequency_alltime.pkl', 'rb') as f:
+                        cltype_hourly_frequency_alltime = pickle.load(f)
+                ds_data[plt_mode][ids] = cltype_hourly_frequency_alltime['ann'].sel(types=cltypes[cmip6_era5_var[ivar]], time=slice(years, yeare)).sum(dim='types').mean(dim='time').compute().rename({'hour': 'time'})
+                ds_data[plt_mode][ids][7:23, :] = np.nan
         elif ids == 'IMERG':
             # ids = 'IMERG'
             if plt_mode in ['annual', 'monthly']:
@@ -796,15 +858,8 @@ for ivar in vars:
         ds_data[plt_mode][ids] = ds_data[plt_mode][ids].sortby(['lon', 'lat'])
     
     for plt_region in plt_regions:
-        # plt_region = 'global'
+        # plt_region = 'c2_domain'
         print(f'#-------- {plt_region}')
-        
-        # if plt_region == 'c2_domain':
-        #     if ivar in ['rsut']:
-        #     elif ivar in ['cll']:
-        #     elif ivar in ['clwvi']:
-        # else:
-        #     print('unknown plt_region')
         
         plt_dm = {}
         for ids in ds_names:
@@ -821,43 +876,80 @@ for ivar in vars:
             # plt_type = 'MD'
             print(f'#---- {plt_type}')
             opng = f"figures/4_um/4.0_barra/4.0.7_obs_sim/4.0.7.1 {ivar} {plt_mode} dm {plt_type} {plt_region} {', '.join(ds_names)} {years}-{yeare}.png"
-            fig, ax = plt.subplots(1, 1, figsize=np.array([8.8, 8]) / 2.54)
+            fig, ax = plt.subplots(1, 1, figsize=np.array([6.6, 7]) / 2.54)
             
             if plt_type == 'MD':
                 for ids in ds_names[1:]:
-                    print(f'plot {ids}')
+                    # print(f'plot {ids}')
                     plt1 = ax.plot(
                         plt_md[ids].time, plt_md[ids], '.-', lw=0.75,
                         markersize=6, label=ids, color=ds_color[ids])
-                ax.set_ylabel(f'Area-weighted $MD$ in {era5_varlabels[cmip6_era5_var[ivar]]}')
+                ylabel = f'Area-weighted $MD$ in {era5_varlabels[cmip6_era5_var[ivar]]}'
             elif plt_type == 'original':
                 for ids in ds_names:
-                    print(f'plot {ids}')
+                    # print(f'plot {ids}')
                     plt1 = ax.plot(
                         plt_dm[ids].time, plt_dm[ids], '.-', lw=0.75,
                         markersize=6, label=ids, color=ds_color[ids])
-                ax.set_ylabel(f'Area-weighted mean {era5_varlabels[cmip6_era5_var[ivar]]}')
+                ylabel = f'Area-weighted mean {era5_varlabels[cmip6_era5_var[ivar]]}'
             
             if plt_mode == 'annual':
-                ax.set_xticks(plt_dm[ds_names[0]].time[::2])
-                ax.set_xticklabels(plt_dm[ds_names[0]].time[::2].dt.year.values)
+                ax.set_xticks(plt_dm[ds_names[0]].time[::3])
+                ax.set_xticklabels(plt_dm[ds_names[0]].time[::3].dt.year.values)
+                ax.set_ylabel(ylabel)
             elif plt_mode == 'monthly':
-                ax.set_xticks(plt_dm[ds_names[0]].time[::2])
-                ax.set_xticklabels(month_jan[::2])
+                ax.set_xticks(plt_dm[ds_names[0]].time[::3])
+                ax.set_xticklabels(month_jan[::3])
+            elif plt_mode == 'hourly':
+                ax.set_xticks(plt_dm[ds_names[0]].time[::3])
+                ax.set_xticklabels(np.arange(0, 24, 3))
             
-            ax.xaxis.set_minor_locator(AutoMinorLocator(2))
+            ax.xaxis.set_minor_locator(AutoMinorLocator(3))
             ax.yaxis.set_minor_locator(AutoMinorLocator(2))
             ax.yaxis.set_major_formatter(remove_trailing_zero_pos)
             ax.grid(True, which='both', linewidth=0.5, color='gray',
                     alpha=0.5, linestyle='--')
-            fig.subplots_adjust(left=0.2, right=0.98, bottom=0.08, top=0.98)
+            fig.subplots_adjust(left=0.26, right=0.98, bottom=0.1, top=0.98)
             fig.savefig(opng)
 
 
 
+'''
+from scipy.stats import pearsonr
+r, p_value = pearsonr(plt_dm['BARRA-C2'], plt_dm['Himawari'])
+print(f"Pearson r = {r:.3f}, p = {p_value:.3e}")
+
+
+plt_md['BARRA-C2']
+np.min(plt_md['BARRA-C2'])
+np.max(plt_md['BARRA-C2'])
+plt_md['BARRA-C2'] / plt_dm['Himawari']
+np.min(plt_md['BARRA-C2'] / plt_dm['Himawari'])
+np.max(plt_md['BARRA-C2'] / plt_dm['Himawari'])
+
+'''
+# endregion
+
+
+# region plot legend
+
+
+# ['CERES', 'Himawari']
+ds_names = ['Himawari', 'ERA5', 'BARRA-C2', 'BARRA-R2', 'BARPA-C', 'BARPA-R']
+
+legend_elements = [
+    Line2D([0], [0], marker='.', linestyle='-', lw=0.75, ms=6, c=ds_color[ids], label=ids)
+    for ids in ds_names]
+
+fig_legend = plt.figure(figsize=np.array([8.8, 1.6]) / 2.54)
+fig_legend.legend(handles=legend_elements, loc='center', ncol=3, frameon=False,
+                  handlelength=1, columnspacing=1, labelspacing=0.8)
+plt.tight_layout()
+fig_legend.savefig(f"figures/4_um/4.0_barra/4.0.7_obs_sim/4.0.7.1 legend {', '.join(ds_names)}.png")
 
 
 
 
 # endregion
+
 
