@@ -177,12 +177,13 @@ era5_varlabels = {
     'LTS': r'LTS [$K$]',
     'theta': r'$\theta$ [$°C$]',
     'theta_e': r'$\theta_e$ [$°C$]',
-    'blh': r'boundary layer height [$m$]',
+    'blh': r'BLH [$m$]',
     'ncloud': r'CDNC [$cm^{-3}$]',
     'CDNC': r'CDNC [$cm^{-3}$]',
     'inversionh': r'Inversion height [$m$]',
     'LCL': r'LCL [$m$]',
     'EIS': r'EIS [$K$]',
+    'ECTEI': r'ECTEI [$K$]',
 }
 
 
@@ -258,6 +259,7 @@ cmip6_era5_var = {
     'LCL': 'LCL',
     'LTS': 'LTS',
     'EIS': 'EIS',
+    'ECTEI': 'ECTEI',
     # 'wa',
 }
 # tcw = tcwv + tcsw + tcrw + tclw + tciw

@@ -10,6 +10,14 @@ dask.config.set({"array.slicing.split_large_chunks": True})
 from dask.diagnostics import ProgressBar
 pbar = ProgressBar()
 pbar.register()
+from cdo import Cdo
+cdo=Cdo()
+import tempfile
+import argparse
+from metpy.calc import specific_humidity_from_dewpoint, relative_humidity_from_dewpoint, vertical_velocity_pressure, mixing_ratio_from_specific_humidity, relative_humidity_from_specific_humidity
+from metpy.units import units
+from metpy.constants import water_heat_vaporization, dry_air_spec_heat_press
+import time
 import joblib
 
 # management
@@ -19,61 +27,54 @@ sys.path.append(os.getcwd() + '/code/gbr_future/module')
 import glob
 import pickle
 import datetime
-# import psutil
-# process = psutil.Process()
-# print(process.memory_info().rss / 2**30)
-
 from calculations import (
     mon_sea_ann,
+    get_inversion, get_inversion_numba,
+    get_LCL,
+    get_LTS,
+    get_EIS, get_EIS_simplified,
     )
 
-from namelist import zerok, seconds_per_d
+from namelist import cmip6_units, zerok, seconds_per_d
 
 # endregion
 
 
-# region get BARPA-R alltime hourly data
-# Memory Used: 47.5GB, Walltime Used: 00:42:54
+# region get monthly BARRA-R2 inversionh, LCL, LTS, EIS
+# 4 vars, 8 years, 12 months: NCPUs Used: 96; Memory Used: 1.0TB; Walltime Used: 00:11:29
 
-years = '2016'
-yeare = '2023'
-for var in ['clt']:
-    # var = 'cll'
-    # 'cll', 'clm', 'clh', 'clt', 'rsut', 'rsutcs', 'clwvi', 'clivi', 'rlut', 'rlutcs', 'pr', 'hfls', 'hfss', 'hurs', 'huss'
-    print(f'#-------------------------------- {var}')
+vars = ['ECTEI'] # ['inversionh', 'LCL', 'LTS', 'EIS']
+
+def get_mon_from_hour(var, year, month):
+    # var = 'LTS'; year=2024; month=1
+    print(f'#---------------- {var} {year} {month:02d}')
     
-    fl = sorted(glob.glob(f'data/sim/um/barpa_r/{var}/{var}_hourly_*.nc'))
-    barpa_r_hourly = xr.open_mfdataset(fl)[var].sel(time=slice(years, yeare))
-    barpa_r_hourly_alltime = mon_sea_ann(
-        var_monthly=barpa_r_hourly, lcopy=False, mm=True, sm=True, am=True)
+    ifile = f'data/sim/um/barra_r2/{var}/{var}_hourly_{year}{month:02d}.nc'
+    ofile = f'data/sim/um/barra_r2/{var}/{var}_monthly_{year}{month:02d}.nc'
     
-    ofile = f'data/sim/um/barpa_r/barpa_r_hourly_alltime_{var}.pkl'
+    ds_in = xr.open_dataset(ifile)[var]
+    ds_out = ds_in.resample({'time': '1ME'}).mean(skipna=True).compute()
+    
     if os.path.exists(ofile): os.remove(ofile)
-    with open(ofile,'wb') as f:
-        pickle.dump(barpa_r_hourly_alltime, f)
+    ds_out.to_netcdf(ofile)
     
-    del barpa_r_hourly, barpa_r_hourly_alltime
+    del ds_in, ds_out
+    return f'Finished processing {ofile}'
 
-
+joblib.Parallel(n_jobs=96)(joblib.delayed(get_mon_from_hour)(var, year, month) for var in vars for year in range(2016, 2024) for month in range(1, 13))
 
 
 '''
-#-------------------------------- check
-ifile = -1
-for var in ['rlut', 'rlutcs', 'pr', 'cll', 'clm', 'clh', 'clt', 'rsut', 'rsutcs', 'clwvi', 'clivi']:
-    print(f'#-------------------------------- {var}')
-    
-    with open(f'data/sim/um/barpa_c/barpa_c_hourly_alltime_{var}.pkl','rb') as f:
-        barpa_c_hourly_alltime = pickle.load(f)
-    
-    fl = sorted(glob.glob(f'data/sim/um/barpa_c/{var}/{var}_hourly_*.nc'))
-    ds = xr.open_dataset(fl[ifile])[var]
-    print((barpa_c_hourly_alltime['mon'][ifile] == ds.squeeze()).all().values)
-    
-    del ds, barpa_c_hourly_alltime
+#---- check
+var = 'inversionh'
+year = 2016
+month = 6
+ds_in = xr.open_dataset(f'data/sim/um/barra_r2/{var}/{var}_hourly_{year}{month:02d}.nc')[var]
+ds_out = xr.open_dataset(f'data/sim/um/barra_r2/{var}/{var}_monthly_{year}{month:02d}.nc')[var]
 
-
-
+ilat = 100
+ilon = 100
+print(np.nanmean(ds_in[:, ilat, ilon].values) - ds_out[0, ilat, ilon].values)
 
 '''
 # endregion

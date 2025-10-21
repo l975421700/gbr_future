@@ -10,7 +10,6 @@ for ifile in qjobo_fl:
         # if ('Exit Status:        0' not in content):
         #     print(ifile)
         if ('Exit Status:        0' in content):
-        #     # print(ifile)
             os.remove(ifile)
         # else:
         #     print(f'#-------------------------------- Warning')

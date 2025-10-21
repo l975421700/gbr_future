@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -l walltime=3:00:00,ncpus=1,mem=192GB,storage=gdata/v46+gdata/ob53+scratch/v46+gdata/rr1+gdata/rt52+gdata/oi10+gdata/hh5+gdata/fs38
+# qsub -I -q normal -P v46 -l walltime=1:00:00,ncpus=1,mem=96GB,jobfs=100MB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/gx60+gdata/py18
 
 
 # region import packages
@@ -16,7 +16,8 @@ dask.config.set({"array.slicing.split_large_chunks": True})
 import joblib
 import argparse
 import calendar
-from metpy.calc import geopotential_to_height, relative_humidity_from_dewpoint
+from metpy.calc import geopotential_to_height, relative_humidity_from_dewpoint, specific_humidity_from_dewpoint
+from metpy.constants import water_heat_vaporization, dry_air_spec_heat_press
 from metpy.units import units
 
 # management
@@ -43,25 +44,25 @@ from namelist import cmip6_units, zerok, seconds_per_d, cmip6_era5_var
 # region get era5 sl mon data
 # Memory Used: 14.87GB, Walltime Used: 00:15:42
 
-for var in ['mtdwswrf', 'mtnlwrf', 'mtnswrf', 'mtnlwrfcs', 'mtnswrfcs']:
+for var in ['ECTEI']:
     # var = 'tp'
     # 'tp', 'e', 'cp', 'lsp', 'pev', 'msl', 'sst', '2t', '2d', 'skt', 'hcc', 'mcc', 'lcc', 'tcc', 'z', 'mper', 'tciw', 'tclw', 'mtdwswrf', 'mtnlwrf', 'mtnswrf', 'mtnlwrfcs', 'mtnswrfcs'
     print(var)
     
-    fl = sorted([
-        file for iyear in np.arange(2016, 2024, 1)
-        for file in glob.glob(f'/g/data/rt52/era5/single-levels/monthly-averaged/{var}/{iyear}/*.nc')])
-    if var == '2t': var='t2m'
-    if var == '10si': var='si10'
-    if var == '2d': var='d2m'
-    if var == '10u': var='u10'
-    if var == '10v': var='v10'
-    if var == '100u': var='u100'
-    if var == '100v': var='v100'
-    era5_sl_mon = xr.open_mfdataset(fl, parallel=True).rename({'latitude': 'lat', 'longitude': 'lon'})[var]
+    # fl = sorted([
+    #     file for iyear in np.arange(2016, 2024, 1)
+    #     for file in glob.glob(f'/g/data/rt52/era5/single-levels/monthly-averaged/{var}/{iyear}/*.nc')])
+    # if var == '2t': var='t2m'
+    # if var == '10si': var='si10'
+    # if var == '2d': var='d2m'
+    # if var == '10u': var='u10'
+    # if var == '10v': var='v10'
+    # if var == '100u': var='u100'
+    # if var == '100v': var='v100'
+    # era5_sl_mon = xr.open_mfdataset(fl, parallel=True).rename({'latitude': 'lat', 'longitude': 'lon'})[var]
     
-    # fl = sorted(glob.glob(f'data/sim/era5/hourly/{var}/{var}_monthly_*.nc'))
-    # era5_sl_mon = xr.open_mfdataset(fl)[var].sel(time=slice('2016', '2023'))
+    fl = sorted(glob.glob(f'data/sim/era5/hourly/{var}/{var}_monthly_*.nc'))
+    era5_sl_mon = xr.open_mfdataset(fl)[var].sel(time=slice('2016', '2023'))
     
     if var in ['tp', 'e', 'cp', 'lsp', 'pev']:
         era5_sl_mon = era5_sl_mon * 1000
@@ -114,25 +115,25 @@ for var in ['tciw', 'tclw', 'tcw', 'tcwv', 'tcsw', 'tcrw', 'tcslw']:
 
 itime=-1
 era5_sl_mon_alltime = {}
-for var in ['blh']:
+for var in ['ECTEI']:
     # var = 'msnlwrf'
     # 'tp', 'msl', 'sst', 'hcc', 'mcc', 'lcc', 'tcc', '2t', 'msnlwrf', 'msnswrf', 'mtdwswrf', 'mtnlwrf', 'mtnswrf', 'msdwlwrf', 'msdwswrf', 'msdwlwrfcs', 'msdwswrfcs', 'msnlwrfcs', 'msnswrfcs', 'mtnlwrfcs', 'mtnswrfcs', 'cbh', 'tciw', 'tclw', 'e', 'z', 'mslhf', 'msshf', 'tcw', 'tcwv', 'tcsw', 'tcrw', 'tcslw', '10si', '2d', 'cp', 'lsp', 'deg0l', 'mper', 'pev', 'skt', '10u', '10v', '100u', '100v'
     print(f'#---------------- {var}')
     
-    fl = sorted([
-        file for iyear in np.arange(2016, 2024, 1)
-        for file in glob.glob(f'/g/data/rt52/era5/single-levels/monthly-averaged/{var}/{iyear}/*.nc')])
-    if var == '2t': var='t2m'
-    if var == '10si': var='si10'
-    if var == '2d': var='d2m'
-    if var == '10u': var='u10'
-    if var == '10v': var='v10'
-    if var == '100u': var='u100'
-    if var == '100v': var='v100'
-    ds = xr.open_dataset(fl[itime]).rename({'latitude': 'lat', 'longitude': 'lon'})[var].squeeze()
+    # fl = sorted([
+    #     file for iyear in np.arange(2016, 2024, 1)
+    #     for file in glob.glob(f'/g/data/rt52/era5/single-levels/monthly-averaged/{var}/{iyear}/*.nc')])
+    # if var == '2t': var='t2m'
+    # if var == '10si': var='si10'
+    # if var == '2d': var='d2m'
+    # if var == '10u': var='u10'
+    # if var == '10v': var='v10'
+    # if var == '100u': var='u100'
+    # if var == '100v': var='v100'
+    # ds = xr.open_dataset(fl[itime]).rename({'latitude': 'lat', 'longitude': 'lon'})[var].squeeze()
     
-    # fl = sorted(glob.glob(f'data/sim/era5/hourly/{var}/{var}_monthly_*.nc'))[:96]
-    # ds = xr.open_dataset(fl[itime])[var].squeeze()
+    fl = sorted(glob.glob(f'data/sim/era5/hourly/{var}/{var}_monthly_*.nc'))[:96]
+    ds = xr.open_dataset(fl[itime])[var].squeeze()
     
     if var in ['tp', 'e', 'cp', 'lsp', 'pev']:
         ds = ds * 1000
@@ -631,14 +632,14 @@ for var1, vars in zip(['mtuwswrf'], [['mtnswrf', 'mtdwswrf']]):
 
 
 
-# region get era5 inversionh, LCL, LTS, EIS
+# region get era5 inversionh, LCL, LTS, EIS, ECTEI
 # get_inversion_numba:  Memory Used: 799.59GB,  Walltime Used: 01:26:26
 # get_LCL:              Memory Used: 150.88GB,  Walltime Used: 02:12:26
 # get_LTS:              Memory Used:
 # get_EIS:              Memory Used: 208.88GB,  Walltime Used: 02:21:16
+# ECTEI:                Memory Used: 58.03GB,   Walltime Used: 00:04:28
 
-
-var = 'inversionh' # ['inversionh', 'LCL', 'LTS', 'EIS']
+var = 'ECTEI' # ['inversionh', 'LCL', 'LTS', 'EIS', 'ECTEI']
 print(f'#-------------------------------- {var}')
 odir = f'data/sim/era5/hourly/{var}'
 os.makedirs(odir, exist_ok=True)
@@ -651,7 +652,7 @@ args = parser.parse_args()
 
 year=args.year
 month=args.month
-# year=2024; month=12
+# year=2021; month=1
 print(f'#---------------- {year} {month:02d}')
 
 
@@ -663,6 +664,8 @@ elif var == 'LTS':
     vars = ['tas', 'ps', 'ta700']
 elif var == 'EIS':
     vars = ['LCL', 'LTS', 'tas', 'ta700', 'zg700', 'orog']
+elif var == 'ECTEI':
+    vars = ['EIS', 'huss', 'hus700']
 
 dss = {}
 for ivar in vars:
@@ -675,7 +678,7 @@ for ivar in vars:
         # ivar = 'orog'
         dss[ivar] = xr.open_dataset('/g/data/rt52/era5/single-levels/reanalysis/z/2020/z_era5_oper_sfc_20200601-20200630.nc')['z'][0]
         dss[ivar] = geopotential_to_height(dss[ivar])
-    elif ivar in ['tas', 'ps', 'hurs', 'ta700', 'zg700']:
+    elif ivar in ['tas', 'ps', 'hurs', 'ta700', 'zg700', 'huss', 'hus700']:
         # ivar = 'hurs'
         if ivar == 'tas':
             # ivar = 'tas'
@@ -685,6 +688,11 @@ for ivar in vars:
             era5_t2m = xr.open_dataset(f'/g/data/rt52/era5/single-levels/reanalysis/2t/{year}/2t_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')['t2m']
             era5_d2m = xr.open_dataset(f'/g/data/rt52/era5/single-levels/reanalysis/2d/{year}/2d_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')['d2m']
             dss[ivar] = relative_humidity_from_dewpoint(era5_t2m * units.K, era5_d2m * units.K)
+        elif ivar == 'huss':
+            # ivar = 'huss'
+            era5_d2m = xr.open_dataset(f'/g/data/rt52/era5/single-levels/reanalysis/2d/{year}/2d_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')['d2m']
+            era5_msl = xr.open_dataset(f'/g/data/rt52/era5/single-levels/reanalysis/msl/{year}/msl_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')['msl']
+            dss[ivar] = specific_humidity_from_dewpoint(era5_msl * units.Pa, era5_d2m * units.K).metpy.dequantify()
         elif ivar == 'ta700':
             # ivar = 'ta700'
             dss[ivar] = xr.open_dataset(f'/g/data/rt52/era5/pressure-levels/reanalysis/t/{year}/t_era5_oper_pl_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')['t'].sel(level=700)
@@ -692,13 +700,17 @@ for ivar in vars:
             # ivar = 'zg700'
             dss[ivar] = xr.open_dataset(f'/g/data/rt52/era5/pressure-levels/reanalysis/z/{year}/z_era5_oper_pl_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')['z'].sel(level=700)
             dss[ivar] = geopotential_to_height(dss[ivar])
+        elif ivar == 'hus700':
+            # ivar = 'hus700'
+            dss[ivar] = xr.open_dataset(f'/g/data/rt52/era5/pressure-levels/reanalysis/q/{year}/q_era5_oper_pl_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')['q'].sel(level=700)
         else:
             # ivar = 'ps'
             dss[ivar] = xr.open_dataset(f'/g/data/rt52/era5/single-levels/reanalysis/{cmip6_era5_var[ivar]}/{year}/{cmip6_era5_var[ivar]}_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')[cmip6_era5_var[ivar]]
-    elif ivar in ['LCL', 'LTS']:
+    elif ivar in ['LCL', 'LTS', 'EIS']:
+        # ivar = 'EIS'
         dss[ivar] = xr.open_dataset(f'data/sim/era5/hourly/{ivar}/{ivar}_hourly_{year}{month:02d}.nc')[ivar]
     
-    if not ivar in ['LCL', 'LTS']:
+    if not ivar in ['LCL', 'LTS', 'EIS']:
         dss[ivar] = dss[ivar].rename({'latitude': 'lat', 'longitude': 'lon'})
     
     # if ivar == 'orog':
@@ -731,6 +743,8 @@ elif var == 'EIS':
         dss['LCL'], dss['LTS'],
         dss['tas'], dss['ta700'], dss['zg700'], dss['orog'],
         vectorize=True, dask='parallelized').compute().rename(var)
+elif var == 'ECTEI':
+    dss[var] = (dss['EIS'] - (0.23 * water_heat_vaporization / dry_air_spec_heat_press * (dss['huss'] - dss['hus700'])).metpy.dequantify()).compute().rename(var)
 
 
 ofile = f'{odir}/{var}_hourly_{year}{month:02d}.nc'
@@ -743,10 +757,10 @@ dss[var].to_netcdf(ofile)
 '''
 #-------------------------------- check
 
-year=2018; month=1
+year=2020; month=6
 print(f'#-------------------------------- {year} {month:02d}')
-vars = ['LTS', 'LCL', 'inversionh', 'EIS', #
-        'ta', 'zg', 'orog', 'zg700', 'tas', 'ps', 'hurs', 'ta700', #
+vars = ['LTS', 'LCL', 'EIS', 'ECTEI', #
+        'ta', 'zg', 'orog', 'tas', 'ps', 'hurs', 'ta700', 'zg700', 'huss', 'hus700', #
         ]
 
 dss = {}
@@ -760,7 +774,7 @@ for ivar in vars:
         # ivar = 'orog'
         dss[ivar] = xr.open_dataset('/g/data/rt52/era5/single-levels/reanalysis/z/2020/z_era5_oper_sfc_20200601-20200630.nc')['z'][0]
         # dss[ivar] = geopotential_to_height(dss[ivar])
-    elif ivar in ['tas', 'ps', 'hurs', 'ta700', 'zg700']:
+    elif ivar in ['tas', 'ps', 'hurs', 'ta700', 'zg700', 'huss', 'hus700']:
         # ivar = 'hurs'
         if ivar == 'tas':
             dss[ivar] = xr.open_dataset(f'/g/data/rt52/era5/single-levels/reanalysis/2t/{year}/2t_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')[cmip6_era5_var[ivar]]
@@ -768,24 +782,32 @@ for ivar in vars:
             era5_t2m = xr.open_dataset(f'/g/data/rt52/era5/single-levels/reanalysis/2t/{year}/2t_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')['t2m']
             era5_d2m = xr.open_dataset(f'/g/data/rt52/era5/single-levels/reanalysis/2d/{year}/2d_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')['d2m']
             dss[ivar] = relative_humidity_from_dewpoint(era5_t2m * units.K, era5_d2m * units.K)
+        elif ivar == 'huss':
+            # ivar = 'huss'
+            era5_d2m = xr.open_dataset(f'/g/data/rt52/era5/single-levels/reanalysis/2d/{year}/2d_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')['d2m']
+            era5_msl = xr.open_dataset(f'/g/data/rt52/era5/single-levels/reanalysis/msl/{year}/msl_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')['msl']
+            dss[ivar] = specific_humidity_from_dewpoint(era5_msl * units.Pa, era5_d2m * units.K).metpy.dequantify()
         elif ivar == 'ta700':
             dss[ivar] = xr.open_dataset(f'/g/data/rt52/era5/pressure-levels/reanalysis/t/{year}/t_era5_oper_pl_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')['t'].sel(level=700)
         elif ivar == 'zg700':
             dss[ivar] = xr.open_dataset(f'/g/data/rt52/era5/pressure-levels/reanalysis/z/{year}/z_era5_oper_pl_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')['z'].sel(level=700)
             # dss[ivar] = geopotential_to_height(dss[ivar])
+        elif ivar == 'hus700':
+            # ivar = 'hus700'
+            dss[ivar] = xr.open_dataset(f'/g/data/rt52/era5/pressure-levels/reanalysis/q/{year}/q_era5_oper_pl_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')['q'].sel(level=700)
         else:
             dss[ivar] = xr.open_dataset(f'/g/data/rt52/era5/single-levels/reanalysis/{cmip6_era5_var[ivar]}/{year}/{cmip6_era5_var[ivar]}_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')[cmip6_era5_var[ivar]]
-    elif ivar in ['LCL', 'LTS', 'inversionh', 'EIS']:
+    elif ivar in ['LCL', 'LTS', 'inversionh', 'EIS', 'ECTEI']:
         dss[ivar] = xr.open_dataset(f'data/sim/era5/hourly/{ivar}/{ivar}_hourly_{year}{month:02d}.nc')[ivar]
     
-    if not ivar in ['LCL', 'LTS', 'inversionh', 'EIS']:
+    if not ivar in ['LCL', 'LTS', 'inversionh', 'EIS', 'ECTEI']:
         dss[ivar] = dss[ivar].rename({'latitude': 'lat', 'longitude': 'lon'})
 
 itime = 20
-ilat  = 40
-ilon  = 40
+ilat  = 100
+ilon  = 100
 
-for var in ['LTS', 'LCL', 'inversionh', 'EIS', ]: #
+for var in ['LTS', 'LCL', 'EIS', 'ECTEI', ]: #
     print(f'#---------------- {var}')
     print(dss[var][itime, ilat, ilon].values)
     if var == 'inversionh':
@@ -832,6 +854,8 @@ for var in ['LTS', 'LCL', 'inversionh', 'EIS', ]: #
             geopotential_to_height(dss['zg700'][itime, ilat, ilon].values * units("m2/s2")).m,
             geopotential_to_height(dss['orog'][ilat, ilon].values * units("m2/s2")).m,
         ))
+    elif var == 'ECTEI':
+        print(dss['EIS'][itime, ilat, ilon].values - (0.23 * water_heat_vaporization / dry_air_spec_heat_press * (dss['huss'][itime, ilat, ilon].values - dss['hus700'][itime, ilat, ilon].values)).m)
 
 
 
@@ -853,25 +877,28 @@ for ivar in vars:
 # region get monthly era5 inversionh, LCL, LTS, EIS
 # 4 vars, 8 years, 12 months: NCPUs Used: 96; Memory Used: 1.17TB; Walltime Used: 00:20:50
 
-vars = ['inversionh', 'LCL', 'LTS', 'EIS']
+vars = 'ECTEI' # ['inversionh', 'LCL', 'LTS', 'EIS']
 
 def get_mon_from_hour(var, year, month):
-    # var = 'LTS'; year=2024; month=1
+    # var = 'ECTEI'; year=2021; month=1
     print(f'#---------------- {var} {year} {month:02d}')
     
     ifile = f'data/sim/era5/hourly/{var}/{var}_hourly_{year}{month:02d}.nc'
     ofile = f'data/sim/era5/hourly/{var}/{var}_monthly_{year}{month:02d}.nc'
     
-    ds_in = xr.open_dataset(ifile)[var]
-    ds_out = ds_in.resample({'time': '1ME'}).mean(skipna=True).compute()
-    
-    if os.path.exists(ofile): os.remove(ofile)
-    ds_out.to_netcdf(ofile)
-    
-    del ds_in, ds_out
+    try:
+        ds_in = xr.open_dataset(ifile)[var]
+        ds_out = ds_in.resample({'time': '1ME'}).mean(skipna=True).compute()
+        
+        if os.path.exists(ofile): os.remove(ofile)
+        ds_out.to_netcdf(ofile)
+        
+        del ds_in, ds_out
+    except FileNotFoundError:
+        print(f'No file found: {ifile}')
     return f'Finished processing {ofile}'
 
-joblib.Parallel(n_jobs=4)(joblib.delayed(get_mon_from_hour)(var, year, month) for var in vars for year in range(2024, 2025) for month in range(1, 2))
+joblib.Parallel(n_jobs=96)(joblib.delayed(get_mon_from_hour)(var, year, month) for var in vars for year in range(2016, 2024) for month in range(1, 13))
 
 
 '''

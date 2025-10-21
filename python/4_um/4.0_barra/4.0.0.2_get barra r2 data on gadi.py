@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -P v46 -l walltime=3:00:00,ncpus=1,mem=20GB,jobfs=100MB,storage=gdata/v46+gdata/ob53+scratch/v46+gdata/rr1+gdata/rt52+gdata/oi10+gdata/hh5+gdata/fs38
+# qsub -I -q normal -P v46 -l walltime=3:00:00,ncpus=1,mem=96GB,jobfs=100MB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/gx60+gdata/py18
 
 
 # region import packages
@@ -19,6 +19,7 @@ import tempfile
 import argparse
 from metpy.calc import specific_humidity_from_dewpoint, relative_humidity_from_dewpoint, vertical_velocity_pressure, mixing_ratio_from_specific_humidity, relative_humidity_from_specific_humidity
 from metpy.units import units
+from metpy.constants import water_heat_vaporization, dry_air_spec_heat_press
 import time
 import joblib
 
@@ -47,18 +48,18 @@ from namelist import cmip6_units, zerok, seconds_per_d
 
 years = '2016'
 yeare = '2023'
-for var in ['rlut', 'rsdt']:
+for var in ['ECTEI']:
     # var = 'rsut'
     # 'pr', 'clh', 'clm', 'cll', 'clt', 'rsut', 'clivi', 'clwvi', 'zmla', 'rlut', 'rsdt'
     print(var)
     
-    fl = sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/mon/{var}/latest/*')) #[:540]
-    with tempfile.NamedTemporaryFile(suffix='.nc') as temp_output:
-        cdo.mergetime(input=fl, output=temp_output.name)
-        barra_r2_mon = xr.open_dataset(temp_output.name)[var].sel(time=slice(years, yeare)).compute()
+    # fl = sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/mon/{var}/latest/*')) #[:540]
+    # with tempfile.NamedTemporaryFile(suffix='.nc') as temp_output:
+    #     cdo.mergetime(input=fl, output=temp_output.name)
+    #     barra_r2_mon = xr.open_dataset(temp_output.name)[var].sel(time=slice(years, yeare)).compute()
     
-    # fl = sorted(glob.glob(f'data/sim/um/barra_r2/{var}/{var}_monthly_*.nc'))
-    # barra_r2_mon = xr.open_mfdataset(fl)[var].sel(time=slice(years, yeare))
+    fl = sorted(glob.glob(f'data/sim/um/barra_r2/{var}/{var}_monthly_*.nc'))
+    barra_r2_mon = xr.open_mfdataset(fl)[var].sel(time=slice(years, yeare))
     
     if var in ['pr', 'evspsbl', 'evspsblpot']:
         barra_r2_mon = barra_r2_mon * seconds_per_d
@@ -87,7 +88,7 @@ for var in ['rlut', 'rsdt']:
 ifile = -1
 
 barra_r2_mon_alltime = {}
-for var in ['inversionh', 'LCL', 'LTS', 'EIS']:
+for var in ['ECTEI']:
     # ['pr', 'clh', 'clm', 'cll', 'clt', 'evspsbl', 'hfls', 'hfss', 'psl', 'rlds', 'rldscs', 'rlus', 'rluscs', 'rlut', 'rlutcs', 'rsds', 'rsdscs', 'rsdt', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'sfcWind', 'tas', 'ts', 'evspsblpot', 'hurs', 'huss', 'uas', 'vas']
     # var = 'huss'
     print(f'#-------- {var}')
@@ -685,14 +686,14 @@ del barra_r2_hourly_alltime
 
 
 
-# region get BARRA-R2 inversionh, LCL, LTS, EIS
+# region get BARRA-R2 inversionh, LCL, LTS, EIS, ECTEI
 # get_inversion_numba:  Memory Used: 118.42GB, Walltime Used: 02:18:21
 # get_LCL:              Memory Used: 97.6GB, Walltime Used: 01:33:11
 # get_LTS:              Memory Used:
 # get_EIS:              Memory Used: 144.73GB, Walltime Used: 01:30:53
+# ECTEI:                Memory Used: 17.65GB, Walltime Used: 00:01:39
 
-
-var = 'inversionh' # ['inversionh', 'LCL', 'LTS', 'EIS']
+var = 'ECTEI' # ['inversionh', 'LCL', 'LTS', 'EIS', 'ECTEI']
 print(f'#-------------------------------- {var}')
 odir = f'data/sim/um/barra_r2/{var}'
 os.makedirs(odir, exist_ok=True)
@@ -714,7 +715,7 @@ args = parser.parse_args()
 
 year=args.year
 month=args.month
-# year=2024; month=1
+# year=2020; month=6
 print(f'#---------------- {year} {month:02d}')
 
 
@@ -726,6 +727,8 @@ elif var == 'LTS':
     vars = ['tas', 'ps', 'ta700']
 elif var == 'EIS':
     vars = ['LCL', 'LTS', 'tas', 'ta700', 'zg700', 'orog']
+elif var == 'ECTEI':
+    vars = ['EIS', 'huss', 'hus700']
 
 dss = {}
 for ivar in vars:
@@ -735,9 +738,9 @@ for ivar in vars:
         dss[ivar] = xr.open_mfdataset(sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/{ivar}[0-9]*[!m]/latest/*{year}{month:02d}.nc')), parallel=True, preprocess=lambda ds: std_func(ds, ivar=ivar))[ivar].chunk({'pressure': -1})
     elif ivar in ['orog']:
         dss[ivar] = xr.open_dataset('/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/fx/orog/latest/orog_AUS-11_ERA5_historical_hres_BOM_BARRA-R2_v1.nc')['orog']
-    elif ivar in ['tas', 'ps', 'hurs', 'ta700', 'zg700']:
+    elif ivar in ['tas', 'ps', 'hurs', 'ta700', 'zg700', 'huss', 'hus700']:
         dss[ivar] = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/{ivar}/latest/{ivar}_AUS-11_ERA5_historical_hres_BOM_BARRA-R2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')[ivar]
-    elif ivar in ['LCL', 'LTS']:
+    elif ivar in ['LCL', 'LTS', 'EIS']:
         dss[ivar] = xr.open_dataset(f'data/sim/um/barra_r2/{ivar}/{ivar}_hourly_{year}{month:02d}.nc')[ivar]
     
     # if ivar == 'orog':
@@ -770,6 +773,8 @@ elif var == 'EIS':
         dss['LCL'], dss['LTS'],
         dss['tas'], dss['ta700'], dss['zg700'], dss['orog'],
         vectorize=True, dask='parallelized').compute().rename(var)
+elif var == 'ECTEI':
+    dss[var] = (dss['EIS'] - (0.23 * water_heat_vaporization / dry_air_spec_heat_press * (dss['huss'] - dss['hus700'])).metpy.dequantify()).compute().rename(var)
 
 
 ofile = f'{odir}/{var}_hourly_{year}{month:02d}.nc'
@@ -786,10 +791,10 @@ def std_func(ds_in, ivar):
     varname = [varname for varname in ds.data_vars if varname.startswith(ivar)][0]
     return(ds.rename({varname: ivar}).astype('float32'))
 
-year=2018; month=1
+year=2020; month=6
 print(f'#-------------------------------- {year} {month:02d}')
-vars = ['inversionh', 'LCL', 'LTS', 'EIS',#
-        'ta', 'zg', 'orog', 'tas', 'ps', 'hurs', 'ta700', 'zg700']
+vars = ['LCL', 'LTS', 'EIS', 'ECTEI',#
+        'ta', 'zg', 'orog', 'tas', 'ps', 'hurs', 'ta700', 'zg700', 'huss', 'hus700']
 
 dss = {}
 for ivar in vars:
@@ -798,16 +803,16 @@ for ivar in vars:
         dss[ivar] = xr.open_mfdataset(sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/{ivar}[0-9]*[!m]/latest/*{year}{month:02d}.nc')), parallel=True, preprocess=lambda ds: std_func(ds, ivar=ivar))[ivar].chunk({'pressure': -1})
     elif ivar in ['orog']:
         dss[ivar] = xr.open_dataset('/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/fx/orog/latest/orog_AUS-11_ERA5_historical_hres_BOM_BARRA-R2_v1.nc')['orog']
-    elif ivar in ['tas', 'ps', 'hurs', 'ta700', 'zg700']:
+    elif ivar in ['tas', 'ps', 'hurs', 'ta700', 'zg700', 'huss', 'hus700']:
         dss[ivar] = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/{ivar}/latest/{ivar}_AUS-11_ERA5_historical_hres_BOM_BARRA-R2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')[ivar]
-    elif ivar in ['inversionh', 'LCL', 'LTS', 'EIS']:
+    elif ivar in ['inversionh', 'LCL', 'LTS', 'EIS', 'ECTEI']:
         dss[ivar] = xr.open_dataset(f'data/sim/um/barra_r2/{ivar}/{ivar}_hourly_{year}{month:02d}.nc')[ivar]
 
 itime = 40
-ilat  = 30
-ilon  = 30
+ilat  = 100
+ilon  = 100
 
-for var in ['LTS', 'EIS', 'inversionh', 'LCL', ]: #
+for var in ['LTS', 'EIS', 'ECTEI', 'LCL', ]: #
     print(f'#---------------- {var}')
     print(dss[var][itime, ilat, ilon].values)
     if var == 'inversionh':
@@ -854,6 +859,8 @@ for var in ['LTS', 'EIS', 'inversionh', 'LCL', ]: #
             dss['zg700'][itime, ilat, ilon].values,
             dss['orog'][ilat, ilon].values,
         ))
+    elif var == 'ECTEI':
+        print(dss['EIS'][itime, ilat, ilon].values - (0.23 * water_heat_vaporization / dry_air_spec_heat_press * (dss['huss'][itime, ilat, ilon].values - dss['hus700'][itime, ilat, ilon].values)).m)
 
 
 # check two get_inversionh methods
@@ -873,7 +880,7 @@ for ivar in vars:
 # region get monthly BARRA-R2 inversionh, LCL, LTS, EIS
 # 4 vars, 8 years, 12 months: NCPUs Used: 96; Memory Used: 1.0TB; Walltime Used: 00:11:29
 
-vars = ['inversionh', 'LCL', 'LTS', 'EIS']
+vars = ['ECTEI'] # ['inversionh', 'LCL', 'LTS', 'EIS']
 
 def get_mon_from_hour(var, year, month):
     # var = 'LTS'; year=2024; month=1
@@ -891,7 +898,7 @@ def get_mon_from_hour(var, year, month):
     del ds_in, ds_out
     return f'Finished processing {ofile}'
 
-joblib.Parallel(n_jobs=4)(joblib.delayed(get_mon_from_hour)(var, year, month) for var in vars for year in range(2024, 2025) for month in range(1, 2))
+joblib.Parallel(n_jobs=96)(joblib.delayed(get_mon_from_hour)(var, year, month) for var in vars for year in range(2016, 2024) for month in range(1, 13))
 
 
 '''

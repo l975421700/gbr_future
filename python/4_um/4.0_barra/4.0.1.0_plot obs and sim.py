@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -P v46 -l walltime=3:00:00,ncpus=1,mem=192GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/qx55+gdata/gx60+gdata/py18
+# qsub -I -q normal -P v46 -l walltime=3:00:00,ncpus=1,mem=96GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/qx55+gdata/gx60+gdata/py18
 
 
 # region import packages
@@ -112,13 +112,13 @@ from um_postprocess import (
 # region plot obs and sim am
 
 # options
-years = '2016'; yeare = '2023'
-# ['rsut', 'rlut'， 'cll', 'clm', 'clh', 'clt', 'clwvi', 'clivi', 'inversionh', 'LCL', 'LTS', 'EIS', 'pr']
-vars = ['cll']
-# ['CERES', 'CM SAF', 'Himawari', 'BARRA-C2', 'BARPA-C', 'ERA5', 'BARRA-R2', 'BARPA-R', 'MOD08_M3', 'MYD08_M3', 'IMERG']
-ds_names = ['Himawari', 'BARRA-C2', 'BARPA-C', 'ERA5', 'BARRA-R2', 'BARPA-R']
+years = '2016'; yeare = '2022'
+# ['rsut', 'rlut'， 'cll', 'clm', 'clh', 'clt', 'clwvi', 'clivi', 'inversionh', 'LCL', 'LTS', 'EIS', 'ECTEI', 'pr', 'hfls', 'hfss']
+vars = ['hfls', 'hfss']
+# ['CERES', 'CM SAF', 'Himawari', 'BARRA-C2', 'BARPA-C', 'ERA5', 'BARRA-R2', 'BARPA-R', 'MOD08_M3', 'MYD08_M3', 'IMERG', 'OAFlux']
+ds_names = ['OAFlux', 'BARRA-C2', 'BARPA-C', 'ERA5', 'BARRA-R2', 'BARPA-R']
 plt_regions = ['c2_domain'] # ['global', 'c2_domain', 'h9_domain']
-plt_modes = ['difference'] # ['original', 'difference']
+plt_modes = ['original', 'difference'] # ['original', 'difference']
 nrow = 2
 ncol = 3 # len(ds_names)
 
@@ -237,6 +237,11 @@ for ivar in vars:
             with open(f'data/obs/agcd/agcd_alltime_{ivar}.pkl','rb') as f:
                 agcd_alltime = pickle.load(f)
             ds_data['ann'][ids] = agcd_alltime['ann'].sel(time=slice(years, yeare))
+        elif ids == 'OAFlux':
+            # ids = 'OAFlux'
+            with open(f'data/obs/OAFlux/oaflux_mon_alltime_{ivar}.pkl', 'rb') as f:
+                oaflux_mon_alltime = pickle.load(f)
+            ds_data['ann'][ids] = oaflux_mon_alltime['ann'].sel(time=slice(years, yeare))
         else:
             print('Warning: unknown dataset')
         
@@ -298,6 +303,18 @@ for ivar in vars:
                     # cm_min=-10, cm_max=10, cm_interval1=1, cm_interval2=2,
                     cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10,
                     cmap='BrBG')
+            elif ivar in ['hfls']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=-240, cm_max=0, cm_interval1=20, cm_interval2=40, cmap='Greens',)
+                extend1 = 'both'
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10, cmap='BrBG')
+            elif ivar in ['hfss']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=-40, cm_max=0, cm_interval1=2.5, cm_interval2=5, cmap='Greens')
+                extend1 = 'both'
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-20, cm_max=20, cm_interval1=2.5, cm_interval2=5, cmap='BrBG',)
             elif ivar in ['rlut']:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
                     cm_min=-290, cm_max=-210, cm_interval1=5, cm_interval2=10,
@@ -364,11 +381,11 @@ for ivar in vars:
                     cmap='BrBG_r')
             elif ivar in ['clivi']:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-                    cm_min=0, cm_max=240, cm_interval1=10, cm_interval2=20,
-                    cmap='viridis',)
+                    cm_min=0, cm_max=160, cm_interval1=10, cm_interval2=20,
+                    cmap='Purples_r',)
                 extend1 = 'max'
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-                    cm_min=-100, cm_max=100, cm_interval1=10, cm_interval2=20,
+                    cm_min=-120, cm_max=120, cm_interval1=10, cm_interval2=20,
                     cmap='BrBG_r')
             elif ivar in ['inversionh']:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
@@ -380,41 +397,49 @@ for ivar in vars:
                     cmap='BrBG_r')
             elif ivar in ['blh', 'zmla']:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-                    cm_min=200, cm_max=1400, cm_interval1=100, cm_interval2=100,
+                    cm_min=0, cm_max=1200, cm_interval1=100, cm_interval2=200,
                     cmap='Greens_r',)
                 extend1 = 'max'
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-                    cm_min=-600, cm_max=600, cm_interval1=100, cm_interval2=100,
+                    cm_min=-400, cm_max=400, cm_interval1=100, cm_interval2=100,
                     cmap='BrBG_r')
             elif ivar in ['LCL']:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-                    cm_min=0, cm_max=2000, cm_interval1=100, cm_interval2=200,
-                    cmap='viridis',)
+                    cm_min=0, cm_max=2800, cm_interval1=100, cm_interval2=400,
+                    cmap='Greens_r',)
                 extend1 = 'max'
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-                    cm_min=-200, cm_max=200, cm_interval1=25, cm_interval2=50,
+                    cm_min=-200, cm_max=200, cm_interval1=50, cm_interval2=50,
                     cmap='BrBG_r')
             elif ivar in ['LTS']:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-                    cm_min=0, cm_max=16, cm_interval1=1, cm_interval2=2,
-                    cmap='viridis')
-                extend1 = 'max'
+                    cm_min=4, cm_max=18, cm_interval1=1, cm_interval2=2,
+                    cmap='pink')
+                extend1 = 'both'
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-                    cm_min=-3, cm_max=3, cm_interval1=0.5, cm_interval2=1,
-                    cmap='BrBG_r')
+                    cm_min=-2, cm_max=2, cm_interval1=0.5, cm_interval2=0.5,
+                    cmap='BrBG')
             elif ivar in ['EIS']:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
                     cm_min=0, cm_max=10, cm_interval1=1, cm_interval2=1,
-                    cmap='viridis')
-                extend1 = 'max'
+                    cmap='pink')
+                extend1 = 'both'
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-                    cm_min=-3, cm_max=3, cm_interval1=0.5, cm_interval2=1,
-                    cmap='BrBG_r')
+                    cm_min=-2, cm_max=2, cm_interval1=0.5, cm_interval2=0.5,
+                    cmap='BrBG')
+            elif ivar in ['ECTEI']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=-8, cm_max=8, cm_interval1=1, cm_interval2=2,
+                    cmap='PuOr')
+                extend1 = 'both'
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-2, cm_max=2, cm_interval1=0.5, cm_interval2=0.5,
+                    cmap='BrBG')
             elif ivar=='pr':
                 pltlevel1 = np.array([0, 0.5, 1, 2, 3, 4, 6, 8, 10, 12, 16, 20,])
                 pltticks1 = np.array([0, 0.5, 1, 2, 3, 4, 6, 8, 10, 12, 16, 20,])
                 pltnorm1 = BoundaryNorm(pltlevel1, ncolors=len(pltlevel1)-1, clip=True)
-                pltcmp1 = plt.get_cmap('viridis_r', len(pltlevel1)-1)
+                pltcmp1 = plt.get_cmap('Blues', len(pltlevel1)-1)
                 extend1 = 'max'
                 pltlevel2 = np.array([-6, -4, -3, -2, -1, -0.5, 0, 0.5, 1, 2, 3, 4, 6])
                 pltticks2 = np.array([-6, -4, -3, -2, -1, -0.5, 0, 0.5, 1, 2, 3, 4, 6])
@@ -528,16 +553,20 @@ for ivar in vars:
             else:
                 print('Warning: plt_region unspecified')
             
+            if ivar == 'pr':
+                digit = 2
+            else:
+                digit = 1
             plt_colnames = [f'{ds_names[0]}']
-            plt_text = [f'Mean: {str(np.round(plt_mean[ds_names[0]], 1))}']
+            plt_text = [f'Mean: {str(np.round(plt_mean[ds_names[0]], digit))}']
             if plt_mode in ['original']:
                 plt_colnames += [f'{ids}' for ids in ds_names[1:]]
-                plt_text += [f'{str(np.round(plt_mean[ids], 1))}' for ids in ds_names[1:]]
+                plt_text += [f'{str(np.round(plt_mean[ids], digit))}' for ids in ds_names[1:]]
             elif plt_mode in ['difference']:
                 plt_colnames += [f'{ds_names[1]} - {ds_names[0]}']
-                plt_text += [f'RMSD: {str(np.round(plt_rmsd[ds_names[1]], 1))}, MD: {str(np.round(plt_md[ds_names[1]], 1))}']
+                plt_text += [f'RMSD: {str(np.round(plt_rmsd[ds_names[1]], digit))}, MD: {str(np.round(plt_md[ds_names[1]], digit))}']
                 plt_colnames += [f'{ids} - {ds_names[0]}' for ids in ds_names[2:]]
-                plt_text += [f'{str(np.round(plt_rmsd[ids], 1))}, {str(np.round(plt_md[ids], 1))}' for ids in ds_names[2:]]
+                plt_text += [f'{str(np.round(plt_rmsd[ids], digit))}, {str(np.round(plt_md[ids], digit))}' for ids in ds_names[2:]]
             
             if nrow == 1:
                 if ncol == 1:
@@ -602,7 +631,7 @@ for ivar in vars:
                 else:
                     for irow in range(nrow):
                         for jcol in range(ncol):
-                            if ((irow != 0) & (jcol != 0)):
+                            if ((irow != 0) | (jcol != 0)):
                                 plt_mesh1 = axs[irow, jcol].pcolormesh(
                                     plt_org[ds_names[irow * ncol + jcol]].lon,
                                     plt_org[ds_names[irow * ncol + jcol]].lat,
@@ -622,7 +651,7 @@ for ivar in vars:
                         plt_mesh1,#cm.ScalarMappable(norm=pltnorm1, cmap=pltcmp1),#
                         format=remove_trailing_zero_pos,
                         orientation="horizontal", ticks=pltticks1, extend=extend1,
-                        cax=fig.add_axes([0.26, 0.2, 0.48, 0.04]))
+                        cax=fig.add_axes([0.26, fm_bottom*0.8, 0.48, fm_bottom / 6]))
                     cbar1.ax.set_xlabel(cbar_label1)
             elif plt_mode in ['difference']:
                 if nrow == 1:
@@ -662,7 +691,7 @@ for ivar in vars:
             fig.subplots_adjust(left=0.005, right=0.995, bottom=fm_bottom, top=0.96)
             fig.savefig(opng)
     
-    del ds_data
+    # del ds_data
 
 
 
@@ -679,19 +708,23 @@ plt_data[ids].weighted(np.cos(np.deg2rad(plt_data[ids].lat))).mean()
 
 
 # region plot obs and sim annual, monthly and hourly dm
+mpl.rc('font', family='Times New Roman', size=12)
 
 # options
-# ['rsut', 'clwvi', 'clivi', 'cll', 'clm', 'clh', 'clt', 'rsut', 'rlut', 'rsdt']
-vars = ['cll']
+# ['rsut', 'clwvi', 'clivi', 'cll', 'clm', 'clh', 'clt', 'rlut', 'rsdt']
+vars = ['clwvi']
 # ['CERES', 'Himawari']
-ds_names = ['ERA5', 'BARRA-R2', 'BARRA-C2', 'BARPA-R', 'BARPA-C', 'Himawari', ]
+ds_names = ['CERES', 'ERA5', 'BARRA-R2', 'BARRA-C2', 'BARPA-R', 'BARPA-C', ]
 plt_modes = ['hourly'] # ['annual', 'monthly', 'hourly']
 
 # settings
 years = '2016'; yeare = '2023'
 plt_regions = ['c2_domain']
-plt_types = ['original', 'MD']
 min_lon, max_lon, min_lat, max_lat = [110.58, 157.34, -43.69, -7.01]
+# WillisIsland_loc={'lat':-16.2876,'lon':149.962}
+# plt_regions = ['wi_1']
+# min_lon, max_lon, min_lat, max_lat = [148.962, 150.962, -17.2876, -15.2876]
+plt_types = ['original']
 cltypes = {
     'hcc': ['Cirrus', 'Cirrostratus', 'Deep convection'],
     'mcc': ['Altocumulus', 'Altostratus', 'Nimbostratus'],
@@ -839,7 +872,7 @@ for ivar in vars:
                     with open('data/obs/jaxa/clp/cltype_hourly_frequency_alltime.pkl', 'rb') as f:
                         cltype_hourly_frequency_alltime = pickle.load(f)
                 ds_data[plt_mode][ids] = cltype_hourly_frequency_alltime['ann'].sel(types=cltypes[cmip6_era5_var[ivar]], time=slice(years, yeare)).sum(dim='types').mean(dim='time').compute().rename({'hour': 'time'})
-                ds_data[plt_mode][ids][7:23, :] = np.nan
+                ds_data[plt_mode][ids][8:22, :] = np.nan
         elif ids == 'IMERG':
             # ids = 'IMERG'
             if plt_mode in ['annual', 'monthly']:
@@ -864,7 +897,7 @@ for ivar in vars:
         plt_dm = {}
         for ids in ds_names:
             # print(f'get dm: {ids}')
-            if plt_region == 'c2_domain':
+            if plt_region in ['c2_domain', 'wi_1']:
                 plt_dm[ids] = ds_data[plt_mode][ids].sel(lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat)).weighted(np.cos(np.deg2rad(ds_data[plt_mode][ids].sel(lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat)).lat))).mean(dim=['lat', 'lon'])
         
         plt_md = {}
@@ -916,16 +949,15 @@ for ivar in vars:
 
 '''
 from scipy.stats import pearsonr
-r, p_value = pearsonr(plt_dm['BARRA-C2'], plt_dm['Himawari'])
+r, p_value = pearsonr(plt_dm['BARRA-C2'], plt_md['BARRA-C2'])
 print(f"Pearson r = {r:.3f}, p = {p_value:.3e}")
-
 
 plt_md['BARRA-C2']
 np.min(plt_md['BARRA-C2'])
 np.max(plt_md['BARRA-C2'])
-plt_md['BARRA-C2'] / plt_dm['Himawari']
-np.min(plt_md['BARRA-C2'] / plt_dm['Himawari'])
-np.max(plt_md['BARRA-C2'] / plt_dm['Himawari'])
+plt_md['BARRA-C2'] / plt_dm['CERES']
+np.min(plt_md['BARRA-C2'] / plt_dm['CERES'])
+np.max(plt_md['BARRA-C2'] / plt_dm['CERES'])
 
 '''
 # endregion

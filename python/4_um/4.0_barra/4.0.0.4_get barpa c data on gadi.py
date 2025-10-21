@@ -47,7 +47,7 @@ from namelist import zerok, seconds_per_d
 
 years = '2016'
 yeare = '2023'
-for var in ['rlut', 'rsdt']:
+for var in ['hfls', 'hfss']:
     # var = 'cll'
     # 'cll', 'clm', 'clh', 'clt', 'rsut', 'rsutcs', 'clwvi', 'clivi', 'rlut', 'rlutcs', 'pr', 'rsdt',
     print(var)
