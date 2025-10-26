@@ -83,9 +83,10 @@ from metplot import si2reflectance, si2radiance, get_modis_latlonrgbs, get_modis
 # region plot Calibrated Radiances
 
 # option
-products = ['MYD021KM'] # 'MOD02HKM', 'MYD02HKM', 'MOD021KM' 'MYD021KM'
-plt_regions = ['global', 'c2_domain'] # 'global', 'c2_domain'
-year, month, day, hour, minute = 2020, 6, 2, 3, 20
+products = ['MYD02HKM'] # 'MOD02HKM', 'MYD02HKM', 'MOD021KM' 'MYD021KM'
+plt_regions = ['NE'] # 'global', 'c2_domain'
+year, month, day, hour, minute = 2020, 6, 2, 3, 30
+# year, month, day, hour, minute = 2020, 6, 2, 5, 00
 doy = datetime(year, month, day).timetuple().tm_yday
 plt_scene = 'hourly' # 'minutely'
 
@@ -94,9 +95,9 @@ for iproduct in products:
     print(f'#-------------------------------- {iproduct}')
     
     if plt_scene == 'hourly':
-        fl = sorted(glob.glob(f'scratch/data/obs/MODIS/{iproduct}/{year}/{doy:03d}/*.{hour:02d}??.061.*.hdf'))
+        fl = sorted(glob.glob(f'data/obs/MODIS/{iproduct}/{year}/{doy:03d}/*.{hour:02d}??.061.*.hdf'))
     elif plt_scene == 'minutely':
-        fl = sorted(glob.glob(f'scratch/data/obs/MODIS/{iproduct}/{year}/{doy:03d}/*.{hour:02d}{minute:02d}.061.*.hdf'))
+        fl = sorted(glob.glob(f'data/obs/MODIS/{iproduct}/{year}/{doy:03d}/*.{hour:02d}{minute:02d}.061.*.hdf'))
     if len(fl)==0: print('Warning: no file found')
     
     lats, lons, rgbs = get_modis_latlonrgbs(fl)
@@ -134,6 +135,19 @@ for iproduct in products:
             ax.pcolormesh(lons, lats, rgbscopy, transform=ccrs.PlateCarree())
             fig.text(0.5, 0.01, label, ha='center', va='bottom')
             fig.subplots_adjust(left=0.01,right=0.99,bottom=0.06,top=0.99)
+        elif plt_region == 'NE':
+            min_lon, max_lon, min_lat, max_lat = [137.12, 157.3, -28.76, -7.05]
+            mask = (lons>=min_lon) & (lons<=max_lon) & (lats>=min_lat) & (lats<=max_lat)
+            rgbscopy = rgbs.copy()
+            rgbscopy[np.broadcast_to(~mask[:, :, np.newaxis], rgbs.shape)] = np.nan
+            fig, ax = regional_plot(
+                extent=[min_lon, max_lon, min_lat, max_lat],
+                central_longitude=180,
+                figsize = np.array([4.4, 4.4]) / 2.54,
+                lw=0.4, border_color='yellow')
+            ax.pcolormesh(lons, lats, rgbscopy, transform=ccrs.PlateCarree())
+            # fig.text(0.5, 0.01, label, ha='center', va='bottom')
+            fig.subplots_adjust(left=0.01,right=0.99,bottom=0.01,top=0.99)
         
         fig.savefig(opng, dpi=1200)
 
@@ -285,11 +299,11 @@ products_vars = {
     # 'MYD05_L2': ['Water_Vapor_Near_Infrared', 'Water_Vapor_Infrared'],
     'MYD06_L2': ['Cloud_Water_Path'], # 'Cloud_Fraction', 'Cloud_Water_Path', 'Cloud_Water_Path_Uncertainty', 'Brightness_Temperature', 'Cloud_Top_Height', 'Cloud_Top_Pressure', 'Cloud_Top_Temperature', 'Cloud_Effective_Radius', 'Cloud_Optical_Thickness', 'Cloud_Phase_Infrared'
     # 'MYD07_L2': ['Water_Vapor'],
-    # 'MYDATML2': ['Cloud_Water_Path', 'Cloud_Fraction', 'Precipitable_Water_Infrared_ClearSky', 'Precipitable_Water_Near_Infrared_ClearSky']
+    # 'MYDATML2': ['Cloud_Water_Path'] # ['Cloud_Water_Path', 'Cloud_Fraction', 'Precipitable_Water_Infrared_ClearSky', 'Precipitable_Water_Near_Infrared_ClearSky']
     }
-year, month, day, hour, minute = 2020, 6, 2, 5, 0
+year, month, day, hour, minute = 2020, 6, 2, 3, 0
 doy = datetime(year, month, day).timetuple().tm_yday
-plt_regions = ['c2_domain'] # 'global', 'c2_domain'
+plt_regions = ['NE'] # 'global', 'c2_domain'
 plt_scene = 'hourly' # 'minutely'
 
 
@@ -318,7 +332,7 @@ for iproduct in products_vars.keys():
             extend = 'neither'
         elif ivar in ['Cloud_Water_Path']:
             pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-                cm_min=0, cm_max=600, cm_interval1=50, cm_interval2=100, cmap='Purples_r')
+                cm_min=0, cm_max=600, cm_interval1=50, cm_interval2=100, cmap='viridis')
             extend = 'max'
             var_labels = r'CWP [$g \; m^{-2}$]'
         elif ivar in ['Cloud_Water_Path_Uncertainty']:
@@ -347,6 +361,11 @@ for iproduct in products_vars.keys():
                     extent=[110.58, 157.34, -43.69, -7.01],
                     central_longitude=180,
                     figsize = np.array([6.6, 6.6]) / 2.54)
+            elif plt_region == 'NE':
+                fig, ax = regional_plot(
+                    extent=[137.12, 157.3, -28.76, -7.05],
+                    central_longitude=180,
+                    figsize = np.array([4.4, 6.6]) / 2.54)
             
             plt_mesh = ax.pcolormesh(
                 lons, lats, vardata,

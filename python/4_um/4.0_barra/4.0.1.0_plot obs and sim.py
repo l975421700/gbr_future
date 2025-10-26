@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -P v46 -l walltime=3:00:00,ncpus=1,mem=96GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/qx55+gdata/gx60+gdata/py18
+# qsub -I -q normal -P v46 -l walltime=5:00:00,ncpus=1,mem=192GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/qx55+gdata/gx60+gdata/py18
 
 
 # region import packages
@@ -112,19 +112,20 @@ from um_postprocess import (
 # region plot obs and sim am
 
 # options
-years = '2016'; yeare = '2022'
+years = '2016'; yeare = '2023'
 # ['rsut', 'rlut'， 'cll', 'clm', 'clh', 'clt', 'clwvi', 'clivi', 'inversionh', 'LCL', 'LTS', 'EIS', 'ECTEI', 'pr', 'hfls', 'hfss']
-vars = ['hfls', 'hfss']
+vars = ['rsut']
 # ['CERES', 'CM SAF', 'Himawari', 'BARRA-C2', 'BARPA-C', 'ERA5', 'BARRA-R2', 'BARPA-R', 'MOD08_M3', 'MYD08_M3', 'IMERG', 'OAFlux']
-ds_names = ['OAFlux', 'BARRA-C2', 'BARPA-C', 'ERA5', 'BARRA-R2', 'BARPA-R']
-plt_regions = ['c2_domain'] # ['global', 'c2_domain', 'h9_domain']
+ds_names = ['CERES', 'ERA5', 'BARRA-R2', 'BARPA-R']
+plt_regions = ['r2_domain'] # ['global', 'c2_domain', 'h9_domain', 'r2_domain']
 plt_modes = ['original', 'difference'] # ['original', 'difference']
-nrow = 2
-ncol = 3 # len(ds_names)
+nrow = 1
+ncol = len(ds_names)
 
 # settings
 min_lon, max_lon, min_lat, max_lat = [110.58, 157.34, -43.69, -7.01]
 min_lonh9, max_lonh9, min_lath9, max_lath9 = [80, 200, -60, 60]
+min_lonr2, max_lonr2, min_latr2, max_latr2 = [88.48, 207.4, -57.97, 12.98]
 cm_saf_varnames = {'rlut': 'LW_flux', 'rsut': 'SW_flux', 'CDNC': 'cdnc_liq',
                    'clwvi': 'lwp_allsky', 'clivi': 'iwp_allsky',}
 cltypes = {
@@ -294,7 +295,7 @@ for ivar in vars:
                     cm_min=0, cm_max=150, cm_interval1=10, cm_interval2=20,
                     cmap='viridis_r',)
                 extend1 = 'max'
-        elif plt_region == 'c2_domain':
+        elif plt_region in ['c2_domain', 'r2_domain']:
             if ivar in ['rsut']:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
                     cm_min=-140, cm_max=-60, cm_interval1=5, cm_interval2=10,
@@ -308,7 +309,7 @@ for ivar in vars:
                     cm_min=-240, cm_max=0, cm_interval1=20, cm_interval2=40, cmap='Greens',)
                 extend1 = 'both'
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-                    cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10, cmap='BrBG')
+                    cm_min=-60, cm_max=60, cm_interval1=10, cm_interval2=10, cmap='BrBG')
             elif ivar in ['hfss']:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
                     cm_min=-40, cm_max=0, cm_interval1=2.5, cm_interval2=5, cmap='Greens')
@@ -484,6 +485,9 @@ for ivar in vars:
             elif plt_region == 'h9_domain':
                 plt_org[ids] = ds_data['am'][ids].sel(lon=slice(min_lonh9, max_lonh9), lat=slice(min_lath9, max_lath9))
                 plt_ann[ids] = ds_data['ann'][ids].sel(lon=slice(min_lonh9, max_lonh9), lat=slice(min_lath9, max_lath9))
+            elif plt_region == 'r2_domain':
+                plt_org[ids] = ds_data['am'][ids].sel(lon=slice(min_lonr2, max_lonr2), lat=slice(min_latr2, max_latr2))
+                plt_ann[ids] = ds_data['ann'][ids].sel(lon=slice(min_lonr2, max_lonr2), lat=slice(min_latr2, max_latr2))
             plt_mean[ids] = coslat_weighted_mean(plt_org[ids])
         
         plt_diff = {}
@@ -538,6 +542,19 @@ for ivar in vars:
                     for irow in range(nrow):
                         for jcol in range(ncol):
                             axs[irow, jcol] = regional_plot(extent=[min_lon, max_lon, min_lat, max_lat], central_longitude=180, ax_org=axs[irow, jcol])
+            elif plt_region == 'r2_domain':
+                # plt_region = 'r2_domain'
+                fig, axs = plt.subplots(
+                    nrow, ncol,
+                    figsize=np.array([6.6*ncol, 6*nrow+3.5])/2.54,
+                    subplot_kw={'projection': ccrs.PlateCarree(central_longitude=180)},
+                    gridspec_kw={'hspace': 0.01, 'wspace': 0.01},)
+                fm_bottom = 3.5 / (6*nrow+3.5)
+                for jcol in range(ncol):
+                    if ncol == 1:
+                        axs = regional_plot(extent=[min_lonr2, max_lonr2, min_latr2, max_latr2], central_longitude=180, ax_org=axs)
+                    else:
+                        axs[jcol] = regional_plot(extent=[min_lonr2, max_lonr2, min_latr2, max_latr2], central_longitude=180, ax_org=axs[jcol])
             elif plt_region == 'h9_domain':
                 # plt_region = 'h9_domain'
                 fig, axs = plt.subplots(
@@ -711,20 +728,20 @@ plt_data[ids].weighted(np.cos(np.deg2rad(plt_data[ids].lat))).mean()
 mpl.rc('font', family='Times New Roman', size=12)
 
 # options
-# ['rsut', 'clwvi', 'clivi', 'cll', 'clm', 'clh', 'clt', 'rlut', 'rsdt']
-vars = ['clwvi']
+# ['rsut', 'clwvi', 'clivi', 'rlut', 'rsdt', 'cll', 'clm', 'clh', 'clt']
+vars = ['cll', 'clm', 'clh', 'clt']
 # ['CERES', 'Himawari']
-ds_names = ['CERES', 'ERA5', 'BARRA-R2', 'BARRA-C2', 'BARPA-R', 'BARPA-C', ]
-plt_modes = ['hourly'] # ['annual', 'monthly', 'hourly']
+ds_names = ['Himawari', 'ERA5', 'BARRA-R2', 'BARRA-C2', 'BARPA-R', 'BARPA-C', ]
+plt_modes = ['annual', 'monthly', 'hourly'] # ['annual', 'monthly', 'hourly']
 
 # settings
 years = '2016'; yeare = '2023'
-plt_regions = ['c2_domain']
-min_lon, max_lon, min_lat, max_lat = [110.58, 157.34, -43.69, -7.01]
+# plt_regions = ['c2_domain']
+# min_lon, max_lon, min_lat, max_lat = [110.58, 157.34, -43.69, -7.01]
 # WillisIsland_loc={'lat':-16.2876,'lon':149.962}
-# plt_regions = ['wi_1']
-# min_lon, max_lon, min_lat, max_lat = [148.962, 150.962, -17.2876, -15.2876]
-plt_types = ['original']
+plt_regions = ['wi_3']
+min_lon, max_lon, min_lat, max_lat = [146.962, 152.962, -19.2876, -13.2876]
+plt_types = ['original', 'MD']
 cltypes = {
     'hcc': ['Cirrus', 'Cirrostratus', 'Deep convection'],
     'mcc': ['Altocumulus', 'Altostratus', 'Nimbostratus'],
@@ -897,7 +914,7 @@ for ivar in vars:
         plt_dm = {}
         for ids in ds_names:
             # print(f'get dm: {ids}')
-            if plt_region in ['c2_domain', 'wi_1']:
+            if plt_region in ['c2_domain', 'wi_3']:
                 plt_dm[ids] = ds_data[plt_mode][ids].sel(lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat)).weighted(np.cos(np.deg2rad(ds_data[plt_mode][ids].sel(lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat)).lat))).mean(dim=['lat', 'lon'])
         
         plt_md = {}

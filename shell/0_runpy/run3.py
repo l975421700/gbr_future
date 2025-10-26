@@ -40,41 +40,92 @@ from namelist import cmip6_units, zerok, seconds_per_d
 # endregion
 
 
-# region get monthly BARRA-R2 inversionh, LCL, LTS, EIS
-# 4 vars, 8 years, 12 months: NCPUs Used: 96; Memory Used: 1.0TB; Walltime Used: 00:11:29
+# region get BARRA-R2 mon pl data
+# Memory Used: 68.42GB; Walltime Used: 01:06:43
 
-vars = ['ECTEI'] # ['inversionh', 'LCL', 'LTS', 'EIS']
-
-def get_mon_from_hour(var, year, month):
-    # var = 'LTS'; year=2024; month=1
-    print(f'#---------------- {var} {year} {month:02d}')
+for var in ['ua']:
+    # var = 'ua'
+    # ['hus', 'ta', 'ua', 'va', 'wa', 'zg']
+    print(var)
     
-    ifile = f'data/sim/um/barra_r2/{var}/{var}_hourly_{year}{month:02d}.nc'
-    ofile = f'data/sim/um/barra_r2/{var}/{var}_monthly_{year}{month:02d}.nc'
+    fl = sorted([
+        file for iyear in np.arange(2016, 2024, 1)
+        for file in glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/mon/{var}[0-9]*[!m]/latest/*BARRA-R2_v1_mon_{iyear}*')])
     
-    ds_in = xr.open_dataset(ifile)[var]
-    ds_out = ds_in.resample({'time': '1ME'}).mean(skipna=True).compute()
+    def std_func(ds_in, var=var):
+        ds = ds_in.expand_dims(dim='pressure', axis=1)
+        varname = [varname for varname in ds.data_vars if varname.startswith(var)][0]
+        ds = ds.rename({varname: var})
+        ds = ds.chunk(chunks={'time': 1, 'pressure': 1, 'lat': len(ds.lat), 'lon': len(ds.lon)})
+        ds = ds.astype('float32')
+        if var == 'hus':
+            ds = ds * 1000
+        elif var == 'ta':
+            ds = ds - zerok
+        return(ds)
     
+    barra_r2_pl_mon = xr.open_mfdataset(fl, parallel=True, preprocess=std_func)[var]
+    barra_r2_pl_mon_alltime = mon_sea_ann(
+        var_monthly=barra_r2_pl_mon, lcopy=False,mm=True,sm=True,am=True)
+    
+    ofile = f'data/sim/um/barra_r2/barra_r2_pl_mon_alltime_{var}.pkl'
     if os.path.exists(ofile): os.remove(ofile)
-    ds_out.to_netcdf(ofile)
+    with open(ofile,'wb') as f:
+        pickle.dump(barra_r2_pl_mon_alltime, f)
     
-    del ds_in, ds_out
-    return f'Finished processing {ofile}'
+    del barra_r2_pl_mon, barra_r2_pl_mon_alltime
 
-joblib.Parallel(n_jobs=48)(joblib.delayed(get_mon_from_hour)(var, year, month) for var in vars for year in range(2016, 2024) for month in range(1, 13))
+
+
 
 
 '''
-#---- check
-var = 'inversionh'
-year = 2016
-month = 6
-ds_in = xr.open_dataset(f'data/sim/um/barra_r2/{var}/{var}_hourly_{year}{month:02d}.nc')[var]
-ds_out = xr.open_dataset(f'data/sim/um/barra_r2/{var}/{var}_monthly_{year}{month:02d}.nc')[var]
+#-------------------------------- check
+ipressure = 850
+itime = -10
 
-ilat = 100
-ilon = 100
-print(np.nanmean(ds_in[:, ilat, ilon].values) - ds_out[0, ilat, ilon].values)
+barra_r2_pl_mon_alltime = {}
+for var in ['ta', 'ua', 'va', 'wa', 'zg']:
+    # var = 'hus'
+    print(f'#-------------------------------- {var}')
+    
+    with open(f'data/sim/um/barra_r2/barra_r2_pl_mon_alltime_{var}.pkl','rb') as f:
+        barra_r2_pl_mon_alltime[var] = pickle.load(f)
+    
+    fl = sorted([
+        file for iyear in np.arange(1979, 2024, 1)
+        for file in glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/mon/{var}{str(ipressure)}/latest/*BARRA-R2_v1_mon_{iyear}*')])
+    
+    ds = xr.open_dataset(fl[itime])[f'{var}{str(ipressure)}'].squeeze()
+    ds = ds.astype('float32')
+    if var == 'hus':
+        ds = ds * 1000
+    elif var == 'ta':
+        ds = ds - zerok
+    
+    ds2 = barra_r2_pl_mon_alltime[var]['mon'][itime].sel(pressure=ipressure)
+    
+    print((ds.values[np.isfinite(ds.values)].astype(np.float32) == ds2.values[np.isfinite(ds2.values)]).all())
+    del barra_r2_pl_mon_alltime[var]
+
+
+
+
+aaa = xr.open_dataset(fl[0])
+aaa.expand_dims(dim='pressure', axis=1)
+aaa['ta10'].expand_dims(dim='pressure', axis=1)
+
+bbb = xr.open_dataset(fl[-1])
+bbb.expand_dims(dim='pressure', axis=1)
+
+
+import intake
+data_catalog = intake.open_esm_datastore("/g/data/dk92/catalog/v2/esm/barra2-ob53/catalog.json")
+
+for icol in data_catalog.df.columns:
+    print(f'#-------------------------------- {icol}')
+    print(data_catalog.df[icol].unique())
+
 
 '''
 # endregion

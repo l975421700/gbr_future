@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -l walltime=3:00:00,ncpus=1,mem=20GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+gdata/zv2+gdata/ra22
+# qsub -I -q normal -l walltime=3:00:00,ncpus=1,mem=96GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+gdata/zv2+gdata/ra22+gdata/gx60
 
 
 # region import packages
@@ -49,6 +49,7 @@ import matplotlib.patches as mpatches
 from matplotlib.lines import Line2D
 import cartopy.feature as cfeature
 from matplotlib.colors import LinearSegmentedColormap, TwoSlopeNorm
+from matplotlib.colors import BoundaryNorm, ListedColormap
 from matplotlib.patches import Rectangle
 from PIL import Image
 Image.MAX_IMAGE_PIXELS = None
@@ -75,7 +76,6 @@ from namelist import (
     seasons,
     seconds_per_d,
     zerok,
-    panel_labels,
     )
 
 from component_plot import (
@@ -101,8 +101,9 @@ from calculations import (
 year, month, day, hour = 2020, 6, 2, 4
 # min_lon, max_lon, min_lat, max_lat = 110.58, 157.34, -43.69, -7.01
 # up to Willis Island:
-min_lon, max_lon, min_lat, max_lat = 110.58, 157.34, -16.2876, -7.01
-max_altitude = 12000
+# min_lon, max_lon, min_lat, max_lat = 110.58, 157.34, -16.2876, -7.01
+min_lon, max_lon, min_lat, max_lat = 110.58, 157.34, -12, -7
+max_altitude = 6000
 
 cs_info = {
     '2B-CLDCLASS-LIDAR.P1_R05': {},
@@ -116,7 +117,7 @@ cs_info = {
             'label': r'ice effective radius [$um$]'},
         'RO_liq_number_conc': {
             'factor': 10,   'offset': 0,    'valid_range': [0, 30000],
-            'label': r'liquid number concentration [$cm^{-3}$]'},
+            'label': r'CDNC [$cm^{-3}$]'},
         'RO_ice_number_conc': {
             'factor': 10,   'offset': 0,    'valid_range': [0, 30000],
             'label': r'ice number concentration [$cm^{-3}$]'},
@@ -197,10 +198,10 @@ for iproduct in [
     doy0 = datetime(year0, month0, day0).timetuple().tm_yday
     
     try:
-        ifile = glob.glob(f'scratch/data/obs/CloudSat_CALIPSO/{iproduct}/{year}/{doy:03d}/{year}{doy}{hour:02d}*.hdf')[0]
+        ifile = glob.glob(f'data/obs/CloudSat_CALIPSO/{iproduct}/{year}/{doy:03d}/{year}{doy}{hour:02d}*.hdf')[0]
         date = datetime(year, month, day)
     except IndexError:
-        ifile = glob.glob(f'scratch/data/obs/CloudSat_CALIPSO/{iproduct}/{year0}/{doy0:03d}/{year0}{doy0}{hour0:02d}*.hdf')[0]
+        ifile = glob.glob(f'data/obs/CloudSat_CALIPSO/{iproduct}/{year0}/{doy0:03d}/{year0}{doy0}{hour0:02d}*.hdf')[0]
         date = datetime(year0, month0, day0)
     print(ifile)
     
@@ -209,18 +210,20 @@ for iproduct in [
     # print(hdf_vs.vdatainfo())
     # print(hdf_sd.datasets().keys())
     
+    height = hdf_sd.select('Height').get().astype(float)
+    height[height==-9999] = np.nan
     lat = np.array(hdf_vs.attach('Latitude')[:]).squeeze()
     lon = np.array(hdf_vs.attach('Longitude')[:]).squeeze()
+    lat_2d = np.tile(lat[:, np.newaxis], (1, height.shape[1]))
+    lon_2d = np.tile(lon[:, np.newaxis], (1, height.shape[1]))
     mask = (lon >= min_lon) & (lon <= max_lon) & \
         (lat >= min_lat) & (lat <= max_lat)
     seconds = hdf_vs.attach('UTC_start')[:][0][0] + \
         np.array(hdf_vs.attach('Profile_time')[:]).squeeze()
     date_time = np.array([date + timedelta(seconds=s) for s in seconds])
-    height = hdf_sd.select('Height').get().astype(float)
-    height[height==-9999] = np.nan
-    lat_2d = np.tile(lat[:, np.newaxis], (1, height.shape[1]))
     
-    for ivar in hdf_sd.datasets().keys():
+    for ivar in ['RO_liq_number_conc']:
+        # hdf_sd.datasets().keys()
         # ivar = 'CPR_Cloud_mask'
         # ivar = 'Radar_Reflectivity'
         # ivar = 'RO_liq_number_conc'
@@ -233,10 +236,14 @@ for iproduct in [
             continue
         
         if ivar in ['RO_liq_number_conc', 'LO_RO_number_conc']:
-            pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-                cm_min=0, cm_max=160, cm_interval1=10, cm_interval2=20,
-                cmap='viridis_r',)
-            extend = 'max'
+            # pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            #     cm_min=50, cm_max=100, cm_interval1=10, cm_interval2=10, cmap='pink',)
+            pltlevel = np.arange(0, 100+1e-4, 10, dtype=np.float64)
+            pltticks = np.arange(0, 100+1e-4, 10, dtype=np.float64)
+            base_cmap = cm.get_cmap('pink_r', len(pltlevel))
+            pltcmp = ListedColormap([base_cmap(i) for i in range(base_cmap.N)][1:])
+            pltnorm = BoundaryNorm(pltlevel, ncolors=pltcmp.N, clip=True)
+            extend='neither'
         elif ivar == 'RO_ice_number_conc':
             pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
                 cm_min=0, cm_max=240, cm_interval1=15, cm_interval2=30,
@@ -262,16 +269,17 @@ for iproduct in [
         fm_bottom = 0.35
         fig, ax = plt.subplots(1, 1, figsize=np.array([8.8, 8.8]) / 2.54)
         plt_mesh = ax.pcolormesh(
-            lat_2d[mask, :], height[mask, :], cs_data[mask, :],
+            lat_2d[mask, :], height[mask, :]/1000, cs_data[mask, :],
             norm=pltnorm, cmap=pltcmp,)
         
         ax.xaxis.set_major_formatter(LatitudeFormatter(degree_symbol='° '))
         ax.xaxis.set_minor_locator(AutoMinorLocator(2))
+        ax.set_xlim(-12, -7)
         
         ax.set_ylabel(f'Altitude [$km$]')
-        ax.set_yticks(np.arange(0, max_altitude+1e-4, 2000))
-        ax.set_yticklabels(np.arange(0, max_altitude/1000+1e-4, 2).astype(int))
-        ax.set_ylim(0, max_altitude)
+        # ax.set_yticks(np.arange(0, max_altitude+1e-4, 2000))
+        # ax.set_yticklabels(np.arange(0,max_altitude/1000+1e-4,2).astype(int))
+        ax.set_ylim(0, max_altitude/1000)
         ax.yaxis.set_minor_locator(AutoMinorLocator(2))
         
         ax.grid(True, which='both', lw=0.5, c='gray', alpha=0.5, linestyle='--',)
@@ -281,13 +289,21 @@ for iproduct in [
             format=remove_trailing_zero_pos,
             orientation="horizontal", ticks=pltticks, extend=extend,
             cax=fig.add_axes([0.05, fm_bottom-0.12, 0.9, 0.03]))
-        cbar.ax.set_xlabel(f'{time_se}\n{cs_info[iproduct][ivar]['label']}\n{iproduct.replace('.P1_R05', '').replace('.P2_R05', '')}', linespacing=1.5)
+        # cbar_label = f'{time_se}\n{cs_info[iproduct][ivar]['label']}\n{iproduct.replace('.P1_R05', '').replace('.P2_R05', '')}'
+        cbar_label = f'CloudSat {time_se} {cs_info[iproduct][ivar]['label']}'
+        cbar.ax.set_xlabel(cbar_label, linespacing=1.5)
         
-        fig.subplots_adjust(left=0.14,right=0.99,bottom=fm_bottom,top=0.97)
+        fig.subplots_adjust(left=0.14,right=0.96,bottom=fm_bottom,top=0.97)
         fig.savefig(opng)
 
 
-
+aaa = cs_data[((lon_2d >= min_lon) & (lon_2d <= max_lon) & \
+        (lat_2d >= min_lat) & (lat_2d <= max_lat) & (height <= max_altitude))].copy()
+# aaa = cs_data[mask, :]
+aaa[aaa==0] = np.nan
+np.nanmin(aaa)
+np.nanmax(aaa)
+np.nanmean(aaa)
 
 
 '''

@@ -120,6 +120,7 @@ era5_varlabels = {
     'cbh': r'cloud base height [$m$]',
     'tciw': r'IWP [$g \; m^{-2}$]',
     'tclw': r'LWP [$g \; m^{-2}$]',
+    'cwp': r'CWP [$g \; m^{-2}$]',
     'e': r'evaporation [$mm \; day^{-1}$]',
     # 'z': r'orography [$m$]',
     'orog': r'orography [$m$]',
@@ -260,6 +261,7 @@ cmip6_era5_var = {
     'LTS': 'LTS',
     'EIS': 'EIS',
     'ECTEI': 'ECTEI',
+    'cwp': 'cwp',
     # 'wa',
 }
 # tcw = tcwv + tcsw + tcrw + tclw + tciw

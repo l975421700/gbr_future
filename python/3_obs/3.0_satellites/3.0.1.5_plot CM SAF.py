@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -P v46 -l walltime=3:00:00,ncpus=1,mem=96GB,jobfs=100MB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/gx60+gdata/py18
+# qsub -I -q copyq -P v46 -l walltime=3:00:00,ncpus=1,mem=96GB,jobfs=100MB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/gx60+gdata/py18
 
 
 # region import packages
@@ -72,6 +72,9 @@ from component_plot import (
 from calculations import (
     find_ilat_ilon,
     time_weighted_mean,
+    coslat_weighted_mean,
+    coslat_weighted_rmsd,
+    land_ocean_mean,
     )
 
 from metplot import si2reflectance, si2radiance, get_modis_latlonrgbs
@@ -86,7 +89,7 @@ years = '2016'
 yeare = '2023'
 vars = {'clwvi': 'lwp_allsky', 'clivi': 'iwp_allsky',
         'rlut': 'LW_flux', 'rsut': 'SW_flux', 'CDNC': 'cdnc_liq'}
-plt_regions = ['global', 'c2_domain'] # ['global', 'c2_domain', 'h9_domain']
+plt_regions = ['c2_domain'] # ['global', 'c2_domain', 'h9_domain']
 
 min_lon, max_lon, min_lat, max_lat = [110.58, 157.34, -43.69, -7.01]
 
@@ -139,10 +142,10 @@ for ivar in ['CDNC']:
         if plt_region == 'global':
             fig, ax = globe_plot(figsize=np.array([12, 8]) / 2.54, fm_bottom=0.13)
         elif plt_region == 'c2_domain':
+            plt_data = plt_data.sel(lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat))
             fig, ax = regional_plot(
                 figsize = np.array([8.8, 8]) / 2.54,
                 extent=[min_lon, max_lon, min_lat, max_lat])
-            plt_data = plt_data.sel(lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat))
         
         plt_mean = plt_data.weighted(np.cos(np.deg2rad(plt_data.lat))).mean().values
         cbar_label = f'CM SAF {years}-{yeare} {era5_varlabels[cmip6_era5_var[ivar]]}'
@@ -162,8 +165,26 @@ for ivar in ['CDNC']:
         fig.savefig(f'figures/3_satellites/3.4_CM_SAF/3.4.0 CM SAF {ivar} {plt_region} am.png')
 
 
+plt_data = plt_data.sel(lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat))
+print(plt_data.weighted(np.cos(np.deg2rad(plt_data.lat))).mean().values)
+print(coslat_weighted_mean(plt_data))
+
+land_ocean_mean(plt_data)
+
 
 '''
+#-------- check
+import regionmask
+land = regionmask.defined_regions.natural_earth_v5_0_0.land_10
+mask = land.mask(plt_data)
+
+print(np.sum(plt_data))
+print(np.sum(plt_data.where(~np.isnan(mask))) + np.sum(plt_data.where(np.isnan(mask))))
+
+print(coslat_weighted_mean(plt_data.where(~np.isnan(mask))))
+print(coslat_weighted_mean(plt_data.where(np.isnan(mask))))
+
+
 
 
 cm_saf['lwp'].weighted(cm_saf['lwp'].time.dt.days_in_month).mean(dim='time')

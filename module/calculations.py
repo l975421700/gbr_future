@@ -1,5 +1,35 @@
 
 
+# region land_ocean_mean
+
+def land_ocean_mean(da):
+    # da: xarray.DataArray
+    
+    import regionmask
+    land = regionmask.defined_regions.natural_earth_v5_0_0.land_10
+    mask = land.mask(da)
+    
+    landmean = coslat_weighted_mean(da.where(~np.isnan(mask)))
+    oceanmean = coslat_weighted_mean(da.where(np.isnan(mask)))
+    
+    return(mask, landmean, oceanmean)
+
+'''
+#-------- check
+import regionmask
+land = regionmask.defined_regions.natural_earth_v5_0_0.land_10
+mask = land.mask(plt_data)
+
+print(np.sum(plt_data))
+print(np.sum(plt_data.where(~np.isnan(mask))) + np.sum(plt_data.where(np.isnan(mask))))
+
+print(coslat_weighted_mean(plt_data.where(~np.isnan(mask))))
+print(coslat_weighted_mean(plt_data.where(np.isnan(mask))))
+
+'''
+# endregion
+
+
 # region get_LTS
 
 from metpy.calc import potential_temperature

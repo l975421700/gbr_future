@@ -362,7 +362,7 @@ rgb1 = np.zeros(channels['B03'].shape + (3,), dtype=np.float32)
 for idx, iband in enumerate(['B03', 'B02', 'B01']):
     rgb1[:, :, idx] = channels[iband]
 rgb1 = np.clip(rgb1, 0, 1, out=rgb1)
-gamma = 4
+gamma = 3
 rgb1 **= (1 / gamma)
 
 # rgb2 = np.zeros(channels['B15-B13'].shape + (3,), dtype=np.float32)
@@ -383,6 +383,18 @@ ax.imshow(
     rgb, extent=[-5499500., 5499500., -5499500., 5499500.],
     transform=ccrs.Geostationary(central_longitude=140.7, satellite_height=35785863.0),
     interpolation='none', origin='upper', resample=False)
+
+# plot cloudsat tracks
+geolocation_all = pd.read_pickle(f'data/obs/CloudSat_CALIPSO/2B-CLDCLASS-LIDAR.P1_R05/2020/geolocation_df.pkl')
+geolocation_subset = geolocation_all.loc[(
+    (geolocation_all.date_time >= pd.Timestamp(2020, 6, 2, 4, 0)) & \
+        (geolocation_all.date_time <= pd.Timestamp(2020, 6, 2, 5, 0)) & \
+            (geolocation_all.lat >= -12) & \
+                # -16.2876
+                (geolocation_all.lat <= -7))]
+ax.scatter(geolocation_subset.lon, geolocation_subset.lat, s=1, c='tab:orange',
+           lw=0, transform=ccrs.PlateCarree())
+
 fig.text(0.5, 0.01, f'{year}-{month:02d}-{day:02d} {hour:02d}:{minute:02d} UTC\nHimawari True Color RGB',
          ha='center', va='bottom', linespacing=1.3)
 fig.subplots_adjust(left=0.005, right=0.995, bottom=0.15, top=0.95)
@@ -542,7 +554,7 @@ print(time_series[-1].hour)
 
 # region plot himawari true color and night microphysics + CloudSat-Calipso 2B-CLDCLASS-LIDAR
 
-geolocation_all = pd.read_pickle(f'scratch/data/obs/CloudSat_CALIPSO/2B-CLDCLASS-LIDAR.P1_R05/geolocation_all.pkl')
+geolocation_all = pd.read_pickle(f'data/obs/CloudSat_CALIPSO/2B-CLDCLASS-LIDAR.P1_R05/geolocation_all.pkl')
 
 year, month, day, hour, minute = 2020, 6, 1, 0, 0
 dfolder = Path('/g/data/ra22/satellite-products/arc/obs/himawari-ahi/fldk/latest')

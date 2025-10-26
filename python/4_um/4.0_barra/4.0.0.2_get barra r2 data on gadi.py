@@ -122,13 +122,13 @@ for var in ['ECTEI']:
 # region get BARRA-R2 mon pl data
 # Memory Used: 68.42GB; Walltime Used: 01:06:43
 
-for var in ['hus']:
+for var in ['hus', 'ta', 'ua', 'va']:
     # var = 'ua'
     # ['hus', 'ta', 'ua', 'va', 'wa', 'zg']
     print(var)
     
     fl = sorted([
-        file for iyear in np.arange(1979, 2024, 1)
+        file for iyear in np.arange(2016, 2024, 1)
         for file in glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/mon/{var}[0-9]*[!m]/latest/*BARRA-R2_v1_mon_{iyear}*')])
     
     def std_func(ds_in, var=var):
