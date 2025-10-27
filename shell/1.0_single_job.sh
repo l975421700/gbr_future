@@ -22,7 +22,7 @@ python code/gbr_future/shell/0_runpy/run5.py
 # check user usage: quota
 # check queue status: qstat -Q
 # https://opus.nci.org.au/spaces/Help/pages/236881198/Queue+Limits...
-# nci_account -P v46 -v # ACCESS:gx60,lg87;Center:gb02,ng72,if69;BoM:hd50
+# nci_account -P v46 -v # ACCESS:gx60,lg87;Center:gb02,ng72,if69,fy29;BoM:hd50
 # nci-files-report -S --project gx60 --filesystem scratch
 
 # qsub -I -q normal -P v46 -l walltime=48:00:00,ncpus=1,mem=4GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/gx60

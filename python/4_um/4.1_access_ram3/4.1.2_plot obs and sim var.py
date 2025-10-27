@@ -25,7 +25,7 @@ import xesmf as xe
 import calendar
 import glob
 from metpy.calc import specific_humidity_from_dewpoint, relative_humidity_from_dewpoint, vertical_velocity_pressure, mixing_ratio_from_specific_humidity
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # plot
 import matplotlib as mpl
@@ -35,7 +35,7 @@ import cartopy.crs as ccrs
 from matplotlib import cm
 plt.rcParams['pcolor.shading'] = 'auto'
 mpl.rcParams['figure.dpi'] = 600
-mpl.rc('font', family='Times New Roman', size=9)
+mpl.rc('font', family='Times New Roman', size=12)
 mpl.rcParams['axes.linewidth'] = 0.2
 plt.rcParams.update({"mathtext.fontset": "stix"})
 import matplotlib.animation as animation
@@ -113,14 +113,14 @@ from metplot import si2reflectance, si2radiance, get_modis_latlonrgbs, get_modis
 # region obs vs. sim timestamp
 
 year, month, day, hour = 2020, 6, 2, 3
-var2s = ['clivi', 'clwvi']
+var2s = ['rsut']
 # 'rsut', 'rlut', 'cll', 'clm', 'clh', 'clt', 'clivi', 'clwvi', 'blh'
 modes = ['original'] # 'original', 'difference'
 dsss = [
     # [('MODIS Aqua',''),('u-dq700',1),('u-dr041',1),('u-dq799',1),('u-dr145',1)],#res+CDNC
     # [('MODIS Aqua',''),('u-dq700',1),('u-dr041',1),('u-dr091',1),('u-dr147',1)],#Sres+CDNC
     # [('CERES',''),('u-dq700',1),('u-dr041',1),('u-dq799',1),('u-dr145',1)],#res+CDNC
-    [('CERES',''),('u-dq700',1),('u-dr041',1),('u-dr091',1),('u-dr147',1)],#Sres+CDNC
+    # [('CERES',''),('u-dq700',1),('u-dr041',1),('u-dr091',1),('u-dr147',1)],#Sres+CDNC
     
     # [('CERES',''),('BARRA-C2',''),('BARPA-C',''),('u-dq700',1)],#control
     # [('BARRA-C2',''),('u-dq700',1)],#control
@@ -134,8 +134,8 @@ dsss = [
     # [('CERES',''),('u-dt042',1),('u-dq700',1),('u-dr040',1),('u-dr041',1),('u-dt020',1)],#CDNC
     # [('u-dq700',1),('u-dr040',1),('u-dr041',1)],#CDNC
     
-    # [('CERES',''),('u-dq700',1),('u-dr095',1),('u-dr093',1),('u-dr091',1)],#Sres
-    # [('CERES',''),('u-dq700',1),('u-dq788',1),('u-dq911',1),('u-dq799',1)],#res
+    [('CERES',''),('u-dq700',1),('u-dr095',1),('u-dr093',1),('u-dr091',1)],#Sres
+    [('CERES',''),('u-dq700',1),('u-dq788',1),('u-dq911',1),('u-dq799',1)],#res
     # [('CERES',''),('u-dq700',1),('u-dr041',1),('u-dr091',1),('u-dr147',1)],#Sres+CDNC
     # [('CERES',''),('u-dq700',1),('u-dr041',1),('u-dq799',1),('u-dr145',1)],#res+CDNC
     
@@ -143,8 +143,12 @@ dsss = [
     # [('CERES',''),('u-dq700',1),('u-dr108',1),('u-dr109',1)],#param
     # [('CERES',''),('u-dq700',1),('u-ds719',1)], #shortTS
     
-    # [('CERES',''),('u-ds728',1),('u-ds730',1),('u-ds732',1)],#SA1p1
-    # [('CERES',''),('u-ds722',1),('u-ds724',1),('u-ds726',1)],#SA1p1
+    # Long run
+    # [('u-ds714',1),('u-ds718',1),('u-ds717',1)],#CDNC
+    # [('u-ds714',1),('u-ds722',1),('u-ds724',1),('u-ds726',1)],#res
+    # [('u-ds714',1),('u-ds728',1),('u-ds730',1),('u-ds732',1)],#Sres
+    # [('u-ds714',1),('u-dq788',1),('u-dq911',1),('u-dq799',1),('u-ds722',1),('u-ds724',1),('u-ds726',1)],#res
+    # [('u-ds714',1),('u-dr095',1),('u-dr093',1),('u-dr091',1),('u-ds728',1),('u-ds730',1),('u-ds732',1)],#Sres
 ]
 
 ntime = pd.Timestamp(year,month,day,hour) + pd.Timedelta('1h')
@@ -531,7 +535,7 @@ for dss in dsss:
                 ds[ids[0]] *= (-1)
             elif var2 in ['psl']:
                 ds[ids[0]] /= 100
-            elif var2 in ['huss']:
+            elif var2 in ['huss', 'clwvi', 'clivi', 'cwp']:
                 ds[ids[0]] *= 1000
             
             if len(extents)==0:
@@ -653,8 +657,7 @@ for dss in dsss:
                 format=remove_trailing_zero_pos,
                 orientation="horizontal", ticks=pltticks2, extend=extend2,
                 cax=fig.add_axes([0.51, fm_bottom*0.75, 0.48, fm_bottom/8]))
-            cbar2.ax.set_xlabel(cbar_label2) # , labelpad=1
-            # cbar2.ax.tick_params(pad=1)
+            cbar2.ax.set_xlabel(cbar_label2)
         
         for jcol in range(ncol):
             axs[jcol].text(
@@ -706,19 +709,26 @@ ds2 = xr.open_dataset(f'data/obs/CERES/CERES_SYN1deg-1H_Terra-Aqua-NOAA20_Ed4.2_
 # region obs vs. sim monthly data
 
 year, month = 2020, 6
-var2s = ['blh']
-# 'rsut', 'rlut', 'cll', 'clm', 'clh', 'clt', 'clivi', 'clwvi'
-modes = ['difference'] # 'original', 'difference'
+starttime = datetime(year, month, 2)
+endtime = datetime(year, month, 30, 23, 59)
+var2s = ['pr']
+# 'rsut', 'rlut', 'cll', 'clm', 'clh', 'clt', 'clivi', 'clwvi', 'pr', 'hfls', 'hfss'
+modes = ['original', 'difference'] # 'original', 'difference'
 dsss = [
-    # [('CERES',''),('ERA5',''),('BARRA-R2',''),('BARRA-C2',''),('BARPA-R',''),('BARPA-C','')],
-    # [('CERES',''),('BARRA-C2',''),('BARPA-C',''),('u-ds714',1)], # control
-    # [('CERES',''),('u-ds714',1),('u-ds726',1),('u-ds717',1),], # ne1p1+CD50
-    # [('CERES',''),('BARRA-C2',''),('BARPA-C',''),('u-ds714',1),('u-ds722',1),('u-ds726',1),('u-ds717',1),],
-    # [('CERES',''),('u-ds722',1),('u-ds724',1),('u-ds726',1),], # ne1p1+CD50
-    [('ERA5',''),('u-ds714',1),('u-ds718',1),('u-ds717',1),], # CD50
+    [('IMERG',''),('BARRA-C2',''),('BARPA-C',''),('u-ds714',1),('u-ds717',1),('u-ds722',1),('u-ds726',1)],
+    # [('IMERG',''),('BARRA-C2',''),('BARPA-C',''),('u-ds714',1),('u-ds717',1),('u-ds728',1),('u-ds732',1)],
     
-    # [('CERES',''),('ERA5',''),('BARRA-C2',''),('u-ds722',1),('u-ds724',1),('u-ds726',1),],
-    # [('CERES',''),('ERA5',''),('BARRA-C2',''),('u-ds728',1),('u-ds730',1),('u-ds732',1),],
+    # [('Himawari',''),('BARRA-C2',''),('BARPA-C',''),('u-ds714',1),('u-ds717',1),('u-ds722',1),('u-ds726',1)],
+    # [('Himawari',''),('BARRA-C2',''),('BARPA-C',''),('u-ds714',1),('u-ds717',1),('u-ds728',1),('u-ds732',1)],
+    
+    # [('CERES',''),('BARRA-C2',''),('BARPA-C',''),('u-ds714',1),('u-ds717',1),('u-ds722',1),('u-ds726',1)],
+    # [('CERES',''),('BARRA-C2',''),('BARPA-C',''),('u-ds714',1),('u-ds717',1),('u-ds728',1),('u-ds732',1)],
+    
+    # [('CERES',''),('ERA5',''),('BARRA-R2',''),('BARRA-C2',''),('BARPA-R',''),('BARPA-C',''),('u-ds714',1)],#control
+    
+    # [('CERES',''),('u-ds714',1),('u-ds722',1),('u-ds724',1),('u-ds726',1)],#res
+    # [('CERES',''),('u-ds714',1),('u-ds728',1),('u-ds730',1),('u-ds732',1)],#Sres
+    # [('CERES',''),('u-ds714',1),('u-ds718',1),('u-ds717',1)],#CDNC
 ]
 
 min_lon1, max_lon1, min_lat1, max_lat1 = 80, 220, -70, 20
@@ -726,10 +736,25 @@ min_lon, max_lon, min_lat, max_lat = 110.58, 157.34, -43.69, -7.01
 pwidth = 4.4
 nrow = 1
 regridder = {}
+cltypes = {
+    'hcc': ['Cirrus', 'Cirrostratus', 'Deep convection'],
+    'mcc': ['Altocumulus', 'Altostratus', 'Nimbostratus'],
+    'lcc': ['Cumulus', 'Stratocumulus', 'Stratus'],
+    'tcc': ['Cirrus', 'Cirrostratus', 'Deep convection', 'Altocumulus', 'Altostratus', 'Nimbostratus', 'Cumulus', 'Stratocumulus', 'Stratus']}
 
 for dss in dsss:
   # dss = [('CERES',''),('ERA5',''),('BARRA-R2',1),('BARRA-C2','')],
   print(f'#-------------------------------- {dss}')
+  if len(dss) <= 3:
+      mpl.rc('font', family='Times New Roman', size=10)
+  elif len(dss) == 4:
+      mpl.rc('font', family='Times New Roman', size=12)
+  elif len(dss) == 5:
+      mpl.rc('font', family='Times New Roman', size=14)
+  elif len(dss) == 6:
+      mpl.rc('font', family='Times New Roman', size=16)
+  elif len(dss) >= 7:
+      mpl.rc('font', family='Times New Roman', size=18)
   for var2 in var2s:
     # var2 = 'rsut'
     var1 = cmip6_era5_var[var2]
@@ -742,34 +767,58 @@ for dss in dsss:
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
             cm_min=-10,cm_max=10,cm_interval1=1,cm_interval2=2,cmap='BrBG_r')
         extend2 = 'both'
-    elif var2 in ['cll', 'clm', 'clh', 'clt']:
+    elif var2 in ['cll']:
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=0, cm_max=100, cm_interval1=5, cm_interval2=10, cmap='viridis')
+            cm_min=0,cm_max=100,cm_interval1=10,cm_interval2=10,cmap='Blues_r')
         extend = 'neither'
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-100,cm_max=100,cm_interval1=10,cm_interval2=20,cmap='BrBG_r')
-        extend2 = 'neither'
-    elif var2 in ['clwvi']:
+            cm_min=-30, cm_max=30, cm_interval1=5,cm_interval2=10,cmap='BrBG_r')
+        extend2 = 'both'
+    elif var2 in ['clm', 'clh']:
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=0, cm_max=600, cm_interval1=50, cm_interval2=100, cmap='viridis')
+            cm_min=0, cm_max=50, cm_interval1=5,cm_interval2=10,cmap='Blues_r')
         extend = 'max'
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-600,cm_max=600,cm_interval1=50,cm_interval2=100,cmap='BrBG_r')
+            cm_min=-30, cm_max=30, cm_interval1=5,cm_interval2=10,cmap='BrBG_r')
+        extend2 = 'both'
+    elif var2 in ['clt']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=0,cm_max=100,cm_interval1=10,cm_interval2=10,cmap='Blues_r')
+        extend = 'neither'
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-30, cm_max=30, cm_interval1=5,cm_interval2=10,cmap='BrBG_r')
+        extend2 = 'both'
+    elif var2 in ['clwvi']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=0,cm_max=160,cm_interval1=10,cm_interval2=20,cmap='Purples_r')
+        extend = 'max'
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-120,cm_max=120,cm_interval1=10,cm_interval2=20,cmap='BrBG_r')
         extend2 = 'both'
     elif var2 in ['clivi']:
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=0, cm_max=1000, cm_interval1=100, cm_interval2=200, cmap='viridis')
+            cm_min=0,cm_max=160,cm_interval1=10,cm_interval2=20,cmap='Purples_r')
         extend = 'max'
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-1000,cm_max=1000,cm_interval1=100,cm_interval2=200,cmap='BrBG_r')
+            cm_min=-120,cm_max=120,cm_interval1=10,cm_interval2=20,cmap='BrBG_r')
         extend2 = 'both'
     elif var2=='pr':
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=0, cm_max=8, cm_interval1=1, cm_interval2=1, cmap='Blues_r')
+            cm_min=0,cm_max=8,cm_interval1=0.5,cm_interval2=1,cmap='Blues_r')
         extend = 'max'
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-4,cm_max=4,cm_interval1=1,cm_interval2=1,cmap='BrBG_r')
+            cm_min=-4,cm_max=4,cm_interval1=0.5,cm_interval2=1,cmap='BrBG_r')
         extend2 = 'both'
+        # pltlevel = np.array([0, 0.5, 1, 2, 3, 4, 6, 8, 10, 12, 16, 20,])
+        # pltticks = np.array([0, 0.5, 1, 2, 3, 4, 6, 8, 10, 12, 16, 20,])
+        # pltnorm = BoundaryNorm(pltlevel, ncolors=len(pltlevel)-1, clip=True)
+        # pltcmp = plt.get_cmap('Blues', len(pltlevel)-1)
+        # extend = 'max'
+        # pltlevel2 = np.array([-6, -4, -3, -2, -1, -0.5, 0, 0.5, 1, 2, 3, 4, 6])
+        # pltticks2 = np.array([-6, -4, -3, -2, -1, -0.5, 0, 0.5, 1, 2, 3, 4, 6])
+        # pltnorm2 = BoundaryNorm(pltlevel2, ncolors=len(pltlevel2)-1, clip=True)
+        # pltcmp2 = plt.get_cmap('BrBG', len(pltlevel2)-1)
+        # extend2 = 'both'
     elif var2 in ['evspsbl', 'evspsblpot']:
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
             cm_min=0, cm_max=1, cm_interval1=0.1, cm_interval2=0.2, cmap='Blues_r')
@@ -828,10 +877,10 @@ for dss in dsss:
         extend2 = 'both'
     elif var2 in ['rsut']:
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=-100, cm_max=0, cm_interval1=10, cm_interval2=20, cmap='Greens')
-        extend = 'min'
+            cm_min=-150, cm_max=-50, cm_interval1=5, cm_interval2=10, cmap='Greens')
+        extend = 'both'
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-40,cm_max=40,cm_interval1=5,cm_interval2=10,cmap='BrBG')
+            cm_min=-60,cm_max=60,cm_interval1=5,cm_interval2=10,cmap='BrBG')
         # pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
         #     cm_min=-600, cm_max=0, cm_interval1=50, cm_interval2=100, cmap='Greens')
         # extend = 'min'
@@ -912,69 +961,141 @@ for dss in dsss:
         print(f'Get {ids}')
         
         if ids[0] == 'CERES':
-            if var1 in ['mtdwswrf', 'mtnlwrf', 'mtuwswrf']:
-                ds['CERES'] = xr.open_dataset('data/obs/CERES/CERES_EBAF-TOA_Ed4.2.1_Subset_200003-202411.nc').rename({
-                    'toa_sw_all_mon': 'mtuwswrf',
-                    'toa_lw_all_mon': 'mtnlwrf',
-                    'solar_mon': 'mtdwswrf'})[var1].sel(time=f'{year}-{month:02d}').squeeze()
-            # elif var1 in ['msdwswrf', 'msuwswrf', 'msdwlwrf', 'msuwlwrf']:
-            # elif var1 in ['tclw', 'tciw']:
-            
-            if var1 in ['mtuwswrf', 'mtnlwrf', 'msuwswrf', 'msuwlwrf']:
-                ds[ids[0]] *= (-1)
+            # ids = ('CERES', '')
+            if var2 in ['rsdt', 'rsut', 'rsutcs', 'rlut', 'rlutcs']:
+                ds['CERES'] = xr.open_dataset(f'data/obs/CERES/CERES_SYN1deg-1H_Terra-Aqua-NOAA20_Ed4.2_Subset_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')
+                ds['CERES'] = ds['CERES'].rename({
+                    'toa_sw_clr_1h':    'rsutcs',
+                    'toa_sw_all_1h':    'rsut',
+                    'toa_lw_clr_1h':    'rlutcs',
+                    'toa_lw_all_1h':    'rlut',
+                    'toa_solar_all_1h': 'rsdt'})
+                ds['CERES'] = ds['CERES'][var2].sel(time=slice(starttime, endtime), lon=slice(min_lon1, max_lon1), lat=slice(min_lat1, max_lat1)).mean(dim='time')
+                if var2 in ['rsut', 'rsutcs', 'rlut', 'rlutcs']:
+                    ds['CERES'] *= (-1)
+            elif var2 in ['clwvi', 'clivi']:
+                ds['CERES'] = xr.open_mfdataset(sorted(glob.glob(f'data/obs/CERES/CERES_SYN1deg-1H/{var1}/CERES_SYN1deg-1H_Terra-Aqua-NOAA20_Ed4.2_Subset_{year}*.nc')))
+                if var2=='clwvi':
+                    ds['CERES'] = ds['CERES'].rename({'lwp_total_1h': var2})
+                elif var2=='clivi':
+                    ds['CERES'] = ds['CERES'].rename({'iwp_total_1h': var2})
+                ds['CERES'] = ds['CERES'][var2].sel(time=slice(starttime, endtime), lon=slice(min_lon1, max_lon1), lat=slice(min_lat1, max_lat1)).mean(dim='time')
+            else:
+                print('Warning: no var in CERES')
+        elif ids[0] == 'IMERG':
+            # ids = ('IMERG', '')
+            with open(f'data/obs/IMERG/imerg_mon_alltime_pr.pkl', 'rb') as f:
+                imerg_mon_alltime = pickle.load(f)
+            ds['IMERG']=imerg_mon_alltime['mon'].sel(time=f'{year}-{month:02d}').squeeze().sel(lon=slice(min_lon1, max_lon1), lat=slice(min_lat1, max_lat1))
+            # ds['IMERG'] = xr.open_mfdataset(sorted(glob.glob(f'data/obs/IMERG/3B-DAY.MS.MRG.3IMERG/3B-DAY.MS.MRG.3IMERG.{year}{month:02d}??-S000000-E235959.V07B.nc4.SUB.nc4')))
+            # ds['IMERG'] = ds['IMERG']['precipitation'].sel(time=slice(starttime, endtime), lon=slice(min_lon1, max_lon1), lat=slice(min_lat1, max_lat1)).mean(dim='time').compute()
+        elif ids[0] == 'Himawari':
+            # ids = ('Himawari', '')
+            cltype_count = xr.open_mfdataset(sorted(glob.glob(f'data/obs/jaxa/clp/{year}{month:02d}/??/cltype_count_{year}{month:02d}??.nc')))
+            cltype_count = cltype_count['cltype_count'].sel(time=slice(starttime, endtime), lon=slice(min_lon1, max_lon1), lat=slice(max_lat1, min_lat1))
+            ds['Himawari'] = cltype_count.sel(types=cltypes[var1]).sum(dim=['types', 'time']) / cltype_count.sel(types='finite').sum(dim='time') * 100
         elif ids[0] == 'ERA5':
-            # ids[0] = 'ERA5'
-            with open(f'data/sim/era5/mon/era5_sl_mon_alltime_{var1}.pkl', 'rb') as f:
-                era5_sl_mon_alltime = pickle.load(f)
-            ds[ids[0]] = era5_sl_mon_alltime['mon'].sel(time=f'{year}-{month:02d}').squeeze().copy()
-            if var2 in ['clwvi', 'clivi']:
-                ds[ids[0]] *= 1000
-            del era5_sl_mon_alltime
+            # ids = ('ERA5', '')
+            if var1 in ['t2m', 'd2m', 'u10', 'v10', 'u100', 'v100']:
+                # var1 = 't2m'
+                if var1 == 't2m': vart = '2t'
+                if var1 == 'd2m': vart = '2d'
+                if var1 == 'u10': vart = '10u'
+                if var1 == 'v10': vart = '10v'
+                if var1 == 'u100': vart = '100u'
+                if var1 == 'v100': vart = '100v'
+                ds['ERA5'] = xr.open_dataset(f'/g/data/rt52/era5/single-levels/reanalysis/{vart}/{year}/{vart}_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')[var1].sel(time=slice(starttime, endtime), longitude=slice(min_lon1, max_lon1), latitude=slice(max_lat1, min_lat1)).mean(dim='time')
+            elif var1=='rh2m':
+                era5_t2m = xr.open_dataset(f'/g/data/rt52/era5/single-levels/reanalysis/2t/{year}/2t_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')['t2m'].sel(time=slice(starttime, endtime), longitude=slice(min_lon1, max_lon1), latitude=slice(max_lat1, min_lat1))
+                era5_d2m = xr.open_dataset(f'/g/data/rt52/era5/single-levels/reanalysis/2d/{year}/2d_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')['d2m'].sel(time=slice(starttime, endtime), longitude=slice(min_lon1, max_lon1), latitude=slice(max_lat1, min_lat1))
+                ds['ERA5'] = relative_humidity_from_dewpoint(era5_t2m * units.K, era5_d2m * units.K).mean(dim='time') * 100
+                del era5_t2m, era5_d2m
+            elif var1=='q2m':
+                era5_sp = xr.open_dataset(f'/g/data/rt52/era5/single-levels/reanalysis/sp/{year}/sp_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')['sp'].sel(time=slice(starttime, endtime), longitude=slice(min_lon1, max_lon1), latitude=slice(max_lat1, min_lat1))
+                era5_d2m = xr.open_dataset(f'/g/data/rt52/era5/single-levels/reanalysis/2d/{year}/2d_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')['d2m'].sel(time=slice(starttime, endtime), longitude=slice(min_lon1, max_lon1), latitude=slice(max_lat1, min_lat1))
+                ds['ERA5'] = specific_humidity_from_dewpoint(era5_sp * units.Pa, era5_d2m * units.K).mean(dim='time') * 1000
+                del era5_sp, era5_d2m
+            elif var1=='mtuwswrf':
+                era5_mtnswrf = xr.open_dataset(f'/g/data/rt52/era5/single-levels/reanalysis/mtnswrf/{year}/mtnswrf_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')['mtnswrf'].sel(time=slice(starttime, endtime), longitude=slice(min_lon1, max_lon1), latitude=slice(max_lat1, min_lat1))
+                era5_mtdwswrf = xr.open_dataset(f'/g/data/rt52/era5/single-levels/reanalysis/mtdwswrf/{year}/mtdwswrf_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')['mtdwswrf'].sel(time=slice(starttime, endtime), longitude=slice(min_lon1, max_lon1), latitude=slice(max_lat1, min_lat1))
+                ds['ERA5'] = (era5_mtnswrf - era5_mtdwswrf).mean(dim='time')
+                del era5_mtnswrf, era5_mtdwswrf
+            elif var1=='mtuwswrfcs':
+                era5_mtnswrfcs = xr.open_dataset(f'/g/data/rt52/era5/single-levels/reanalysis/mtnswrfcs/{year}/mtnswrfcs_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')['mtnswrfcs'].sel(time=slice(starttime, endtime), longitude=slice(min_lon1, max_lon1), latitude=slice(max_lat1, min_lat1))
+                era5_mtdwswrf = xr.open_dataset(f'/g/data/rt52/era5/single-levels/reanalysis/mtdwswrf/{year}/mtdwswrf_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')['mtdwswrf'].sel(time=slice(starttime, endtime), longitude=slice(min_lon1, max_lon1), latitude=slice(max_lat1, min_lat1))
+                ds['ERA5'] = (era5_mtnswrfcs - era5_mtdwswrf).mean(dim='time')
+                del era5_mtnswrfcs, era5_mtdwswrf
+            elif var1=='si10':
+                era5_u10 = xr.open_dataset(f'/g/data/rt52/era5/single-levels/reanalysis/10u/{year}/10u_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')['u10'].sel(time=slice(starttime, endtime), longitude=slice(min_lon1, max_lon1), latitude=slice(max_lat1, min_lat1))
+                era5_v10 = xr.open_dataset(f'/g/data/rt52/era5/single-levels/reanalysis/10v/{year}/10v_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')['v10'].sel(time=slice(starttime, endtime), longitude=slice(min_lon1, max_lon1), latitude=slice(max_lat1, min_lat1))
+                ds['ERA5'] = ((era5_u10**2 + era5_v10**2)**0.5).mean(dim='time')
+                del era5_u10, era5_v10
+            elif var1 in ['tp', 'e', 'pev', 'mslhf', 'msshf', 'mtnlwrf', 'msdwlwrf', 'mtdwswrf', 'msdwswrfcs', 'msdwswrf', 'msnlwrf', 'mtnlwrfcs', 'msdwlwrfcs', 'skt', 'blh', 'msl', 'tcwv', 'hcc', 'mcc', 'lcc', 'tcc', 'tclw', 'tciw']:
+                ds['ERA5'] = xr.open_dataset(f'/g/data/rt52/era5/single-levels/reanalysis/{var1}/{year}/{var1}_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')[var1].sel(time=slice(starttime, endtime), longitude=slice(min_lon1, max_lon1), latitude=slice(max_lat1, min_lat1)).mean(dim='time')
+            elif var1 == 'cwp':
+                era5_tclw = xr.open_dataset(f'/g/data/rt52/era5/single-levels/reanalysis/tclw/{year}/tclw_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')['tclw'].sel(time=slice(starttime, endtime), longitude=slice(min_lon1, max_lon1), latitude=slice(max_lat1, min_lat1))
+                era5_tciw = xr.open_dataset(f'/g/data/rt52/era5/single-levels/reanalysis/tciw/{year}/tciw_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')['tciw'].sel(time=slice(starttime, endtime), longitude=slice(min_lon1, max_lon1), latitude=slice(max_lat1, min_lat1))
+                ds['ERA5'] = (era5_tclw + era5_tciw).mean(dim='time')
+            else:
+                print('Warning: no var in ERA5')
+            
+            ds['ERA5'] = ds['ERA5'].rename({'latitude':'lat','longitude':'lon'})
+            
+            if var1 in ['tp', 'e', 'cp', 'lsp', 'pev']:
+                ds['ERA5'] *= 24000
+            elif var1 in ['msl']:
+                ds['ERA5'] /= 100
+            elif var1 in ['sst', 't2m', 'd2m', 'skt']:
+                ds['ERA5'] -= zerok
+            elif var1 in ['hcc', 'mcc', 'lcc', 'tcc']:
+                ds['ERA5'] *= 100
+            elif var1 in ['z']:
+                ds['ERA5'] /= 9.80665
+            elif var1 in ['mper']:
+                ds['ERA5'] *= seconds_per_d
+            elif var1 in ['tclw', 'tciw', 'cwp']:
+                ds['ERA5'] *= 1000
+            
+            if var1 in ['e', 'pev', 'mper']:
+                ds['ERA5'] *= (-1)
         elif ids[0] == 'BARRA-R2':
-            with open(f'data/sim/um/barra_r2/barra_r2_mon_alltime_{var2}.pkl','rb') as f:
-                barra_r2_mon_alltime = pickle.load(f)
-            ds[ids[0]] = barra_r2_mon_alltime['mon'].sel(time=f'{year}-{month:02d}').squeeze().copy()
-            if var2 in ['clwvi', 'clivi']:
-                ds[ids[0]] *= 1000
-            del barra_r2_mon_alltime
-        elif ids[0] == 'BARRA-C2':
-            with open(f'data/sim/um/barra_c2/barra_c2_mon_alltime_{var2}.pkl','rb') as f:
-                barra_c2_mon_alltime = pickle.load(f)
-            ds[ids[0]] = barra_c2_mon_alltime['mon'].sel(time=f'{year}-{month:02d}').squeeze().copy()
-            if var2 in ['clwvi', 'clivi']:
-                ds[ids[0]] *= 1000
-            del barra_c2_mon_alltime
-        elif ids[0] == 'BARPA-C':
-            with open(f'data/sim/um/barpa_c/barpa_c_mon_alltime_{var2}.pkl','rb') as f:
-                barpa_c_mon_alltime = pickle.load(f)
-            ds[ids[0]] = barpa_c_mon_alltime['mon'].sel(time=f'{year}-{month:02d}').squeeze().copy()
-            if var2 in ['clwvi', 'clivi']:
-                ds[ids[0]] *= 1000
-            del barpa_c_mon_alltime
+            # ids = ('BARRA-R2', '')
+            ds[ids[0]] = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/{var2}/latest/{var2}_AUS-11_ERA5_historical_hres_BOM_BARRA-R2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')[var2].sel(time=slice(starttime, endtime)).mean(dim='time')
         elif ids[0] == 'BARPA-R':
-            with open(f'data/sim/um/barpa_r/barpa_r_mon_alltime_{var2}.pkl','rb') as f:
-                barpa_r_mon_alltime = pickle.load(f)
-            ds[ids[0]] = barpa_r_mon_alltime['mon'].sel(time=f'{year}-{month:02d}').squeeze().copy()
-            if var2 in ['clwvi', 'clivi']:
-                ds[ids[0]] *= 1000
-            del barpa_r_mon_alltime
+            # ids = ('BARPA-R', '')
+            ds[ids[0]] = xr.open_dataset(f'/g/data/py18/BARPA/output/CMIP6/DD/AUS-15/BOM/ERA5/evaluation/r1i1p1f1/BARPA-R/v1-r1/1hr/{var2}/latest/{var2}_AUS-15_ERA5_evaluation_r1i1p1f1_BOM_BARPA-R_v1-r1_1hr_{year}01-{year}12.nc')[var2].sel(time=slice(starttime, endtime)).mean(dim='time')
+        elif ids[0] == 'BARRA-C2':
+            # ids = ('BARRA-C2', '')
+            ds[ids[0]] = xr.open_dataset(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/{var2}/latest/{var2}_AUST-04_ERA5_historical_hres_BOM_BARRA-C2_v1_1hr_{year}{month:02d}-{year}{month:02d}.nc')[var2].sel(time=slice(starttime, endtime)).mean(dim='time')
+        elif ids[0] == 'BARPA-C':
+            # ids = ('BARPA-C', '')
+            ds[ids[0]] = xr.open_dataset(f'/g/data/py18/BARPA/output/CMIP6/DD/AUST-04/BOM/ERA5/evaluation/r1i1p1f1/BARPA-C/v1-r1/1hr/{var2}/latest/{var2}_AUST-04_ERA5_evaluation_r1i1p1f1_BOM_BARPA-C_v1-r1_1hr_{year}{month:02d}-{year}{month:02d}.nc')[var2].sel(time=slice(starttime, endtime)).mean(dim='time')
         elif ids[0] in suite_res.keys():
+            # ids = ('u-ds714', 1)
             isuite = ids[0]
             ires = suite_res[isuite][ids[1]]
             ilabel = f'{suite_label[isuite]}'
             
             fl = sorted(glob.glob(f'scratch/cylc-run/{isuite}/share/cycle/{year}{month:02d}??T0000Z/Australia/{ires}/*/um/umnsaa_pa000.nc'))
-            ds[ilabel] = xr.open_mfdataset(fl, preprocess=lambda ds: ds.pipe(preprocess_umoutput)[var2stash[var2]])[var2stash[var2]].mean(dim='time')
+            if var2 == 'pr':
+                ds[ilabel] = xr.open_mfdataset(fl, preprocess=lambda ds: ds.pipe(preprocess_umoutput))
+                if var2stash_gal[var2] in ds[ilabel].data_vars:
+                    ds[ilabel] = ds[ilabel][var2stash_gal[var2]]
+                elif (var2stash_ral['rain'] in ds[ilabel].data_vars) & (var2stash_ral['snow'] in ds[ilabel].data_vars):
+                    ds[ilabel] = (ds[ilabel][var2stash_ral['rain']] + ds[ilabel][var2stash_ral['snow']])
+                ds[ilabel] = ds[ilabel].sel(time=slice(starttime, endtime)).mean(dim='time').compute()
+            else:
+                ds[ilabel] = xr.open_mfdataset(fl, preprocess=lambda ds: ds.pipe(preprocess_umoutput)[var2stash[var2]])[var2stash[var2]].sel(time=slice(starttime, endtime)).mean(dim='time').compute()
             
             if var2 in ['pr', 'evspsbl', 'evspsblpot']:
-                ds[ilabel] *= seconds_per_d / 24
+                ds[ilabel] *= seconds_per_d
             elif var2 in ['tas', 'ts']:
                 ds[ilabel] -= zerok
             elif var2 in ['rlus', 'rluscs', 'rlut', 'rlutcs', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'hfls', 'hfss']:
                 ds[ilabel] *= (-1)
             elif var2 in ['psl']:
                 ds[ilabel] /= 100
-            elif var2 in ['huss', 'clwvi', 'clivi']:
+            elif var2 in ['huss', 'clwvi', 'clivi', 'cwp']:
                 ds[ilabel] *= 1000
             elif var2 in ['cll', 'clm', 'clh', 'clt']:
                 ds[ilabel] *= 100
@@ -1001,7 +1122,18 @@ for dss in dsss:
             ds[ids[0]]['lon'] = ds[ids[0]]['lon'] % 360
             ds[ids[0]] = ds[ids[0]].sortby(['lon', 'lat'])
         
-        if ids[0] in ['BARRA-R2', 'BARRA-C2']:
+        if ids[0] in ['BARRA-R2', 'BARRA-C2', 'BARPA-R', 'BARPA-C']:
+            if var2 in ['pr', 'evspsbl', 'evspsblpot']:
+                ds[ids[0]] *= seconds_per_d
+            elif var2 in ['tas', 'ts']:
+                ds[ids[0]] -= zerok
+            elif var2 in ['rlus', 'rluscs', 'rlut', 'rlutcs', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'hfls', 'hfss']:
+                ds[ids[0]] *= (-1)
+            elif var2 in ['psl']:
+                ds[ids[0]] /= 100
+            elif var2 in ['huss', 'clwvi', 'clivi', 'cwp']:
+                ds[ids[0]] *= 1000
+            
             if len(extents)==0:
                 extents = [ds[ids[0]].lon[0].values, ds[ids[0]].lon[-1].values,
                            ds[ids[0]].lat[0].values, ds[ids[0]].lat[-1].values]
@@ -1019,60 +1151,65 @@ for dss in dsss:
     
     min_lons, max_lons, min_lats, max_lats = extents
     min_lonl, max_lonl, min_latl, max_latl = extentl
-    # pheight = pwidth * (max_latl - min_latl) / (max_lonl - min_lonl)
     pheight = pwidth * (max_lats - min_lats) / (max_lons - min_lons)
-    fm_bottom = 2/(pheight*nrow+3)
-    fm_top = 1 - 1/(pheight*nrow+3)
+    # pheight = pwidth * (max_latl - min_latl) / (max_lonl - min_lonl)
+    fm_bottom = 2.2/(pheight*nrow+3)
+    fm_top = 1 - 0.8/(pheight*nrow+3)
     
     for imode in modes:
-        # imode = 'difference'
+        # imode = 'original'
         print(f'#-------- {imode}')
         
         plt_colnames = list(ds.keys())
-        if imode=='difference':
-            plt_colnames = [plt_colnames[0]] + [f'{iname} - {plt_colnames[0]}' for iname in plt_colnames[1:]]
+        # if imode=='difference':
+        #     plt_colnames = [plt_colnames[0]] + [f'{iname} - {plt_colnames[0]}' for iname in plt_colnames[1:]]
         
         opng = f"figures/4_um/4.1_access_ram3/4.1.1_sim_obs/4.1.1.3 {var2} {', '.join(x.replace('$', '').replace('\_', ' ') for x in ds.keys())} {imode} {str(np.round(min_lonl, 2))}_{str(np.round(max_lonl, 2))}_{str(np.round(min_latl, 2))}_{str(np.round(max_latl, 2))} {year}-{month:02d}.png"
         ncol = len(plt_colnames)
+        cbar_label1 = f"{calendar.month_name[month]} {year} {era5_varlabels[var1]}"
+        cbar_label2 = f"Difference in {era5_varlabels[var1]}"
         fig, axs = plt.subplots(
             nrow, ncol,
             figsize=np.array([pwidth*ncol, pheight*nrow+3])/2.54,
             subplot_kw={'projection': ccrs.PlateCarree(central_longitude=180)},
-            gridspec_kw={'hspace': 0.01, 'wspace': 0.01},)
+            gridspec_kw={'hspace': 0.01, 'wspace': 0.05},)
         
+        if var2 == 'pr':
+            digit = 2
+        else:
+            digit = 1
         for jcol in range(ncol):
-            axs[jcol] = regional_plot(extent=extents, central_longitude=180, ax_org=axs[jcol], lw=0.3)
-        
+            axs[jcol] = regional_plot(extent=extents, central_longitude=180, ax_org=axs[jcol], lw=0.5)
         if imode == 'original':
             for jcol, ids1 in enumerate(ds.keys()):
-                # print(f'#---- {jcol} {ids1}')
+                print(f'#---- {jcol} {ids1}')
                 plt_mesh = axs[jcol].pcolormesh(
                     ds[ids1].lon,
                     ds[ids1].lat,
                     ds[ids1],
                     norm=pltnorm, cmap=pltcmp,
                     transform=ccrs.PlateCarree(), zorder=1)
-                mean = ds[ids1].sel(lon=slice(min_lons, max_lons), lat=slice(min_lats, max_lats)).weighted(np.cos(np.deg2rad(ds[ids1].sel(lon=slice(min_lons, max_lons), lat=slice(min_lats, max_lats)).lat))).mean().values
+                mean = coslat_weighted_mean(ds[ids1].sel(lon=slice(min_lons, max_lons), lat=slice(min_lats, max_lats)))
                 if jcol==0:
-                    plt_text = [f'Mean: {str(np.round(mean, 1))}']
+                    plt_text = [f'Mean: {str(np.round(mean, digit))}']
                 else:
-                    plt_text.append(f'{str(np.round(mean, 1))}')
+                    plt_text.append(f'{str(np.round(mean, digit))}')
                 cbar = fig.colorbar(
                     plt_mesh, #cm.ScalarMappable(norm=pltnorm1, cmap=pltcmp1), #
                     format=remove_trailing_zero_pos,
                     orientation="horizontal", ticks=pltticks, extend=extend,
-                    cax=fig.add_axes([1/3, fm_bottom-0.1, 1/3, 0.03]))
-                cbar.ax.set_xlabel(era5_varlabels[var1].replace('day^{-1}', 'hour^{-1}'), fontsize=10, labelpad=1)
-                cbar.ax.tick_params(labelsize=10, pad=1)
+                    cax=fig.add_axes([0.26, fm_bottom*0.75, 0.48, fm_bottom/8]))
+                cbar.ax.set_xlabel(cbar_label1)
         elif imode=='difference':
+            # imode='difference'
             plt_mesh = axs[0].pcolormesh(
                 ds[list(ds.keys())[0]].lon,
                 ds[list(ds.keys())[0]].lat,
                 ds[list(ds.keys())[0]],
                 norm=pltnorm, cmap=pltcmp,
                 transform=ccrs.PlateCarree(), zorder=1)
-            mean = ds[list(ds.keys())[0]].sel(lon=slice(min_lons, max_lons), lat=slice(min_lats, max_lats)).weighted(np.cos(np.deg2rad(ds[list(ds.keys())[0]].sel(lon=slice(min_lons, max_lons), lat=slice(min_lats, max_lats)).lat))).mean().values
-            plt_text = [f'Mean: {str(np.round(mean, 1))}']
+            mean = coslat_weighted_mean(ds[list(ds.keys())[0]].sel(lon=slice(min_lons, max_lons), lat=slice(min_lats, max_lats)))
+            plt_text = [f'Mean: {str(np.round(mean, digit))}']
             for jcol, ids1 in zip(range(1, ncol), list(ds.keys())[1:]):
                 # jcol = 1; ids1 = list(ds.keys())[1]
                 ids2 = list(ds.keys())[0]
@@ -1086,9 +1223,10 @@ for dss in dsss:
                 rmsd = coslat_weighted_rmsd(plt_data.sel(lon=slice(min_lons, max_lons), lat=slice(min_lats, max_lats)))
                 md = coslat_weighted_mean(plt_data.sel(lon=slice(min_lons, max_lons), lat=slice(min_lats, max_lats)))
                 if jcol==1:
-                    plt_text.append(f'RMSD: {str(np.round(rmsd, 1))}, MD: {str(np.round(md, 1))}')
+                    plt_text.append(f'{str(np.round(rmsd, digit))}, {str(np.round(md, digit))}')
+                    # plt_text.append(f'RMSD: {str(np.round(rmsd, 1))}, MD: {str(np.round(md, 1))}')
                 else:
-                    plt_text.append(f'{str(np.round(rmsd, 1))}, {str(np.round(md, 1))}')
+                    plt_text.append(f'{str(np.round(rmsd, digit))}, {str(np.round(md, digit))}')
                 plt_mesh2 = axs[jcol].pcolormesh(
                     plt_data.lon, plt_data.lat, plt_data,
                     norm=pltnorm2, cmap=pltcmp2,
@@ -1097,16 +1235,14 @@ for dss in dsss:
                 plt_mesh, #cm.ScalarMappable(norm=pltnorm1, cmap=pltcmp1), #
                 format=remove_trailing_zero_pos,
                 orientation="horizontal", ticks=pltticks, extend=extend,
-                cax=fig.add_axes([0.05, fm_bottom-0.1, 0.4, 0.03]))
-            cbar.ax.set_xlabel(era5_varlabels[var1].replace('day^{-1}', 'hour^{-1}'), fontsize=10, labelpad=1)
-            cbar.ax.tick_params(labelsize=10, pad=1)
+                cax=fig.add_axes([0.03, fm_bottom*0.8, 0.44, fm_bottom/8]))
+            cbar.ax.set_xlabel(cbar_label1)
             cbar2 = fig.colorbar(
                 plt_mesh2, #cm.ScalarMappable(norm=pltnorm2, cmap=pltcmp2), #
                 format=remove_trailing_zero_pos,
                 orientation="horizontal", ticks=pltticks2, extend=extend2,
-                cax=fig.add_axes([0.55, fm_bottom-0.1, 0.4, 0.03]))
-            cbar2.ax.set_xlabel(f"Difference in {era5_varlabels[var1].replace('day^{-1}', 'hour^{-1}')}", fontsize=10, labelpad=1)
-            cbar2.ax.tick_params(labelsize=10, pad=1)
+                cax=fig.add_axes([0.53, fm_bottom*0.8, 0.44, fm_bottom/8]))
+            cbar2.ax.set_xlabel(cbar_label2)
         
         for jcol in range(ncol):
             axs[jcol].text(
@@ -1117,7 +1253,6 @@ for dss in dsss:
                 0.01, 0.01, plt_text[jcol],
                 ha='left', va='bottom', transform=axs[jcol].transAxes)
         
-        fig.text(0.5, fm_bottom-0.01, f'{year}-{month:02d}', ha='center', va='top')
         fig.subplots_adjust(left=0.005, right=0.995, bottom=fm_bottom, top=fm_top)
         fig.savefig(opng)
 
