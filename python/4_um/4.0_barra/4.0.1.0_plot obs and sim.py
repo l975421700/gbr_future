@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -P v46 -l walltime=5:00:00,ncpus=1,mem=192GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/qx55+gdata/gx60+gdata/py18
+# qsub -I -q normal -P v46 -l walltime=1:00:00,ncpus=1,mem=192GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/qx55+gdata/gx60+gdata/py18
 
 
 # region import packages
@@ -728,19 +728,19 @@ plt_data[ids].weighted(np.cos(np.deg2rad(plt_data[ids].lat))).mean()
 mpl.rc('font', family='Times New Roman', size=12)
 
 # options
-# ['rsut', 'clwvi', 'clivi', 'rlut', 'rsdt', 'cll', 'clm', 'clh', 'clt']
-vars = ['cll', 'clm', 'clh', 'clt']
+# ['rsut', 'clwvi', 'clivi', 'rlut', 'rsdt', 'cll', 'clm', 'clh', 'clt', 'pr']
+vars = ['pr']
 # ['CERES', 'Himawari']
-ds_names = ['Himawari', 'ERA5', 'BARRA-R2', 'BARRA-C2', 'BARPA-R', 'BARPA-C', ]
-plt_modes = ['annual', 'monthly', 'hourly'] # ['annual', 'monthly', 'hourly']
+ds_names = ['ERA5', 'BARRA-R2', 'BARRA-C2', 'BARPA-R', 'BARPA-C', ]
+plt_modes = ['hourly'] # ['annual', 'monthly', 'hourly']
 
 # settings
 years = '2016'; yeare = '2023'
-# plt_regions = ['c2_domain']
-# min_lon, max_lon, min_lat, max_lat = [110.58, 157.34, -43.69, -7.01]
+plt_regions = ['c2_domain']
+min_lon, max_lon, min_lat, max_lat = [110.58, 157.34, -43.69, -7.01]
 # WillisIsland_loc={'lat':-16.2876,'lon':149.962}
-plt_regions = ['wi_3']
-min_lon, max_lon, min_lat, max_lat = [146.962, 152.962, -19.2876, -13.2876]
+# plt_regions = ['wi_3']
+# min_lon, max_lon, min_lat, max_lat = [146.962, 152.962, -19.2876, -13.2876]
 plt_types = ['original', 'MD']
 cltypes = {
     'hcc': ['Cirrus', 'Cirrostratus', 'Deep convection'],
@@ -814,6 +814,8 @@ for ivar in vars:
                 ds_data[plt_mode][ids] = ds_data[plt_mode][ids].roll(time=-1)
             if ivar in ['clwvi', 'clivi']:
                 ds_data[plt_mode][ids] *= 1000
+            elif ivar in ['pr']:
+                ds_data[plt_mode][ids] *= 24
         elif ids == 'BARRA-R2':
             # ids = 'BARRA-R2'
             if plt_mode in ['annual', 'monthly']:
