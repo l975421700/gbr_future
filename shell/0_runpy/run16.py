@@ -112,15 +112,15 @@ from metplot import si2reflectance, si2radiance, get_modis_latlonrgbs, get_modis
 # region obs vs. sim monthly data Cross Sections
 
 var2s = [
-    'qcl',
+    'clslw',
     # 'hus', 'ta', 'ua', 'va', 'wap', 'zg', 'hur', 'theta', 'theta_e',
     # 'qcf', 'qcl', 'qr', 'qs',
     # 'qc', 'qt', 'clslw', 'qg',
     ]
 dsss = [
     # [('ERA5',''),('BARRA-C2',''),('BARPA-C',''),('u-ds714',1),('u-ds717',1),('u-ds722',1),('u-ds726',1)],
-    [('ERA5',''),('u-ds714',1),('u-ds717',1),('u-ds722',1),('u-ds726',1)],
-    # [('u-ds714',1),('u-ds717',1),('u-ds722',1),('u-ds726',1)],
+    # [('ERA5',''),('u-ds714',1),('u-ds717',1),('u-ds722',1),('u-ds726',1)],
+    [('u-ds714',1),('u-ds717',1),('u-ds722',1),('u-ds726',1)],
     ]
 
 modes = ['original', 'difference'] # 'original', 'difference'

@@ -105,6 +105,11 @@ stash2var = {
     'STASH_m01s20i114': 'CAPE',
     'STASH_m01s30i405': 'clwvi',
     'STASH_m01s30i406': 'clivi',
+    'STASH_m01s03i209': 'uas',
+    'STASH_m01s03i210': 'vas',
+    'STASH_m01s03i230': 'sfcWind',
+    'STASH_m01s16i201': 'zg',
+    'STASH_m01s20i115': 'CIN',
     }
 
 stash2var_gal = stash2var | {
@@ -242,3 +247,37 @@ suite_label = {
 
 # endregion
 
+
+# region interp_to_pressure_levels
+
+def interp_to_pressure_levels(var, pressure, plevs_hpa):
+    import numpy as np
+    import xarray as xr
+    
+    # Core interpolation function
+    def _interp_column(p_target, p, v):
+        # ensure ascending order for np.interp
+        order = np.argsort(p)
+        p_sorted = p[order]
+        v_sorted = v[order]
+        return np.interp(p_target, p_sorted, v_sorted, left=np.nan, right=np.nan)
+    
+    # Vectorized interpolation over latitude (and optionally time)
+    result = xr.apply_ufunc(
+        _interp_column,
+        xr.DataArray(plevs_hpa, dims=['pressure']),
+        pressure,
+        var,
+        input_core_dims=[['pressure'], ['theta80'], ['theta80']],
+        output_core_dims=[['pressure']],
+        vectorize=True,
+        dask='parallelized',
+        output_dtypes=[var.dtype],
+    )
+    
+    # Assign coordinates and attributes
+    result = result.assign_coords(pressure=('pressure', plevs_hpa),lat=var.lat)
+    
+    return result
+
+# endregion
