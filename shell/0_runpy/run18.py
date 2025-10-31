@@ -113,7 +113,7 @@ from metplot import si2reflectance, si2radiance, get_modis_latlonrgbs, get_modis
 # Memory Used: 31.33GB; Walltime Used: 02:36:31
 
 var2s = [
-    'hus'
+    'hur'
     # 'hus', 'ta', 'wap', 'zg', 'theta', 'theta_e', 'hur', 'ua', 'va',
     # 'qcf', 'qcl', 'qr', 'qs',
     # 'qc', 'qt', 'clslw', 'qg', 'ACF', 'BCF', 'TCF',

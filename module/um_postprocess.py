@@ -110,6 +110,9 @@ stash2var = {
     'STASH_m01s03i230': 'sfcWind',
     'STASH_m01s16i201': 'zg',
     'STASH_m01s20i115': 'CIN',
+    'STASH_m01s00i265': 'ACF',
+    'STASH_m01s00i266': 'BCF',
+    'STASH_m01s02i261': 'TCF',
     }
 
 stash2var_gal = stash2var | {

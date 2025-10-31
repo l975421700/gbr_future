@@ -102,6 +102,9 @@ era5_varlabels = {
     'mcc': r'MCC [$\%$]',
     'lcc': r'LCC [$\%$]',
     'tcc': r'TCC [$\%$]',
+    'ACF': r'ACF [$\%$]',
+    'BCF': r'BCF [$\%$]',
+    'TCF': r'TCF [$\%$]',
     'clear': r'clear sky [$\%$]',
     't2m': r'$t2m$ [$°C$]',
     'msnlwrf': r'surface net LW radiation [$W \; m^{-2}$]',
@@ -169,7 +172,7 @@ era5_varlabels = {
     'cswc': r'$SWC$ [$g \; kg^{-1}$]',
     'qc': r'$CWC$ [$g \; kg^{-1}$]',
     'qt': r'$qt$ [$g \; kg^{-1}$]',
-    'clslw': r'$supercooled liquid water$ [$g \; kg^{-1}$]',
+    'clslw': r'supercooled liquid water [$g \; kg^{-1}$]',
     'qg': r'$GWC$ [$g \; kg^{-1}$]',
     'pv': r'$pv$ [$10^{-6} \; K \; m^{2} \; kg^{-1} \; s^{-1}$]',
     'r': r'$RH$ [$\%$]',
@@ -278,6 +281,9 @@ cmip6_era5_var = {
     'qt': 'qt',
     'clslw': 'clslw',
     'qg': 'qg',
+    'ACF': 'ACF',
+    'BCF': 'BCF',
+    'TCF': 'TCF',
     # 'wa',
 }
 # tcw = tcwv + tcsw + tcrw + tclw + tciw
