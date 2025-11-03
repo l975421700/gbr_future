@@ -1326,22 +1326,22 @@ for dss in dsss:
 # Memory Used: 31.33GB; Walltime Used: 02:36:31
 
 var2s = [
-    'qr',
+    'ua',
     # 'hus', 'ta', 'wap', 'zg', 'theta', 'theta_e', 'hur', 'ua', 'va',
     # 'qcf', 'qcl', 'qr', 'qs',
     # 'qc', 'qt', 'clslw', 'qg', 'ACF', 'BCF', 'TCF',
     ]
 dsss = [
     # [('ERA5',''),('BARRA-C2',''),('BARPA-C',''),('u-ds714',1),('u-ds717',1),('u-ds722',1),('u-ds726',1)],
-    [('ERA5',''),('u-ds714',1),('u-ds717',1),('u-ds722',1),('u-ds726',1)],
-    # [('u-ds714',1),('u-ds717',1),('u-ds722',1),('u-ds726',1)],
+    # [('ERA5',''),('u-ds714',1),('u-ds717',1),('u-ds722',1),('u-ds726',1)],
+    [('u-ds714',1),('u-ds717',1),('u-ds722',1),('u-ds726',1)],
     ]
 modes = ['original', 'difference'] # 'original', 'difference'
 
 year, month = 2020, 6
 starttime = datetime(year, month, 2)
 endtime = datetime(year, month, 30, 23, 59)
-ptop = 600
+ptop = 200
 plevs_hpa = np.arange(1000, ptop-1e-4, -25)
 wi_loc={'lat':-16.2876,'lon':149.962}
 min_lon, max_lon, min_lat, max_lat = [110.58, 157.34, -43.69, -7.01]
@@ -1500,7 +1500,11 @@ for dss in dsss:
             
             fl = sorted(glob.glob(f'scratch/cylc-run/{isuite}/share/cycle/{year}{month:02d}??T0000Z/Australia/{ires}/*/um/umnsaa_pa000.nc'))
             ds_pa = xr.open_mfdataset(fl, preprocess=lambda ds_in: ds_in.pipe(preprocess_umoutput)[var2stash_ral['pa']].sel(lon=wi_loc['lon'], method='nearest'), combine='by_coords', parallel=True, data_vars='minimal', coords='minimal',compat='override')[var2stash_ral['pa']].sel(time=slice(starttime, endtime)).compute()
-            if var2 in var2stash_ral.keys():
+            if var2 == 'ua':
+                ds_data = xr.open_mfdataset(fl, preprocess=lambda ds_in: ds_in.pipe(preprocess_umoutput)[var2stash_ral[var2]])[var2stash_ral[var2]].rename({'rho80': 'theta80', 'grid_longitude_cu': 'lon'}).sel(lon=wi_loc['lon'], method='nearest').sel(time=slice(starttime, endtime)).compute()
+            elif var2 == 'va':
+                ds_data = xr.open_mfdataset(fl, preprocess=lambda ds_in: ds_in.pipe(preprocess_umoutput)[var2stash_ral[var2]])[var2stash_ral[var2]].rename({'rho80': 'theta80', 'grid_latitude_cv': 'lat'}).sel(lon=wi_loc['lon'], method='nearest').sel(time=slice(starttime, endtime)).compute()
+            elif var2 in var2stash_ral.keys():
                 # var2='hus'
                 ds_data = xr.open_mfdataset(fl, preprocess=lambda ds_in: ds_in.pipe(preprocess_umoutput)[var2stash_ral[var2]].sel(lon=wi_loc['lon'], method='nearest'), combine='by_coords', parallel=True, data_vars='minimal', coords='minimal',compat='override')[var2stash_ral[var2]].sel(time=slice(starttime, endtime)).compute()
             elif var2 == 'hur':
@@ -1724,7 +1728,7 @@ for dss in dsss:
             axs[jcol].xaxis.set_minor_locator(AutoMinorLocator(2))
             axs[jcol].xaxis.set_major_formatter(LatitudeFormatter(degree_symbol='° '))
             
-            axs[jcol].grid(True, which='both', lw=0.5, c='gray', alpha=0.5, linestyle='--')
+            axs[jcol].grid(True, which='both', lw=0.5, c='gray', alpha=0.5, ls='--')
         
         axs[0].set_ylabel(r'Pressure [$hPa$]')
         # axs[3].set_xlabel(f'Meridional cross section along Willis Island', labelpad=8)

@@ -55,6 +55,7 @@ zerok = 273.15
 
 ds_color = {
     'Himawari': 'black',
+    'Radiosonde': 'black',
     'CERES': 'black',
     'ERA5': 'tab:blue',
     'BARRA-R2': 'tab:orange',
@@ -63,6 +64,10 @@ ds_color = {
     'BARPA-C': 'tab:purple',
     'C2-RAL3.3': 'tab:red',
     'UM': 'tab:cyan',
+    r'$control$': 'tab:cyan',
+    r'$CN50$': 'tab:blue',
+    r'$NE4p4s$': 'tab:red',
+    r'$NE1p1s$': 'tab:orange',
 }
 
 

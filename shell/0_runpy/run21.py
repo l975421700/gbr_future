@@ -118,7 +118,7 @@ from um_postprocess import (
 
 # options
 colvars = ['hus', 'hur', 'ta', 'theta', 'theta_e', 'ua', 'va']
-dss = [('Radiosonde',''), ('ERA5',''), ('BARRA-R2',''), ('BARRA-C2','')]
+dss = [('Radiosonde',''),('u-ds714',1),('u-ds717',1),('u-ds722',1),('u-ds726',1)]
 # [('Radiosonde',''), ('ERA5',''), ('BARRA-R2',''), ('BARRA-C2','')]
 # [('Radiosonde',''),('BARRA-C2',''),('BARPA-C',''),('u-ds714',1),('u-ds717',1),('u-ds722',1),('u-ds726',1)],
 # [('Radiosonde',''),('u-ds714',1),('u-ds717',1),('u-ds722',1),('u-ds726',1)],

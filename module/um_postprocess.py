@@ -263,7 +263,7 @@ def interp_to_pressure_levels(var, pressure, plevs_hpa):
         order = np.argsort(p)
         p_sorted = p[order]
         v_sorted = v[order]
-        return np.interp(p_target, p_sorted, v_sorted, left=np.nan, right=np.nan)
+        return np.interp(np.log(p_target), np.log(p_sorted), v_sorted, left=np.nan, right=np.nan)
     
     # Vectorized interpolation over latitude (and optionally time)
     result = xr.apply_ufunc(
@@ -279,7 +279,7 @@ def interp_to_pressure_levels(var, pressure, plevs_hpa):
     )
     
     # Assign coordinates and attributes
-    result = result.assign_coords(pressure=('pressure', plevs_hpa),lat=var.lat)
+    result = result.assign_coords(pressure=('pressure', plevs_hpa))
     
     return result
 

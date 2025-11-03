@@ -113,14 +113,14 @@ from metplot import si2reflectance, si2radiance, get_modis_latlonrgbs, get_modis
 # Memory Used: 31.33GB; Walltime Used: 02:36:31
 
 var2s = [
-    'theta_e',
+    'ua', 'va',
     # 'hus', 'ta', 'wap', 'zg', 'theta', 'theta_e', 'hur', 'ua', 'va',
     # 'qcf', 'qcl', 'qr', 'qs',
     # 'qc', 'qt', 'clslw', 'qg', 'ACF', 'BCF', 'TCF',
     ]
 dsss = [
-    [('ERA5',''),('BARRA-C2',''),('BARPA-C',''),('u-ds714',1),('u-ds717',1),('u-ds722',1),('u-ds726',1)],
-    [('ERA5',''),('u-ds714',1),('u-ds717',1),('u-ds722',1),('u-ds726',1)],
+    # [('ERA5',''),('BARRA-C2',''),('BARPA-C',''),('u-ds714',1),('u-ds717',1),('u-ds722',1),('u-ds726',1)],
+    # [('ERA5',''),('u-ds714',1),('u-ds717',1),('u-ds722',1),('u-ds726',1)],
     [('u-ds714',1),('u-ds717',1),('u-ds722',1),('u-ds726',1)],
     ]
 modes = ['original', 'difference'] # 'original', 'difference'
@@ -287,7 +287,11 @@ for dss in dsss:
             
             fl = sorted(glob.glob(f'scratch/cylc-run/{isuite}/share/cycle/{year}{month:02d}??T0000Z/Australia/{ires}/*/um/umnsaa_pa000.nc'))
             ds_pa = xr.open_mfdataset(fl, preprocess=lambda ds_in: ds_in.pipe(preprocess_umoutput)[var2stash_ral['pa']].sel(lon=wi_loc['lon'], method='nearest'), combine='by_coords', parallel=True, data_vars='minimal', coords='minimal',compat='override')[var2stash_ral['pa']].sel(time=slice(starttime, endtime)).compute()
-            if var2 in var2stash_ral.keys():
+            if var2 == 'ua':
+                ds_data = xr.open_mfdataset(fl, preprocess=lambda ds_in: ds_in.pipe(preprocess_umoutput)[var2stash_ral[var2]])[var2stash_ral[var2]].rename({'rho80': 'theta80', 'grid_longitude_cu': 'lon'}).sel(lon=wi_loc['lon'], method='nearest').sel(time=slice(starttime, endtime)).compute()
+            elif var2 == 'va':
+                ds_data = xr.open_mfdataset(fl, preprocess=lambda ds_in: ds_in.pipe(preprocess_umoutput)[var2stash_ral[var2]])[var2stash_ral[var2]].rename({'rho80': 'theta80', 'grid_latitude_cv': 'lat'}).sel(lon=wi_loc['lon'], method='nearest').sel(time=slice(starttime, endtime)).compute()
+            elif var2 in var2stash_ral.keys():
                 # var2='hus'
                 ds_data = xr.open_mfdataset(fl, preprocess=lambda ds_in: ds_in.pipe(preprocess_umoutput)[var2stash_ral[var2]].sel(lon=wi_loc['lon'], method='nearest'), combine='by_coords', parallel=True, data_vars='minimal', coords='minimal',compat='override')[var2stash_ral[var2]].sel(time=slice(starttime, endtime)).compute()
             elif var2 == 'hur':
