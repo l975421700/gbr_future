@@ -115,9 +115,9 @@ from metplot import si2reflectance, si2radiance, get_modis_latlonrgbs, get_modis
 # region obs vs. sim timestamp
 
 year, month, day, hour = 2020, 6, 2, 3
-var2s = ['rsut']
+var2s = ['cwp']
 # 'rsut', 'rlut', 'cll', 'clm', 'clh', 'clt', 'clivi', 'clwvi', 'blh'
-modes = ['original'] # 'original', 'difference'
+modes = ['original', 'difference'] # 'original', 'difference'
 dsss = [
     # [('MODIS Aqua',''),('u-dq700',1),('u-dr041',1),('u-dq799',1),('u-dr145',1)],#res+CDNC
     # [('MODIS Aqua',''),('u-dq700',1),('u-dr041',1),('u-dr091',1),('u-dr147',1)],#Sres+CDNC
@@ -134,10 +134,10 @@ dsss = [
     # [('u-dq700',1),('u-dr107',1),('u-dq912',1),('u-dt039',1)],#setups
     
     # [('CERES',''),('u-dt042',1),('u-dq700',1),('u-dr040',1),('u-dr041',1),('u-dt020',1)],#CDNC
-    # [('u-dq700',1),('u-dr040',1),('u-dr041',1)],#CDNC
+    [('u-dq700',1),('u-dr040',1),('u-dr041',1)],#CDNC
     
     # [('CERES',''),('u-dq700',1),('u-dr095',1),('u-dr093',1),('u-dr091',1)],#Sres
-    [('CERES',''),('u-dq700',1),('u-dq788',1),('u-dq911',1),('u-dq799',1)],#res
+    # [('CERES',''),('u-dq700',1),('u-dq788',1),('u-dq911',1),('u-dq799',1)],#res
     # [('CERES',''),('u-dq700',1),('u-dr041',1),('u-dr091',1),('u-dr147',1)],#Sres+CDNC
     # [('CERES',''),('u-dq700',1),('u-dr041',1),('u-dq799',1),('u-dr145',1)],#res+CDNC
     
@@ -1326,7 +1326,7 @@ for dss in dsss:
 # Memory Used: 31.33GB; Walltime Used: 02:36:31
 
 var2s = [
-    'ua',
+    'qcl',
     # 'hus', 'ta', 'wap', 'zg', 'theta', 'theta_e', 'hur', 'ua', 'va',
     # 'qcf', 'qcl', 'qr', 'qs',
     # 'qc', 'qt', 'clslw', 'qg', 'ACF', 'BCF', 'TCF',
@@ -1341,7 +1341,7 @@ modes = ['original', 'difference'] # 'original', 'difference'
 year, month = 2020, 6
 starttime = datetime(year, month, 2)
 endtime = datetime(year, month, 30, 23, 59)
-ptop = 200
+ptop = 800
 plevs_hpa = np.arange(1000, ptop-1e-4, -25)
 wi_loc={'lat':-16.2876,'lon':149.962}
 min_lon, max_lon, min_lat, max_lat = [110.58, 157.34, -43.69, -7.01]
@@ -1387,10 +1387,10 @@ for dss in dsss:
     extend2 = 'both'
     if var2 in ['hus']:
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=0, cm_max=16, cm_interval1=1, cm_interval2=2, cmap='Blues_r')
-        extend = 'max'
+            cm_min=8, cm_max=16, cm_interval1=1, cm_interval2=1, cmap='Blues_r')
+        extend = 'both'
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-3, cm_max=3, cm_interval1=0.5, cm_interval2=0.5, cmap='BrBG_r')
+            cm_min=-2, cm_max=2, cm_interval1=0.25, cm_interval2=0.5, cmap='BrBG_r')
         # pltlevel = np.array([0, 0.1, 0.2, 0.5, 1, 2, 4, 8, 12, 16, 20])
         # pltticks = np.array([0, 0.1, 0.2, 0.5, 1, 2, 4, 8, 12, 16, 20])
         # pltnorm = BoundaryNorm(pltlevel, ncolors=len(pltlevel)-1, clip=True)
@@ -1402,34 +1402,34 @@ for dss in dsss:
         # pltcmp2 = plt.get_cmap('BrBG', len(pltlevel2)-1)
     elif var2 in ['qt']:
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=0, cm_max=16, cm_interval1=1, cm_interval2=2, cmap='Blues_r')
-        extend = 'max'
+            cm_min=8, cm_max=16, cm_interval1=1, cm_interval2=1, cmap='Blues_r')
+        extend = 'both'
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
             cm_min=-1, cm_max=1, cm_interval1=0.2, cm_interval2=0.4, cmap='BrBG_r')
     elif var2 == 'ta':
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=0, cm_max=28, cm_interval1=1, cm_interval2=4, cmap='Oranges_r')
+            cm_min=10, cm_max=28, cm_interval1=1, cm_interval2=2, cmap='Oranges_r')
         extend = 'both'
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-2, cm_max=2, cm_interval1=0.5, cm_interval2=0.5, cmap='BrBG')
+            cm_min=-1, cm_max=1, cm_interval1=0.25, cm_interval2=0.5, cmap='BrBG')
     elif var2 == 'ua':
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=-8, cm_max=32, cm_interval1=2, cm_interval2=4, cmap='PuOr', asymmetric=True)
+            cm_min=-20, cm_max=28, cm_interval1=2, cm_interval2=4, cmap='PuOr', asymmetric=True)
         extend = 'both'
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-2, cm_max=2, cm_interval1=0.5, cm_interval2=0.5, cmap='BrBG')
+            cm_min=-4, cm_max=4, cm_interval1=1, cm_interval2=1, cmap='BrBG')
     elif var2 == 'va':
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=-5, cm_max=5, cm_interval1=1, cm_interval2=2, cmap='PuOr')
+            cm_min=-8, cm_max=8, cm_interval1=1, cm_interval2=2, cmap='PuOr')
         extend = 'both'
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-2, cm_max=2, cm_interval1=0.5, cm_interval2=0.5, cmap='BrBG')
+            cm_min=-4, cm_max=4, cm_interval1=1, cm_interval2=1, cmap='BrBG')
     elif var2 == 'wap':
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=-0.2, cm_max=0.2, cm_interval1=0.02, cm_interval2=0.08, cmap='PuOr')
+            cm_min=-0.16, cm_max=0.16, cm_interval1=0.02, cm_interval2=0.04, cmap='PuOr')
         extend = 'both'
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-0.2, cm_max=0.2, cm_interval1=0.02, cm_interval2=0.08, cmap='BrBG')
+            cm_min=-0.16, cm_max=0.16, cm_interval1=0.02, cm_interval2=0.04, cmap='BrBG')
     elif var2 == 'zg':
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
             cm_min=0, cm_max=4000, cm_interval1=200, cm_interval2=800, cmap='viridis_r')
@@ -1438,28 +1438,28 @@ for dss in dsss:
             cm_min=-20, cm_max=20, cm_interval1=2, cm_interval2=4, cmap='BrBG')
     elif var2 == 'hur':
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=0, cm_max=100, cm_interval1=10, cm_interval2=10, cmap='Blues_r')
-        extend = 'max'
+            cm_min=50, cm_max=100, cm_interval1=5, cm_interval2=10, cmap='Blues_r')
+        extend = 'both'
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-25, cm_max=25, cm_interval1=5, cm_interval2=5, cmap='BrBG_r')
+            cm_min=-12, cm_max=12, cm_interval1=2, cm_interval2=4, cmap='BrBG_r')
     elif var2 in ['ACF', 'BCF', 'TCF']:
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
             cm_min=0, cm_max=40, cm_interval1=5, cm_interval2=5, cmap='Blues_r')
         extend = 'max'
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-20, cm_max=20, cm_interval1=5, cm_interval2=5, cmap='BrBG_r')
+            cm_min=-15, cm_max=15, cm_interval1=3, cm_interval2=3, cmap='BrBG_r')
     elif var2 == 'theta':
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=20, cm_max=60, cm_interval1=2, cm_interval2=4, cmap='Oranges_r')
+            cm_min=20, cm_max=30, cm_interval1=1, cm_interval2=2, cmap='Oranges_r')
         extend = 'both'
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-2, cm_max=2, cm_interval1=0.2, cm_interval2=0.4, cmap='BrBG')
+            cm_min=-2, cm_max=2, cm_interval1=0.5, cm_interval2=0.5, cmap='BrBG')
     elif var2 == 'theta_e':
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=30, cm_max=70, cm_interval1=2, cm_interval2=4, cmap='Oranges_r')
+            cm_min=50, cm_max=80, cm_interval1=2.5, cm_interval2=5, cmap='Oranges_r')
         extend = 'both'
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-8, cm_max=8, cm_interval1=1, cm_interval2=2, cmap='BrBG')
+            cm_min=-6, cm_max=6, cm_interval1=1, cm_interval2=2, cmap='BrBG')
     elif var2 in ['qr']:
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
             cm_min=0, cm_max=0.04, cm_interval1=0.005, cm_interval2=0.01, cmap='Blues_r')
@@ -1467,6 +1467,12 @@ for dss in dsss:
         pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
             cm_min=-0.04, cm_max=0.04, cm_interval1=0.005, cm_interval2=0.02, cmap='BrBG_r')
     elif var2 in ['qcl', 'qc']:
+        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+            cm_min=0, cm_max=0.14, cm_interval1=0.01, cm_interval2=0.02, cmap='Blues_r')
+        extend = 'max'
+        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+            cm_min=-0.14, cm_max=0.14, cm_interval1=0.02, cm_interval2=0.04, cmap='BrBG_r')
+    elif var2 in ['qcf']:
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
             cm_min=0, cm_max=0.1, cm_interval1=0.01, cm_interval2=0.02, cmap='Blues_r')
         extend = 'max'
@@ -1502,8 +1508,12 @@ for dss in dsss:
             ds_pa = xr.open_mfdataset(fl, preprocess=lambda ds_in: ds_in.pipe(preprocess_umoutput)[var2stash_ral['pa']].sel(lon=wi_loc['lon'], method='nearest'), combine='by_coords', parallel=True, data_vars='minimal', coords='minimal',compat='override')[var2stash_ral['pa']].sel(time=slice(starttime, endtime)).compute()
             if var2 == 'ua':
                 ds_data = xr.open_mfdataset(fl, preprocess=lambda ds_in: ds_in.pipe(preprocess_umoutput)[var2stash_ral[var2]])[var2stash_ral[var2]].rename({'rho80': 'theta80', 'grid_longitude_cu': 'lon'}).sel(lon=wi_loc['lon'], method='nearest').sel(time=slice(starttime, endtime)).compute()
+                ds_data = ds_data.assign_coords(theta80=ds_pa['theta80'])
             elif var2 == 'va':
                 ds_data = xr.open_mfdataset(fl, preprocess=lambda ds_in: ds_in.pipe(preprocess_umoutput)[var2stash_ral[var2]])[var2stash_ral[var2]].rename({'rho80': 'theta80', 'grid_latitude_cv': 'lat'}).sel(lon=wi_loc['lon'], method='nearest').sel(time=slice(starttime, endtime)).compute()
+                ds_data = ds_data.assign_coords(theta80=ds_pa['theta80'])
+                ds_data = ds_data.sel(lat=ds_pa.lat, method='nearest')
+                ds_data = ds_data.assign_coords(lat=ds_pa['lat'])
             elif var2 in var2stash_ral.keys():
                 # var2='hus'
                 ds_data = xr.open_mfdataset(fl, preprocess=lambda ds_in: ds_in.pipe(preprocess_umoutput)[var2stash_ral[var2]].sel(lon=wi_loc['lon'], method='nearest'), combine='by_coords', parallel=True, data_vars='minimal', coords='minimal',compat='override')[var2stash_ral[var2]].sel(time=slice(starttime, endtime)).compute()
@@ -1659,7 +1669,7 @@ for dss in dsss:
         print(f'#-------- {imode}')
         
         plt_colnames = list(ds.keys())
-        opng = f"figures/4_um/4.1_access_ram3/4.1.1_sim_obs/4.1.1.4 {var2} {', '.join(x.replace('$', '') for x in ds.keys())} {imode} {str(np.round(min_lats, 2))}_{str(np.round(max_lats, 2))} {np.round(wi_loc['lon'], 2)} {year}-{month:02d}.png"
+        opng = f"figures/4_um/4.1_access_ram3/4.1.1_sim_obs/4.1.1.4 {var2} {', '.join(x.replace('$', '') for x in ds.keys())} {imode} {str(np.round(min_lats, 2))}_{str(np.round(max_lats, 2))} {np.round(wi_loc['lon'], 2)} {year}-{month:02d} {ptop}.png"
         cbar_label1 = f"{calendar.month_name[month]} {year} {era5_varlabels[var1]}"
         cbar_label2 = f"Difference in {era5_varlabels[var1]}"
         

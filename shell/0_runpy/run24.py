@@ -289,8 +289,12 @@ for dss in dsss:
             ds_pa = xr.open_mfdataset(fl, preprocess=lambda ds_in: ds_in.pipe(preprocess_umoutput)[var2stash_ral['pa']].sel(lon=wi_loc['lon'], method='nearest'), combine='by_coords', parallel=True, data_vars='minimal', coords='minimal',compat='override')[var2stash_ral['pa']].sel(time=slice(starttime, endtime)).compute()
             if var2 == 'ua':
                 ds_data = xr.open_mfdataset(fl, preprocess=lambda ds_in: ds_in.pipe(preprocess_umoutput)[var2stash_ral[var2]])[var2stash_ral[var2]].rename({'rho80': 'theta80', 'grid_longitude_cu': 'lon'}).sel(lon=wi_loc['lon'], method='nearest').sel(time=slice(starttime, endtime)).compute()
+                ds_data = ds_data.assign_coords(theta80=ds_pa['theta80'])
             elif var2 == 'va':
                 ds_data = xr.open_mfdataset(fl, preprocess=lambda ds_in: ds_in.pipe(preprocess_umoutput)[var2stash_ral[var2]])[var2stash_ral[var2]].rename({'rho80': 'theta80', 'grid_latitude_cv': 'lat'}).sel(lon=wi_loc['lon'], method='nearest').sel(time=slice(starttime, endtime)).compute()
+                ds_data = ds_data.assign_coords(theta80=ds_pa['theta80'])
+                ds_data = ds_data.sel(lat=ds_pa.lat, method='nearest')
+                ds_data = ds_data.assign_coords(lat=ds_pa['lat'])
             elif var2 in var2stash_ral.keys():
                 # var2='hus'
                 ds_data = xr.open_mfdataset(fl, preprocess=lambda ds_in: ds_in.pipe(preprocess_umoutput)[var2stash_ral[var2]].sel(lon=wi_loc['lon'], method='nearest'), combine='by_coords', parallel=True, data_vars='minimal', coords='minimal',compat='override')[var2stash_ral[var2]].sel(time=slice(starttime, endtime)).compute()

@@ -118,9 +118,9 @@ from um_postprocess import (
 
 # options
 colvars = ['hus', 'hur', 'ta', 'theta', 'theta_e', 'ua', 'va']
-dss = [('Radiosonde',''), ('ERA5',''), ('BARRA-R2',''), ('BARRA-C2','')]
+dss = [('Radiosonde',''),('u-ds714',1),('u-ds717',1),('u-ds722',1),('u-ds726',1)]
 # [('Radiosonde',''), ('ERA5',''), ('BARRA-R2',''), ('BARRA-C2','')]
-# [('Radiosonde',''),('BARRA-C2',''),('BARPA-C',''),('u-ds714',1),('u-ds717',1),('u-ds722',1),('u-ds726',1)],
+# [('Radiosonde',''),('BARRA-C2',''),('BARPA-C',''),('u-ds714',1),('u-ds717',1),('u-ds722',1),('u-ds726',1)]
 # [('Radiosonde',''),('u-ds714',1),('u-ds717',1),('u-ds722',1),('u-ds726',1)],
 
 # settings
@@ -248,7 +248,7 @@ else:
             if not ids[0] in ds.keys():
                 ds[ids[0]] = era5_ds.rename(var2).compute().copy()
             else:
-                ds[ids[0]] = xr.merge([ds[ids[0]], era5_ds.rename(var2)])
+                ds[ids[0]] = xr.merge([ds[ids[0]], era5_ds.rename(var2).compute().copy()])
     elif ids[0] == 'BARRA-R2':
         # ids = ('BARRA-R2', '')
         for var2 in ['hus', 'ta', 'hur', 'theta', 'theta_e', 'ua', 'va']:
@@ -286,7 +286,7 @@ else:
             if not ids[0] in ds.keys():
                 ds[ids[0]] = r2_ds.rename(var2).compute().copy()
             else:
-                ds[ids[0]] = xr.merge([ds[ids[0]], r2_ds.rename(var2)])
+                ds[ids[0]] = xr.merge([ds[ids[0]], r2_ds.rename(var2).compute().copy()])
     elif ids[0] == 'BARRA-C2':
         # ids = ('BARRA-C2', '')
         for var2 in ['hus', 'ta', 'hur', 'theta', 'theta_e', 'ua', 'va']:
@@ -324,7 +324,7 @@ else:
             if not ids[0] in ds.keys():
                 ds[ids[0]] = c2_ds.rename(var2).compute().copy()
             else:
-                ds[ids[0]] = xr.merge([ds[ids[0]], c2_ds.rename(var2)])
+                ds[ids[0]] = xr.merge([ds[ids[0]], c2_ds.rename(var2).compute().copy()])
     elif ids[0] == 'BARPA-C':
         # ids = ('BARPA-C', '')
         for var2 in ['hus', 'ta', 'hur', 'theta', 'theta_e', 'ua', 'va']:
@@ -362,7 +362,7 @@ else:
             if not ids[0] in ds.keys():
                 ds[ids[0]] = pc_ds.rename(var2).compute().copy()
             else:
-                ds[ids[0]] = xr.merge([ds[ids[0]], pc_ds.rename(var2)])
+                ds[ids[0]] = xr.merge([ds[ids[0]], pc_ds.rename(var2).compute().copy()])
     elif ids[0] in suite_res.keys():
         # ids = ('u-ds714', 1)
         # ids = ('u-ds722',1)
@@ -375,10 +375,14 @@ else:
         ram3_pa = ram3_ds[var2stash_ral['pa']].compute()
         
         for var2 in ['hus', 'ta', 'hur', 'theta', 'theta_e', 'ua', 'va']:
-            # var2='hus'
+            # var2='ua'
             print(f'#-------- {var2}')
             
-            if var2 in var2stash_ral.keys():
+            if var2 in ['ua', 'va']:
+                ram3_data = ram3_ds[var2stash_ral[var2]].rename({'rho80': 'theta80'}).compute()
+                ram3_data = ram3_data.assign_coords(theta80=ram3_pa['theta80'])
+                ram3_output = interp_to_pressure_levels(ram3_data, ram3_pa/100, plevs_hpa)
+            elif var2 in var2stash_ral.keys():
                 ram3_data = ram3_ds[var2stash_ral[var2]].compute()
                 ram3_output = interp_to_pressure_levels(ram3_data, ram3_pa/100, plevs_hpa)
             elif var2 == 'hur':
@@ -407,13 +411,17 @@ else:
             if not ilabel in ds.keys():
                 ds[ilabel] = ram3_output.rename(var2).compute().copy()
             else:
-                ds[ilabel] = xr.merge([ds[ilabel], ram3_output.rename(var2)])
+                ds[ilabel] = xr.merge([ds[ilabel], ram3_output.rename(var2).compute().copy()])
   
   with open(ofile_ds, 'wb') as f:
     pickle.dump(ds, f)
 
+ds['Radiosonde'] = ds['Radiosonde'].sel(time=slice(starttime, endtime)).sortby('pressure')
+for ids in ds.keys():
+    # print(ids)
+    ds[ids] = ds[ids].sel(pressure=slice(ptop, 1000))
 
-opng=f"figures/4_um/4.0_barra/4.0.6_site_analysis/4.0.6.2 {', '.join(sorted(colvars))} in {', '.join(ids[0] for ids in dss)} at {station} {year}-{month:02d}.png"
+opng=f"figures/4_um/4.0_barra/4.0.6_site_analysis/4.0.6.2 {', '.join(sorted(colvars))} in {', '.join(ids[0] for ids in dss)} at {station} {ptop} {year}-{month:02d}.png"
 
 fig, axs = plt.subplots(
     nrow, ncol, sharey=True,
@@ -549,4 +557,3 @@ plt.close()
 
 '''
 # endregion
-

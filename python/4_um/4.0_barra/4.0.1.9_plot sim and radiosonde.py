@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -P v46 -l walltime=6:00:00,ncpus=1,mem=96GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/qx55+gdata/gx60+gdata/py18+gdata/rv74
+# qsub -I -q normal -P v46 -l walltime=3:00:00,ncpus=1,mem=96GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/qx55+gdata/gx60+gdata/py18+gdata/rv74
 
 
 # region import packages
@@ -511,14 +511,14 @@ ani.save(omp4,progress_callback=lambda iframe,n:print(f'Frame {iframe}/{n-1}'))
 colvars = ['hus', 'hur', 'ta', 'theta', 'theta_e', 'ua', 'va']
 dss = [('Radiosonde',''), ('ERA5',''), ('BARRA-R2',''), ('BARRA-C2','')]
 # [('Radiosonde',''), ('ERA5',''), ('BARRA-R2',''), ('BARRA-C2','')]
-# [('Radiosonde',''),('BARRA-C2',''),('BARPA-C',''),('u-ds714',1),('u-ds717',1),('u-ds722',1),('u-ds726',1)],
-# [('Radiosonde',''),('u-ds714',1),('u-ds717',1),('u-ds722',1),('u-ds726',1)],
+# [('Radiosonde',''),('BARRA-C2',''),('BARPA-C',''),('u-ds714',1),('u-ds717',1),('u-ds722',1),('u-ds726',1)]
+# [('Radiosonde',''),('u-ds714',1),('u-ds717',1),('u-ds722',1),('u-ds726',1)]
 
 # settings
 year, month = 2020, 6
 starttime = datetime(year, month, 2)
 endtime = datetime(year, month, 30, 23, 59)
-ptop = 700
+ptop = 800
 plevs_hpa = np.arange(1000, ptop-1e-4, -25)
 target_pressures = np.arange(1000, ptop-1e-4, -1)
 station = 'Willis Island'
@@ -766,10 +766,14 @@ else:
         ram3_pa = ram3_ds[var2stash_ral['pa']].compute()
         
         for var2 in ['hus', 'ta', 'hur', 'theta', 'theta_e', 'ua', 'va']:
-            # var2='hus'
+            # var2='ua'
             print(f'#-------- {var2}')
             
-            if var2 in var2stash_ral.keys():
+            if var2 in ['ua', 'va']:
+                ram3_data = ram3_ds[var2stash_ral[var2]].rename({'rho80': 'theta80'}).compute()
+                ram3_data = ram3_data.assign_coords(theta80=ram3_pa['theta80'])
+                ram3_output = interp_to_pressure_levels(ram3_data, ram3_pa/100, plevs_hpa)
+            elif var2 in var2stash_ral.keys():
                 ram3_data = ram3_ds[var2stash_ral[var2]].compute()
                 ram3_output = interp_to_pressure_levels(ram3_data, ram3_pa/100, plevs_hpa)
             elif var2 == 'hur':
@@ -787,7 +791,7 @@ else:
                     dewpoint).metpy.dequantify().compute()
             else:
                 print(f'Warning: {var2} not found')
-        
+            
             if var2 in ['hus', 'qcf', 'qcl', 'qr', 'qs', 'qc', 'qt', 'clslw', 'qg']:
                 ram3_output *= 1000
             elif var2 in ['ta', 'theta', 'theta_e']:
@@ -803,10 +807,10 @@ else:
   with open(ofile_ds, 'wb') as f:
     pickle.dump(ds, f)
 
-ds['Radiosonde'] = ds['Radiosonde'].sel(time=slice(starttime, endtime)).sortby('pressure')
+ds['Radiosonde'] = ds['Radiosonde'].sel(time=slice(starttime, endtime))
 for ids in ds.keys():
     # print(ids)
-    ds[ids] = ds[ids].sel(pressure=slice(ptop, 1000))
+    ds[ids] = ds[ids].sortby('pressure').sel(pressure=slice(ptop, 1000))
 
 opng=f"figures/4_um/4.0_barra/4.0.6_site_analysis/4.0.6.2 {', '.join(sorted(colvars))} in {', '.join(ids[0] for ids in dss)} at {station} {ptop} {year}-{month:02d}.png"
 

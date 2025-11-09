@@ -117,7 +117,7 @@ from um_postprocess import (
 # region plot mean vertical profiles
 
 # options
-colvars = ['hus', 'hur', 'ta', 'theta', 'theta_e', 'ua', 'va']
+colvars = ['hus', 'hur', 'ta', 'theta', 'theta_e']
 dss = [('Radiosonde',''),('u-ds714',1),('u-ds717',1),('u-ds722',1),('u-ds726',1)]
 # [('Radiosonde',''), ('ERA5',''), ('BARRA-R2',''), ('BARRA-C2','')]
 # [('Radiosonde',''),('BARRA-C2',''),('BARPA-C',''),('u-ds714',1),('u-ds717',1),('u-ds722',1),('u-ds726',1)],
