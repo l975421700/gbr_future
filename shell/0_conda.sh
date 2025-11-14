@@ -42,6 +42,7 @@ mamba install satpy -y
 mamba install geopandas -y
 mamba install -c rttools typhon -y
 mamba install regionmask -y
+mamba install rioxarray -y
 conda clean -a -y -y -y -y -y
 
 #-------------------------------- Other packages
@@ -54,7 +55,6 @@ conda clean -a -y -y -y -y -y
 # mamba install mpl-scatter-density -y
 # mamba install iris -y
 # mamba install cdsapi -y
-# mamba install rioxarray -y
 # mamba install siphon -y
 # mamba install rasterio -y
 # mamba install line_profiler -y
@@ -63,3 +63,4 @@ conda clean -a -y -y -y -y -y
 # mamba install pytest -y
 # pytest -v --pyargs xesmf
 
+mamba install libgdal-hdf5

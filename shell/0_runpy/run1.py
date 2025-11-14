@@ -109,449 +109,120 @@ from metplot import si2reflectance, si2radiance, get_modis_latlonrgbs, get_modis
 # endregion
 
 
-# region obs vs. sim monthly data Cross Sections
-# Memory Used: 31.33GB; Walltime Used: 02:36:31
+# region get monthly and hourly Himawari cmic
 
-var2s = [
-    'hus',
-    # 'hus', 'ta', 'wap', 'zg', 'theta', 'theta_e', 'hur', 'ua', 'va',
-    # 'qcf', 'qcl', 'qr', 'qs',
-    # 'qc', 'qt', 'clslw', 'qg', 'ACF', 'BCF', 'TCF',
-    ]
-dsss = [
-    [('ERA5',''),('BARRA-C2',''),('BARPA-C',''),('u-ds714',1),('u-ds717',1),('u-ds722',1),('u-ds726',1)],
-    [('ERA5',''),('u-ds714',1),('u-ds717',1),('u-ds722',1),('u-ds726',1)],
-    [('u-ds714',1),('u-ds717',1),('u-ds722',1),('u-ds726',1)],
-    ]
-modes = ['original', 'difference'] # 'original', 'difference'
+import argparse
+parser=argparse.ArgumentParser()
+parser.add_argument('-y', '--year', type=int, required=True,)
+parser.add_argument('-m', '--month', type=int, required=True,)
+args = parser.parse_args()
 
-year, month = 2020, 6
-starttime = datetime(year, month, 2)
-endtime = datetime(year, month, 30, 23, 59)
-ptop = 200
-plevs_hpa = np.arange(1000, ptop-1e-4, -25)
-wi_loc={'lat':-16.2876,'lon':149.962}
-min_lon, max_lon, min_lat, max_lat = [110.58, 157.34, -43.69, -7.01]
-min_lons, max_lons, min_lats, max_lats = [143.0, 151.94, -20.0, -11.06]
-pwidth = 4.4
-pheight = 4.4
-nrow = 1
-fm_bottom = 4.2/(pheight*nrow+5)
-fm_top = 1 - 0.8/(pheight*nrow+5)
+year=args.year
+month=args.month
+# year = 2020; month = 6
 
+# option
+products = ['cloud']
+categories = ['cmic']
+vars = ['cmic_lwp']
+# ['cmic_cot', 'cmic_iwp', 'cmic_lwp', 'cmic_phase', 'cmic_reff']
+# categories = ['ctth']
+# vars = ['ctth_alti']
+# ['ctth_alti', 'ctth_effectiv', 'ctth_pres', 'ctth_tempe']
 
-def std_func(ds, var):
-    ds = ds.drop_vars('crs', errors='ignore')
-    if 'pressure' in ds.coords:
-        ds = ds.expand_dims(dim='pressure', axis=1)
-    elif 'pressure' in ds:
-        ds = ds.expand_dims(dim={'pressure': [ds['pressure'].values]}, axis=1)
-    varname=[varname for varname in ds.data_vars if varname.startswith(var)][0]
-    ds = ds.rename({varname: var})
-    return(ds)
+# settings
+himawari_bom = '/g/data/rv74/satellite-products/arc/der/himawari-ahi'
+ancillary = xr.open_dataset('/g/data/ra22/satellite-products/arc/obs/himawari-ahi/fldk/latest/ancillary/00000000000000-P1S-ABOM_GEOM_SENSOR-PRJ_GEOS141_2000-HIMAWARI8-AHI.nc')
+himawari_rename = {
+    'cmic_cot': 'COT',
+    'cmic_iwp': 'clivi',
+    'cmic_lwp': 'clwvi',
+    'cmic_phase': 'clphase',
+    'cmic_reff': 'Reff',
+    'ctth_alti': 'CTH',
+    'ctth_effectiv': 'clt',
+    'ctth_pres': 'CTP',
+    'ctth_tempe': 'CTT'}
 
-for dss in dsss:
-  # dss = [('CERES',''),('ERA5',''),('BARRA-R2',1),('BARRA-C2','')],
-  print(f'#-------------------------------- {dss}')
-  if len(dss) <= 3:
-      mpl.rc('font', family='Times New Roman', size=10)
-  elif len(dss) == 4:
-      mpl.rc('font', family='Times New Roman', size=12)
-  elif len(dss) == 5:
-      mpl.rc('font', family='Times New Roman', size=14)
-  elif len(dss) == 6:
-      mpl.rc('font', family='Times New Roman', size=16)
-  elif len(dss) >= 7:
-      mpl.rc('font', family='Times New Roman', size=18)
-  ncol = len(dss)
-  fm_left = 2.46 / (pwidth*ncol)
-  
-  for var2 in var2s:
-    # var2 = 'theta_e'
-    var1 = cmip6_era5_var[var2]
-    print(f'#---------------- {var1} vs. {var2}')
-    
-    extend2 = 'both'
-    if var2 in ['hus']:
-        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=0, cm_max=16, cm_interval1=1, cm_interval2=2, cmap='Blues_r')
-        extend = 'max'
-        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-3, cm_max=3, cm_interval1=0.5, cm_interval2=0.5, cmap='BrBG_r')
-        # pltlevel = np.array([0, 0.1, 0.2, 0.5, 1, 2, 4, 8, 12, 16, 20])
-        # pltticks = np.array([0, 0.1, 0.2, 0.5, 1, 2, 4, 8, 12, 16, 20])
-        # pltnorm = BoundaryNorm(pltlevel, ncolors=len(pltlevel)-1, clip=True)
-        # pltcmp = plt.get_cmap('Blues', len(pltlevel)-1)
-        # extend = 'max'
-        # pltlevel2 = np.array([-1.5, -1, -0.5, -0.2, -0.1, 0, 0.1, 0.2, 0.5, 1, 1.5])
-        # pltticks2 = np.array([-1.5, -1, -0.5, -0.2, -0.1, 0, 0.1, 0.2, 0.5, 1, 1.5])
-        # pltnorm2 = BoundaryNorm(pltlevel2, ncolors=len(pltlevel2)-1, clip=True)
-        # pltcmp2 = plt.get_cmap('BrBG', len(pltlevel2)-1)
-    elif var2 in ['qt']:
-        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=0, cm_max=16, cm_interval1=1, cm_interval2=2, cmap='Blues_r')
-        extend = 'max'
-        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-1, cm_max=1, cm_interval1=0.2, cm_interval2=0.4, cmap='BrBG_r')
-    elif var2 == 'ta':
-        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=0, cm_max=28, cm_interval1=1, cm_interval2=4, cmap='Oranges_r')
-        extend = 'both'
-        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-2, cm_max=2, cm_interval1=0.5, cm_interval2=0.5, cmap='BrBG')
-    elif var2 == 'ua':
-        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=-8, cm_max=32, cm_interval1=2, cm_interval2=4, cmap='PuOr', asymmetric=True)
-        extend = 'both'
-        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-2, cm_max=2, cm_interval1=0.5, cm_interval2=0.5, cmap='BrBG')
-    elif var2 == 'va':
-        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=-5, cm_max=5, cm_interval1=1, cm_interval2=2, cmap='PuOr')
-        extend = 'both'
-        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-2, cm_max=2, cm_interval1=0.5, cm_interval2=0.5, cmap='BrBG')
-    elif var2 == 'wap':
-        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=-0.2, cm_max=0.2, cm_interval1=0.02, cm_interval2=0.08, cmap='PuOr')
-        extend = 'both'
-        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-0.2, cm_max=0.2, cm_interval1=0.02, cm_interval2=0.08, cmap='BrBG')
-    elif var2 == 'zg':
-        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=0, cm_max=4000, cm_interval1=200, cm_interval2=800, cmap='viridis_r')
-        extend = 'max'
-        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-20, cm_max=20, cm_interval1=2, cm_interval2=4, cmap='BrBG')
-    elif var2 == 'hur':
-        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=0, cm_max=100, cm_interval1=10, cm_interval2=10, cmap='Blues_r')
-        extend = 'max'
-        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-25, cm_max=25, cm_interval1=5, cm_interval2=5, cmap='BrBG_r')
-    elif var2 in ['ACF', 'BCF', 'TCF']:
-        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=0, cm_max=40, cm_interval1=5, cm_interval2=5, cmap='Blues_r')
-        extend = 'max'
-        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-20, cm_max=20, cm_interval1=5, cm_interval2=5, cmap='BrBG_r')
-    elif var2 == 'theta':
-        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=20, cm_max=60, cm_interval1=2, cm_interval2=4, cmap='Oranges_r')
-        extend = 'both'
-        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-2, cm_max=2, cm_interval1=0.2, cm_interval2=0.4, cmap='BrBG')
-    elif var2 == 'theta_e':
-        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=30, cm_max=70, cm_interval1=2, cm_interval2=4, cmap='Oranges_r')
-        extend = 'both'
-        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-8, cm_max=8, cm_interval1=1, cm_interval2=2, cmap='BrBG')
-    elif var2 in ['qr']:
-        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=0, cm_max=0.04, cm_interval1=0.005, cm_interval2=0.01, cmap='Blues_r')
-        extend = 'max'
-        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-0.04, cm_max=0.04, cm_interval1=0.005, cm_interval2=0.02, cmap='BrBG_r')
-    elif var2 in ['qcl', 'qc']:
-        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=0, cm_max=0.1, cm_interval1=0.01, cm_interval2=0.02, cmap='Blues_r')
-        extend = 'max'
-        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-0.05, cm_max=0.05, cm_interval1=0.01, cm_interval2=0.02, cmap='BrBG_r')
-    elif var2 in ['clslw', 'qcf', 'qs', 'qg']:
-        pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=0, cm_max=0.01, cm_interval1=0.001, cm_interval2=0.002, cmap='Blues_r')
-        extend = 'max'
-        pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-            cm_min=-0.005, cm_max=0.005, cm_interval1=0.001, cm_interval2=0.002, cmap='BrBG_r')
-    else:
-        print('Warning: unspecified colorbar')
-    
-    ofile_ds = f'data/sim/um/combined/{var2} wi {', '.join(x[0] for x in dss)}.pkl'
-    if os.path.exists(ofile_ds):
-      with open(ofile_ds, 'rb') as f:
-        ds = pickle.load(f)
-    else:
-      ds = {}
-      for ids in dss:
-        # ids = dss[0]
-        print(f'Get {ids}')
+def preprocess_himawari(ds_in, ivar):
+    # ds_in = xr.open_dataset(fl[5])
+    ds_out = ds_in[ivar].rename(himawari_rename[ivar])
+    ds_out = ds_out.expand_dims(time=[np.datetime64(ds_in.attrs['nominal_product_time'])])
+    return(ds_out)
+
+for iproduct in products: #os.listdir(himawari_bom): #
+    print(f'#-------------------------------- {iproduct}')
+    for icategory in categories: #os.listdir(f'{himawari_bom}/{iproduct}'): #
+        print(f'#---------------- {icategory}')
         
-        if ids[0] in suite_res.keys():
-            # ids = ('u-ds722', 1)
-            # ids = ('u-ds714', 1)
-            isuite = ids[0]
-            ires = suite_res[isuite][ids[1]]
-            ilabel = f'{suite_label[isuite]}'
+        folder = f'{himawari_bom}/{iproduct}/{icategory}'
+        if os.path.isdir(folder):
+            fl = sorted(glob.glob(f'{folder}/latest/{year}/{month:02d}/*/*.nc'))
+            print(f'Number of files: {len(fl)}')
+            # print(os.path.getsize(fl[-1])/2**20)
             
-            fl = sorted(glob.glob(f'scratch/cylc-run/{isuite}/share/cycle/{year}{month:02d}??T0000Z/Australia/{ires}/*/um/umnsaa_pa000.nc'))
-            ds_pa = xr.open_mfdataset(fl, preprocess=lambda ds_in: ds_in.pipe(preprocess_umoutput)[var2stash_ral['pa']].sel(lon=wi_loc['lon'], method='nearest'), combine='by_coords', parallel=True, data_vars='minimal', coords='minimal',compat='override')[var2stash_ral['pa']].sel(time=slice(starttime, endtime)).compute()
-            if var2 in var2stash_ral.keys():
-                # var2='hus'
-                ds_data = xr.open_mfdataset(fl, preprocess=lambda ds_in: ds_in.pipe(preprocess_umoutput)[var2stash_ral[var2]].sel(lon=wi_loc['lon'], method='nearest'), combine='by_coords', parallel=True, data_vars='minimal', coords='minimal',compat='override')[var2stash_ral[var2]].sel(time=slice(starttime, endtime)).compute()
-            elif var2 == 'hur':
-                # var2 = 'hur'
-                ds_hus = xr.open_mfdataset(fl, preprocess=lambda ds_in: ds_in.pipe(preprocess_umoutput)[var2stash_ral['hus']].sel(lon=wi_loc['lon'], method='nearest'), combine='by_coords', parallel=True, data_vars='minimal', coords='minimal',compat='override')[var2stash_ral['hus']].sel(time=slice(starttime, endtime)).compute()
-                ds_ta = xr.open_mfdataset(fl, preprocess=lambda ds_in: ds_in.pipe(preprocess_umoutput)[var2stash_ral['ta']].sel(lon=wi_loc['lon'], method='nearest'), combine='by_coords', parallel=True, data_vars='minimal', coords='minimal',compat='override')[var2stash_ral['ta']].sel(time=slice(starttime, endtime)).compute()
-                ds_data = relative_humidity_from_specific_humidity(
-                    ds_pa * units.Pa,
-                    ds_ta * units.K,
-                    ds_hus * units('kg/kg')
-                    ).metpy.dequantify() * 100
-            elif var2 == 'theta_e':
-                # var2 = 'theta_e'
-                ds_hus = xr.open_mfdataset(fl, preprocess=lambda ds_in: ds_in.pipe(preprocess_umoutput)[var2stash_ral['hus']].sel(lon=wi_loc['lon'], method='nearest'), combine='by_coords', parallel=True, data_vars='minimal', coords='minimal',compat='override')[var2stash_ral['hus']].sel(time=slice(starttime, endtime)).compute()
-                ds_ta = xr.open_mfdataset(fl, preprocess=lambda ds_in: ds_in.pipe(preprocess_umoutput)[var2stash_ral['ta']].sel(lon=wi_loc['lon'], method='nearest'), combine='by_coords', parallel=True, data_vars='minimal', coords='minimal',compat='override')[var2stash_ral['ta']].sel(time=slice(starttime, endtime)).compute()
-                ds_dew = dewpoint_from_specific_humidity(
-                    ds_pa * units.Pa,
-                    ds_hus * units('kg/kg'))
-                ds_data = equivalent_potential_temperature(
-                    ds_pa * units.Pa,
-                    ds_ta * units.K,
-                    ds_dew).metpy.dequantify()
-            else:
-                print(f'Warning: {var2} not found')
-            
-            ds[ilabel] = interp_to_pressure_levels(ds_data, ds_pa/100, plevs_hpa)
-            ds[ilabel] = ds[ilabel].mean(dim='time', skipna=True)
-            
-            if var2 in ['hus', 'qcf', 'qcl', 'qr', 'qs', 'qc', 'qt', 'clslw', 'qg']:
-                ds[ilabel] *= 1000
-            elif var2 in ['ta', 'theta', 'theta_e']:
-                ds[ilabel] -= zerok
-            elif var2 in ['ACF', 'BCF', 'TCF']:
-                ds[ilabel] *= 100
-            
-        elif ids[0] == 'ERA5':
-            # ids = ('ERA5', '')
-            
-            file = f'/g/data/rt52/era5/pressure-levels/reanalysis/{var1}/{year}/{var1}_era5_oper_pl_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc'
-            if os.path.exists(file):
-                ds[ids[0]] = xr.open_dataset(file).rename({'longitude': 'lon', 'latitude':'lat', 'level':'pressure'}).sel(lon=wi_loc['lon'], method='nearest').sortby('lat').sel(lat=slice(min_lat, max_lat)).sel(time=slice(starttime, endtime)).sel(pressure=slice(ptop, 1000))[var1].mean(dim='time').compute()
-            elif var1 == 'theta':
-                era5_t = xr.open_dataset(f'/g/data/rt52/era5/pressure-levels/reanalysis/t/{year}/t_era5_oper_pl_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc').rename({'longitude': 'lon', 'latitude':'lat', 'level':'pressure'}).sel(lon=wi_loc['lon'], method='nearest').sortby('lat').sel(lat=slice(min_lat, max_lat)).sel(time=slice(starttime, endtime)).sel(pressure=slice(ptop, 1000))['t'].compute()
-                ds[ids[0]] = potential_temperature(
-                    era5_t.pressure * units.hPa,
-                    era5_t * units.K).metpy.dequantify().mean(dim='time')
-            elif var1 == 'theta_e':
-                era5_q = xr.open_dataset(f'/g/data/rt52/era5/pressure-levels/reanalysis/q/{year}/q_era5_oper_pl_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc').rename({'longitude': 'lon', 'latitude':'lat', 'level':'pressure'}).sel(lon=wi_loc['lon'], method='nearest').sortby('lat').sel(lat=slice(min_lat, max_lat)).sel(time=slice(starttime, endtime)).sel(pressure=slice(ptop, 1000))['q'].compute()
-                era5_t = xr.open_dataset(f'/g/data/rt52/era5/pressure-levels/reanalysis/t/{year}/t_era5_oper_pl_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc').rename({'longitude': 'lon', 'latitude':'lat', 'level':'pressure'}).sel(lon=wi_loc['lon'], method='nearest').sortby('lat').sel(lat=slice(min_lat, max_lat)).sel(time=slice(starttime, endtime)).sel(pressure=slice(ptop, 1000))['t'].compute()
-                era5_dew = dewpoint_from_specific_humidity(
-                    era5_q.pressure * units.hPa,
-                    era5_q * units('kg/kg'))
-                ds[ids[0]] = equivalent_potential_temperature(
-                    era5_t.pressure * units.hPa,
-                    era5_t * units.K,
-                    era5_dew).metpy.dequantify().mean(dim='time')
-            else:
-                print(f'Warning: {var2} not found')
-            
-            if var1 in ['t', 'theta', 'theta_e']:
-                ds[ids[0]] -= zerok
-            elif var1 in ['q', 'ciwc', 'clwc', 'crwc', 'cswc']:
-                ds[ids[0]] *= 1000
-            elif var1 in ['z', ]:
-                ds[ids[0]] /= 9.80665
-            
-        elif ids[0] == 'BARRA-C2':
-            # ids = ('BARRA-C2', '')
-            
-            fl = sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/{var2}[0-9]*[!m]/latest/*{year}{month:02d}.nc'))
-            if len(fl) > 0:
-                ds[ids[0]] = xr.open_mfdataset(fl, parallel=True, preprocess=lambda ds_in: std_func(ds_in, var=var2))
-                ds[ids[0]] = ds[ids[0]].sel(lon=wi_loc['lon'], method='nearest').sel(lat=slice(min_lat, max_lat)).sel(time=slice(starttime, endtime)).sel(pressure=slice(ptop, 1000))[var2].mean(dim='time').compute()
-            elif var2 == 'hur':
-                ds_hus = xr.open_mfdataset(sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/hus[0-9]*[!m]/latest/*{year}{month:02d}.nc')), parallel=True, preprocess=lambda ds_in: std_func(ds_in, var='hus')).sel(lon=wi_loc['lon'], method='nearest').sel(lat=slice(min_lat, max_lat)).sel(time=slice(starttime, endtime)).sel(pressure=slice(ptop, 1000))['hus'].compute()
-                ds_ta = xr.open_mfdataset(sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/ta[0-9]*[!m]/latest/*{year}{month:02d}.nc')), parallel=True, preprocess=lambda ds_in: std_func(ds_in, var='ta')).sel(lon=wi_loc['lon'], method='nearest').sel(lat=slice(min_lat, max_lat)).sel(time=slice(starttime, endtime)).sel(pressure=slice(ptop, 1000))['ta'].compute()
-                ds[ids[0]] = relative_humidity_from_specific_humidity(
-                    ds_hus.pressure * units.hPa,
-                    ds_ta * units.K,
-                    ds_hus * units('kg/kg')
-                    ).metpy.dequantify().mean(dim='time') * 100
-            elif var2 == 'theta':
-                ds_ta = xr.open_mfdataset(sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/ta[0-9]*[!m]/latest/*{year}{month:02d}.nc')), parallel=True, preprocess=lambda ds_in: std_func(ds_in, var='ta')).sel(lon=wi_loc['lon'], method='nearest').sel(lat=slice(min_lat, max_lat)).sel(time=slice(starttime, endtime)).sel(pressure=slice(ptop, 1000))['ta'].compute()
-                ds[ids[0]] = potential_temperature(
-                    ds_ta.pressure * units.hPa,
-                    ds_ta * units.K).metpy.dequantify().mean(dim='time')
-            elif var2 == 'theta_e':
-                ds_hus = xr.open_mfdataset(sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/hus[0-9]*[!m]/latest/*{year}{month:02d}.nc')), parallel=True, preprocess=lambda ds_in: std_func(ds_in, var='hus')).sel(lon=wi_loc['lon'], method='nearest').sel(lat=slice(min_lat, max_lat)).sel(time=slice(starttime, endtime)).sel(pressure=slice(ptop, 1000))['hus'].compute()
-                ds_ta = xr.open_mfdataset(sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/ta[0-9]*[!m]/latest/*{year}{month:02d}.nc')), parallel=True, preprocess=lambda ds_in: std_func(ds_in, var='ta')).sel(lon=wi_loc['lon'], method='nearest').sel(lat=slice(min_lat, max_lat)).sel(time=slice(starttime, endtime)).sel(pressure=slice(ptop, 1000))['ta'].compute()
-                ds_dew = dewpoint_from_specific_humidity(
-                    ds_hus.pressure * units.hPa,
-                    ds_hus * units('kg/kg'))
-                ds[ids[0]] = equivalent_potential_temperature(
-                    ds_ta.pressure * units.hPa,
-                    ds_ta * units.K,
-                    ds_dew).metpy.dequantify().mean(dim='time')
-            else:
-                print(f'Warning: {var2} not found')
-            
-            if var2 in ['hus']:
-                ds[ids[0]] *= 1000
-            elif var2 in ['ta', 'theta', 'theta_e']:
-                ds[ids[0]] -= zerok
-            
-        elif ids[0] == 'BARPA-C':
-            # ids = ('BARPA-C', '')
-            
-            fl = sorted(glob.glob(f'/g/data/py18/BARPA/output/CMIP6/DD/AUST-04/BOM/ERA5/evaluation/r1i1p1f1/BARPA-C/v1-r1/3hr/{var2}[0-9]*[!m]/latest/*{year}{month:02d}.nc'))
-            if len(fl) > 0:
-                ds[ids[0]] = xr.open_mfdataset(fl, parallel=True, preprocess=lambda ds_in: std_func(ds_in, var=var2))
-                ds[ids[0]] = ds[ids[0]].sel(lon=wi_loc['lon'], method='nearest').sel(lat=slice(min_lat, max_lat)).sel(time=slice(starttime, endtime)).sel(pressure=slice(ptop, 1000))[var2].mean(dim='time').compute()
-            elif var2 == 'hur':
-                # var2 = 'hur'
-                ds_hus = xr.open_mfdataset(sorted(glob.glob(f'/g/data/py18/BARPA/output/CMIP6/DD/AUST-04/BOM/ERA5/evaluation/r1i1p1f1/BARPA-C/v1-r1/3hr/hus[0-9]*[!m]/latest/*{year}{month:02d}.nc')), parallel=True, preprocess=lambda ds_in: std_func(ds_in, var='hus')).sel(lon=wi_loc['lon'], method='nearest').sel(lat=slice(min_lat, max_lat)).sel(time=slice(starttime, endtime)).sel(pressure=slice(ptop, 1000))['hus'].compute()
-                ds_ta = xr.open_mfdataset(sorted(glob.glob(f'/g/data/py18/BARPA/output/CMIP6/DD/AUST-04/BOM/ERA5/evaluation/r1i1p1f1/BARPA-C/v1-r1/3hr/ta[0-9]*[!m]/latest/*{year}{month:02d}.nc')), parallel=True, preprocess=lambda ds_in: std_func(ds_in, var='ta')).sel(lon=wi_loc['lon'], method='nearest').sel(lat=slice(min_lat, max_lat)).sel(time=slice(starttime, endtime)).sel(pressure=slice(ptop, 1000))['ta'].compute()
-                ds[ids[0]] = relative_humidity_from_specific_humidity(
-                    ds_hus.pressure * units.hPa,
-                    ds_ta * units.K,
-                    ds_hus * units('kg/kg')
-                    ).metpy.dequantify().mean(dim='time') * 100
-            elif var2 == 'theta':
-                # var2 = 'theta'
-                ds_ta = xr.open_mfdataset(sorted(glob.glob(f'/g/data/py18/BARPA/output/CMIP6/DD/AUST-04/BOM/ERA5/evaluation/r1i1p1f1/BARPA-C/v1-r1/3hr/ta[0-9]*[!m]/latest/*{year}{month:02d}.nc')), parallel=True, preprocess=lambda ds_in: std_func(ds_in, var='ta')).sel(lon=wi_loc['lon'], method='nearest').sel(lat=slice(min_lat, max_lat)).sel(time=slice(starttime, endtime)).sel(pressure=slice(ptop, 1000))['ta'].compute()
-                ds[ids[0]] = potential_temperature(
-                    ds_ta.pressure * units.hPa,
-                    ds_ta * units.K).metpy.dequantify().mean(dim='time')
-            elif var2 == 'theta_e':
-                # var2 = 'theta_e'
-                ds_hus = xr.open_mfdataset(sorted(glob.glob(f'/g/data/py18/BARPA/output/CMIP6/DD/AUST-04/BOM/ERA5/evaluation/r1i1p1f1/BARPA-C/v1-r1/3hr/hus[0-9]*[!m]/latest/*{year}{month:02d}.nc')), parallel=True, preprocess=lambda ds_in: std_func(ds_in, var='hus')).sel(lon=wi_loc['lon'], method='nearest').sel(lat=slice(min_lat, max_lat)).sel(time=slice(starttime, endtime)).sel(pressure=slice(ptop, 1000))['hus'].compute()
-                ds_ta = xr.open_mfdataset(sorted(glob.glob(f'/g/data/py18/BARPA/output/CMIP6/DD/AUST-04/BOM/ERA5/evaluation/r1i1p1f1/BARPA-C/v1-r1/3hr/ta[0-9]*[!m]/latest/*{year}{month:02d}.nc')), parallel=True, preprocess=lambda ds_in: std_func(ds_in, var='ta')).sel(lon=wi_loc['lon'], method='nearest').sel(lat=slice(min_lat, max_lat)).sel(time=slice(starttime, endtime)).sel(pressure=slice(ptop, 1000))['ta'].compute()
-                ds_dew = dewpoint_from_specific_humidity(
-                    ds_hus.pressure * units.hPa,
-                    ds_hus * units('kg/kg'))
-                ds[ids[0]] = equivalent_potential_temperature(
-                    ds_ta.pressure * units.hPa,
-                    ds_ta * units.K,
-                    ds_dew).metpy.dequantify().mean(dim='time')
-            else:
-                print(f'Warning: {var2} not found')
-            
-            if var2 in ['hus']:
-                ds[ids[0]] *= 1000
-            elif var2 in ['ta', 'theta', 'theta_e']:
-                ds[ids[0]] -= zerok
-      
-      with open(ofile_ds, 'wb') as f:
-        pickle.dump(ds, f)
-    
-    for imode in modes:
-        # imode = 'original'
-        # imode='difference'
-        print(f'#-------- {imode}')
-        
-        plt_colnames = list(ds.keys())
-        opng = f"figures/4_um/4.1_access_ram3/4.1.1_sim_obs/4.1.1.4 {var2} {', '.join(x.replace('$', '') for x in ds.keys())} {imode} {str(np.round(min_lats, 2))}_{str(np.round(max_lats, 2))} {np.round(wi_loc['lon'], 2)} {year}-{month:02d}.png"
-        cbar_label1 = f"{calendar.month_name[month]} {year} {era5_varlabels[var1]}"
-        cbar_label2 = f"Difference in {era5_varlabels[var1]}"
-        
-        fig, axs = plt.subplots(
-            nrow, ncol,
-            figsize=np.array([pwidth*ncol, pheight*nrow+5])/2.54,
-            sharey=True, gridspec_kw={'hspace': 0.01, 'wspace': 0.05},)
-        
-        if imode == 'original':
-            for jcol, ids1 in enumerate(ds.keys()):
-                print(f'#---- {jcol} {ids1}')
-                plt_mesh = axs[jcol].pcolormesh(
-                    ds[ids1].lat,
-                    ds[ids1].pressure,
-                    ds[ids1].transpose('pressure', 'lat'),
-                    norm=pltnorm, cmap=pltcmp, zorder=1)
-            cbar = fig.colorbar(
-                plt_mesh, #cm.ScalarMappable(norm=pltnorm1, cmap=pltcmp1), #
-                format=remove_trailing_zero_pos,
-                orientation="horizontal", ticks=pltticks, extend=extend,
-                cax=fig.add_axes([0.26, fm_bottom-0.25, 0.48, fm_bottom/10]))
-            cbar.ax.set_xlabel(cbar_label1)
-        elif imode=='difference':
-            # imode='difference'
-            ids2 = list(ds.keys())[0]
-            plt_mesh = axs[0].pcolormesh(
-                ds[ids2].lat,
-                ds[ids2].pressure,
-                ds[ids2].transpose('pressure', 'lat'),
-                norm=pltnorm, cmap=pltcmp, zorder=1)
-            for jcol in range(ncol-1):
-                ids1 = list(ds.keys())[jcol+1]
-                print(f'#---- {jcol+1} {ids1} {ids2}')
-                # common_p = np.intersect1d(ds[ids1].pressure, ds[ids2].pressure)
-                plt_data = ds[ids1].transpose('pressure', 'lat') - ds[ids2].transpose('pressure', 'lat').interp(lat=ds[ids1].lat, pressure=ds[ids1].pressure)
-                plt_mesh2 = axs[jcol+1].pcolormesh(
-                    plt_data.lat,
-                    plt_data.pressure,
-                    plt_data,
-                    norm=pltnorm2, cmap=pltcmp2, zorder=1)
-            
-            cbar = fig.colorbar(
-                plt_mesh, #cm.ScalarMappable(norm=pltnorm1, cmap=pltcmp1), #
-                format=remove_trailing_zero_pos,
-                orientation="horizontal", ticks=pltticks, extend=extend,
-                cax=fig.add_axes([0.03, fm_bottom-0.25, 0.44, fm_bottom/10]))
-            cbar.ax.set_xlabel(cbar_label1)
-            cbar2 = fig.colorbar(
-                plt_mesh2, #cm.ScalarMappable(norm=pltnorm2, cmap=pltcmp2), #
-                format=remove_trailing_zero_pos,
-                orientation="horizontal", ticks=pltticks2, extend=extend2,
-                cax=fig.add_axes([0.53, fm_bottom-0.25, 0.44, fm_bottom/10]))
-            cbar2.ax.set_xlabel(cbar_label2)
-        
-        for jcol in range(ncol):
-            axs[jcol].text(
-                0, 1.02,
-                f'({string.ascii_lowercase[jcol]}) {plt_colnames[jcol]}',
-                ha='left', va='bottom', transform=axs[jcol].transAxes)
-            
-            axs[jcol].invert_yaxis()
-            axs[jcol].set_ylim(1000, ptop)
-            axs[jcol].yaxis.set_minor_locator(AutoMinorLocator(2))
-            
-            axs[jcol].set_xlim(min_lats, max_lats)
-            axs[jcol].xaxis.set_minor_locator(AutoMinorLocator(2))
-            axs[jcol].xaxis.set_major_formatter(LatitudeFormatter(degree_symbol='° '))
-            
-            axs[jcol].grid(True, which='both', lw=0.5, c='gray', alpha=0.5, ls='--')
-        
-        axs[0].set_ylabel(r'Pressure [$hPa$]')
-        # axs[3].set_xlabel(f'Meridional cross section along Willis Island', labelpad=8)
-        fig.text(0.5, fm_bottom-0.14, f'Meridional cross section along Willis Island', va='center', ha='center')
-        
-        fig.subplots_adjust(left=fm_left, right=0.995, bottom=fm_bottom, top=fm_top)
-        fig.savefig(opng)
-
-
-
-
+            for ivar in vars:
+                print(f'#-------- {ivar}')
+                odir = f'data/obs/jaxa/{himawari_rename[ivar]}'
+                os.makedirs(odir, exist_ok=True)
+                
+                ds = xr.open_mfdataset(fl, parallel=True, preprocess=lambda ds_in: preprocess_himawari(ds_in, ivar))[himawari_rename[ivar]]
+                ds = ds.chunk({'time': -1, 'nx': 50, 'ny': 50})
+                
+                if ivar in ['cmic_iwp', 'cmic_lwp']:
+                    print('get mm')
+                    ds_mm = ds.resample({'time': '1M'}).mean().compute()
+                    ds_mm.to_netcdf(f'{odir}/{himawari_rename[ivar]}_{year}{month:02d}.nc')
+                    print('get mhm')
+                    ds_mhm = ds.resample(time='1M').map(lambda x: x.groupby('time.hour').mean()).compute()
+                    ds_mhm.to_netcdf(f'{odir}/{himawari_rename[ivar]}_hourly_{year}{month:02d}.nc')
 
 
 
 
 '''
-import time
-
-start = time.time()
-xr.open_dataset(fl[13])[var2stash_ral['pa']][:, :, :, 0].compute()
-# xr.open_dataset(fl[13])[var2stash_ral['pa']].sel(grid_longitude_t=wi_loc['lon'], method='nearest').compute()
-# xr.open_dataset(fl[13]).pipe(preprocess_umoutput)[var2stash_ral['pa']].sel(lon=wi_loc['lon'], method='nearest').compute()
-end = time.time()
-print(f"Elapsed time: {end - start:.2f} seconds")
-
-
-xr.open_mfdataset(fl[8:10], preprocess=lambda ds_in: ds_in.pipe(preprocess_umoutput)[var2stash_ral['pa']].sel(lon=wi_loc['lon'], method='nearest'))[var2stash_ral['pa']].sel(time=slice(starttime, endtime)).compute()
-
-xr.open_mfdataset(fl[8:10], preprocess=lambda ds_in: ds_in.pipe(preprocess_umoutput)[var2stash_ral['pa']].sel(lon=wi_loc['lon'], method='nearest'), combine='by_coords', parallel=True, data_vars='minimal', coords='minimal',compat='override')[var2stash_ral['pa']].sel(time=slice(starttime, endtime)).compute()
-
-
 #-------------------------------- check
-itime = 32
-ilat = 40
 
-data1 = np.interp(plevs_hpa, ds_pa[itime, ::-1, ilat]/100, ds_data[itime, ::-1, ilat], left=np.nan, right=np.nan).astype(ds_data.dtype)
-data2 = ds[ilabel][itime, ilat, :]
-print((data1 == data2).all())
 
-haversine(cs_start, cs_end, unit='km')
+
+
+#-------------------------------- others
+
+products = ['cloud']
+
+categories = ['cmic']
+vars = ['cmic_cot', 'cmic_iwp', 'cmic_lwp', 'cmic_phase', 'cmic_reff'] # ['cmic_conditions', 'cmic_cot', 'cmic_iwp', 'cmic_lwp', 'cmic_phase', 'cmic_quality', 'cmic_reff', 'cmic_status_flag']
+
+categories = ['ctth']
+vars = ['ctth_alti', 'ctth_effectiv', 'ctth_pres', 'ctth_tempe'] #['ctth_alti', 'ctth_conditions', 'ctth_effectiv', 'ctth_method', 'ctth_pres', 'ctth_quality', 'ctth_status_flag', 'ctth_tempe']
+
+# categories = ['ct']
+# vars = ['ct', 'ct_conditions', 'ct_cumuliform', 'ct_multilayer', 'ct_quality', 'ct_status_flag']
+# categories = ['cma']
+# vars = ['cma', 'cma_cloudsnow', 'cma_conditions', 'cma_dust', 'cma_quality', 'cma_smoke', 'cma_status_flag', 'cma_testlist1', 'cma_testlist2', 'cma_volcanic']
+
+
+products = ['precip']
+
+# categories = ['crrph']
+# vars = ['crrph_accum', 'crrph_conditions', 'crrph_intensity', 'crrph_quality', 'crrph_status_flag']
+
+# categories = ['crr']
+# vars = ['crr', 'crr_accum', 'crr_conditions', 'crr_intensity', 'crr_quality', 'crr_status_flag']
+
+
+products = ['solar']
+
+# categories = ['p1s']
+# vars = ['surface_global_irradiance', 'direct_normal_irradiance', 'surface_diffuse_irradiance', 'quality_mask', 'cloud_type', 'cloud_optical_depth', 'solar_elevation', 'solar_azimuth', 'julian_date']
+
+# categories = ['p1d']
+# vars = ['daily_integral_of_surface_global_irradiance', 'daily_integral_of_direct_normal_irradiance', 'daily_integral_of_surface_diffuse_irradiance', 'number_of_observations', 'number_of_cloud_observations', 'quality_mask']
+
+# categories = ['p1h']
+# vars = ['hourly_integral_of_surface_global_irradiance', 'hourly_integral_of_direct_normal_irradiance', 'hourly_integral_of_surface_diffuse_irradiance', 'number_of_observations', 'number_of_cloud_observations', 'quality_mask']
+
+
 '''
 # endregion
 
