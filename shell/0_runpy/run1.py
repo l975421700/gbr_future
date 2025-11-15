@@ -166,7 +166,7 @@ for iproduct in products: #os.listdir(himawari_bom): #
                 odir = f'data/obs/jaxa/{himawari_rename[ivar]}'
                 os.makedirs(odir, exist_ok=True)
                 
-                ds = xr.open_mfdataset(fl, parallel=True, preprocess=lambda ds_in: preprocess_himawari(ds_in, ivar))[himawari_rename[ivar]]
+                ds = xr.open_mfdataset(fl, combine='by_coords', parallel=True, data_vars='minimal', coords='minimal',compat='override', preprocess=lambda ds_in: preprocess_himawari(ds_in, ivar))[himawari_rename[ivar]]
                 ds = ds.chunk({'time': -1, 'nx': 50, 'ny': 50})
                 
                 if ivar in ['cmic_iwp', 'cmic_lwp']:

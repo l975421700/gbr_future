@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -P v46 -l walltime=6:00:00,ncpus=1,mem=96GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/qx55+gdata/gx60+gdata/py18+gdata/rv74
+# qsub -I -q normal -P v46 -l walltime=6:00:00,ncpus=1,mem=96GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/qx55+gdata/gx60+gdata/py18+gdata/rv74+gdata/xp65
 
 
 # region import packages
@@ -45,6 +45,7 @@ from component_plot import (
 
 
 # region get monthly and hourly Himawari cmic
+# Memory Used: 300GB; Walltime Used: 04:00
 
 import argparse
 parser=argparse.ArgumentParser()
@@ -101,7 +102,7 @@ for iproduct in products: #os.listdir(himawari_bom): #
                 odir = f'data/obs/jaxa/{himawari_rename[ivar]}'
                 os.makedirs(odir, exist_ok=True)
                 
-                ds = xr.open_mfdataset(fl, parallel=True, preprocess=lambda ds_in: preprocess_himawari(ds_in, ivar))[himawari_rename[ivar]]
+                ds = xr.open_mfdataset(fl, combine='by_coords', parallel=True, data_vars='minimal', coords='minimal',compat='override', preprocess=lambda ds_in: preprocess_himawari(ds_in, ivar))[himawari_rename[ivar]]
                 ds = ds.chunk({'time': -1, 'nx': 50, 'ny': 50})
                 
                 if ivar in ['cmic_iwp', 'cmic_lwp']:
@@ -145,7 +146,7 @@ fl = sorted(glob.glob(f'{folder}/latest/{year}/{month:02d}/*/*.nc'))
 print(f'Number of files: {len(fl)}')
 odir = f'data/obs/jaxa/{himawari_rename[ivar]}'
 
-ds = xr.open_mfdataset(fl, parallel=True, preprocess=lambda ds_in: preprocess_himawari(ds_in, ivar))[himawari_rename[ivar]]
+ds = xr.open_mfdataset(fl, combine='by_coords', parallel=True, data_vars='minimal', coords='minimal',compat='override', preprocess=lambda ds_in: preprocess_himawari(ds_in, ivar))[himawari_rename[ivar]]
 # ds = ds.chunk({'time': -1, 'nx': 50, 'ny': 50})
 
 ds_mm = xr.open_dataset(f'{odir}/{himawari_rename[ivar]}_{year}{month:02d}.nc')[himawari_rename[ivar]]
@@ -219,23 +220,36 @@ products = ['solar']
 
 # region check monthly data
 
-ds = rxr.open_rasterio('scratch/gdata_rv74_himawari/cloud/cmic/latest/2020/06/02/S_NWC_CMIC_HIMA08_HIMA-N-NR_20200602T001000Z.nc', masked=True)[0]
-ds = ds.rio.reproject('epsg:4326')
-
-ds = rxr.open_rasterio('data/obs/jaxa/clwvi/clwvi_202501.nc', masked=True)
-ds = ds.rio.reproject('epsg:4326')
-
-ds = xr.open_dataset('data/obs/jaxa/clwvi/clwvi_202501.nc')['clwvi']
-
 pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-    cm_min=0, cm_max=80, cm_interval1=5, cm_interval2=10,
+    cm_min=0, cm_max=240, cm_interval1=10, cm_interval2=20,
     cmap='Purples_r',)
 extend = 'max'
 
-fig, ax = plt.subplots(figsize=np.array([7, 7+1])/2.54, subplot_kw={'projection': ccrs.PlateCarree()})
+fig, ax = plt.subplots(figsize=np.array([7, 7+1])/2.54, subplot_kw={'projection': ccrs.PlateCarree(central_longitude=180)})
+
+ds = rxr.open_rasterio('data/obs/jaxa/clwvi/clwvi_202501.nc', masked=True)
+ds = ds.rio.write_crs(ccrs.Geostationary(central_longitude=140.7, satellite_height=35785863.0), inplace=False)
+ds = ds.rio.reproject('epsg:4326')
+ds.clwvi[:] *= 1000
 ax.pcolormesh(
-    ds.lon.values, ds.lat.values, ds[0].values,
-    norm=pltnorm, cmap=pltcmp, transform=ccrs.PlateCarree(),)
+    ds.x.values,
+    ds.y.values,
+    ds.clwvi.squeeze().values,
+    norm=pltnorm, cmap=pltcmp, transform=ccrs.PlateCarree())
+opng = f'figures/0_gbr/test.png'
+
+ds = xr.open_dataset('data/obs/jaxa/clwvi/clwvi_202501.nc', engine='rasterio')
+ds.clwvi[:] *= 1000
+ds.clwvi.plot(ax=ax, norm=pltnorm, cmap=pltcmp, transform=ccrs.PlateCarree())
+
+# ds = rxr.open_rasterio('data/obs/jaxa/clwvi/clwvi_202501.nc', masked=True)
+# ds.clwvi[:] *= 1000
+# ds.clwvi.plot(ax=ax, norm=pltnorm, cmap=pltcmp, transform=ccrs.PlateCarree())
+
+# ds = xr.open_dataset('data/obs/jaxa/clwvi/clwvi_202501.nc')['clwvi'].squeeze()
+# ds[:] *= 1000
+# ds.plot(ax=ax, norm=pltnorm, cmap=pltcmp, transform=ccrs.PlateCarree())
+# opng = f'figures/0_gbr/test1.png'
 
 coastline = cfeature.NaturalEarthFeature(
     'physical', 'coastline', '10m', edgecolor='yellow',
@@ -253,7 +267,19 @@ gl.xlocator = mticker.FixedLocator(np.arange(0, 360 + 1e-4, 10))
 gl.ylocator = mticker.FixedLocator(np.arange(-90, 90 + 1e-4, 10))
 
 fig.subplots_adjust(left=0.01, right=0.99, bottom=1/(7+1), top=0.99)
-fig.savefig(f'figures/0_gbr/test.png', transparent=True)
+fig.savefig(opng)
 
 
+
+
+'''
+
+ds = rxr.open_rasterio('scratch/gdata_rv74_himawari/cloud/cmic/latest/2020/06/02/S_NWC_CMIC_HIMA08_HIMA-N-NR_20200602T001000Z.nc', masked=True)[0]
+ds = ds.rio.reproject('epsg:4326')
+
+
+'''
 # endregion
+
+
+
