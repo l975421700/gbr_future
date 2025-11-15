@@ -198,7 +198,7 @@ Thresholds: https://user.eumetsat.int/resources/case-studies/night-time-fog-over
 
 start_time = time.perf_counter()
 
-year, month, day, hour, minute = 2020, 6, 2, 4, 0
+year, month, day, hour, minute = 2020, 6, 2, 3, 0
 dfolder = Path('/g/data/ra22/satellite-products/arc/obs/himawari-ahi/fldk/latest')
 # dfolder = Path('/g/data/ra22/satellite-products/nrt/obs/himawari-ahi/fldk/latest')
 
@@ -207,7 +207,7 @@ extent = [-5499500., 5499500., -5499500., 5499500.]
 transform = ccrs.Geostationary(central_longitude=140.7, satellite_height=35785863.0)
 bands=['B03', 'B02', 'B01', 'B07', 'B13', 'B15']
 
-plt_text = f'{year}-{month:02d}-{day:02d} {hour:02d}:{minute:02d} UTC\nTrue Color and Night Microphysics RGB Himawari 8/9'
+plt_text = f'{year}-{month:02d}-{day:02d} {hour:02d}:{minute:02d} UTC\nHimawari True Color and Night Microphysics RGB'
 
 channels = {}
 for iband in bands:

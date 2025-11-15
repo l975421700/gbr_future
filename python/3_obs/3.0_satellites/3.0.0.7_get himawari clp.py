@@ -53,9 +53,8 @@ parser.add_argument('-y', '--year', type=int, required=True,)
 parser.add_argument('-m', '--month', type=int, required=True,)
 args = parser.parse_args()
 
-year=args.year
-month=args.month
-# year = 2020; month = 6
+year=args.year; month=args.month
+# year = 2015; month = 7
 
 # option
 products = ['cloud']
@@ -68,7 +67,6 @@ vars = ['cmic_lwp']
 
 # settings
 himawari_bom = '/g/data/rv74/satellite-products/arc/der/himawari-ahi'
-ancillary = xr.open_dataset('/g/data/ra22/satellite-products/arc/obs/himawari-ahi/fldk/latest/ancillary/00000000000000-P1S-ABOM_GEOM_SENSOR-PRJ_GEOS141_2000-HIMAWARI8-AHI.nc')
 himawari_rename = {
     'cmic_cot': 'COT',
     'cmic_iwp': 'clivi',
@@ -107,11 +105,16 @@ for iproduct in products: #os.listdir(himawari_bom): #
                 
                 if ivar in ['cmic_iwp', 'cmic_lwp']:
                     print('get mm')
-                    ds_mm = ds.resample({'time': '1M'}).mean().compute()
-                    ds_mm.to_netcdf(f'{odir}/{himawari_rename[ivar]}_{year}{month:02d}.nc')
+                    ofile1 = f'{odir}/{himawari_rename[ivar]}_{year}{month:02d}.nc'
+                    if not os.path.exists(ofile1):
+                        ds_mm = ds.resample({'time': '1M'}).mean().compute()
+                        ds_mm.to_netcdf(ofile1)
+                    
                     print('get mhm')
-                    ds_mhm = ds.resample(time='1M').map(lambda x: x.groupby('time.hour').mean()).compute()
-                    ds_mhm.to_netcdf(f'{odir}/{himawari_rename[ivar]}_hourly_{year}{month:02d}.nc')
+                    ofile2 = f'{odir}/{himawari_rename[ivar]}_hourly_{year}{month:02d}.nc'
+                    if not os.path.exists(ofile2):
+                        ds_mhm = ds.resample(time='1M').map(lambda x: x.groupby('time.hour').mean()).compute()
+                        ds_mhm.to_netcdf(ofile2)
 
 
 

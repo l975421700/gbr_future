@@ -10,40 +10,20 @@ dask.config.set({"array.slicing.split_large_chunks": True})
 from dask.diagnostics import ProgressBar
 pbar = ProgressBar()
 pbar.register()
-from scipy import stats
-import pandas as pd
-from metpy.interpolate import cross_section
-from statsmodels.stats import multitest
-from metpy.calc import pressure_to_height_std, geopotential_to_height
-from metpy.units import units
-import metpy.calc as mpcalc
-import pickle
-import xesmf as xe
-import calendar
 import glob
-from metpy.calc import specific_humidity_from_dewpoint, relative_humidity_from_dewpoint, vertical_velocity_pressure, mixing_ratio_from_specific_humidity, relative_humidity_from_specific_humidity, dewpoint_from_specific_humidity, equivalent_potential_temperature, potential_temperature
-from datetime import datetime, timedelta
-from haversine import haversine
+import rioxarray as rxr
 
 # plot
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-from matplotlib.colors import BoundaryNorm
 import cartopy.crs as ccrs
-from matplotlib import cm
 plt.rcParams['pcolor.shading'] = 'auto'
 mpl.rcParams['figure.dpi'] = 600
 mpl.rc('font', family='Times New Roman', size=12)
 mpl.rcParams['axes.linewidth'] = 0.2
 plt.rcParams.update({"mathtext.fontset": "stix"})
-import matplotlib.animation as animation
-from cartopy.mpl.ticker import LongitudeFormatter, LatitudeFormatter
-from matplotlib.ticker import AutoMinorLocator
-import geopandas as gpd
-import matplotlib.patches as mpatches
-from matplotlib.lines import Line2D
+import matplotlib.ticker as mticker
 import cartopy.feature as cfeature
-from matplotlib.patches import Rectangle
 
 # management
 import os
@@ -52,64 +32,17 @@ sys.path.append(os.getcwd() + '/code/gbr_future/module')
 import psutil
 process = psutil.Process()
 # print(process.memory_info().rss / 2**30)
-import string
 import warnings
 warnings.filterwarnings('ignore')
 
-# self defined
-from mapplot import (
-    globe_plot,
-    regional_plot,
-    ticks_labels,
-    scale_bar,
-    plot_maxmin_points,
-    remove_trailing_zero,
-    remove_trailing_zero_pos,
-    )
-
-from namelist import (
-    month_jan,
-    monthini,
-    seasons,
-    seconds_per_d,
-    zerok,
-    era5_varlabels,
-    cmip6_era5_var,
-    )
-
 from component_plot import (
-    rainbow_text,
-    change_snsbar_width,
-    cplot_wind_vectors,
-    cplot_lon180,
-    cplot_lon180_ctr,
-    plt_mesh_pars,
-)
-
-from calculations import (
-    time_weighted_mean,
-    coslat_weighted_mean,
-    coslat_weighted_rmsd,
-    mon_sea_ann,
-    regrid,
-    cdo_regrid,)
-
-from statistics0 import (
-    ttest_fdr_control,)
-
-from um_postprocess import (
-    preprocess_umoutput,
-    stash2var, stash2var_gal, stash2var_ral,
-    var2stash, var2stash_gal, var2stash_ral,
-    suite_res, suite_label,
-    interp_to_pressure_levels)
-
-from metplot import si2reflectance, si2radiance, get_modis_latlonrgbs, get_modis_latlonvar, get_modis_latlonvars, get_cross_section
+    plt_mesh_pars,)
 
 # endregion
 
 
 # region get monthly and hourly Himawari cmic
+# Memory Used: 300GB; Walltime Used: 04:00
 
 import argparse
 parser=argparse.ArgumentParser()
@@ -117,9 +50,8 @@ parser.add_argument('-y', '--year', type=int, required=True,)
 parser.add_argument('-m', '--month', type=int, required=True,)
 args = parser.parse_args()
 
-year=args.year
-month=args.month
-# year = 2020; month = 6
+year=args.year; month=args.month
+# year = 2015; month = 7
 
 # option
 products = ['cloud']
@@ -132,7 +64,6 @@ vars = ['cmic_lwp']
 
 # settings
 himawari_bom = '/g/data/rv74/satellite-products/arc/der/himawari-ahi'
-ancillary = xr.open_dataset('/g/data/ra22/satellite-products/arc/obs/himawari-ahi/fldk/latest/ancillary/00000000000000-P1S-ABOM_GEOM_SENSOR-PRJ_GEOS141_2000-HIMAWARI8-AHI.nc')
 himawari_rename = {
     'cmic_cot': 'COT',
     'cmic_iwp': 'clivi',
@@ -171,20 +102,80 @@ for iproduct in products: #os.listdir(himawari_bom): #
                 
                 if ivar in ['cmic_iwp', 'cmic_lwp']:
                     print('get mm')
-                    ds_mm = ds.resample({'time': '1M'}).mean().compute()
-                    ds_mm.to_netcdf(f'{odir}/{himawari_rename[ivar]}_{year}{month:02d}.nc')
+                    ofile1 = f'{odir}/{himawari_rename[ivar]}_{year}{month:02d}.nc'
+                    if not os.path.exists(ofile1):
+                        ds_mm = ds.resample({'time': '1M'}).mean().compute()
+                        ds_mm.to_netcdf(ofile1)
+                    
                     print('get mhm')
-                    ds_mhm = ds.resample(time='1M').map(lambda x: x.groupby('time.hour').mean()).compute()
-                    ds_mhm.to_netcdf(f'{odir}/{himawari_rename[ivar]}_hourly_{year}{month:02d}.nc')
+                    ofile2 = f'{odir}/{himawari_rename[ivar]}_hourly_{year}{month:02d}.nc'
+                    if not os.path.exists(ofile2):
+                        ds_mhm = ds.resample(time='1M').map(lambda x: x.groupby('time.hour').mean()).compute()
+                        ds_mhm.to_netcdf(ofile2)
 
 
 
 
 '''
 #-------------------------------- check
+year = 2025; month = 1
+iproduct = 'cloud'
+icategory = 'cmic'
+ivar = 'cmic_lwp'
+
+himawari_bom = '/g/data/rv74/satellite-products/arc/der/himawari-ahi'
+himawari_rename = {
+    'cmic_cot': 'COT',
+    'cmic_iwp': 'clivi',
+    'cmic_lwp': 'clwvi',
+    'cmic_phase': 'clphase',
+    'cmic_reff': 'Reff',
+    'ctth_alti': 'CTH',
+    'ctth_effectiv': 'clt',
+    'ctth_pres': 'CTP',
+    'ctth_tempe': 'CTT'}
+
+def preprocess_himawari(ds_in, ivar):
+    # ds_in = xr.open_dataset(fl[5])
+    ds_out = ds_in[ivar].rename(himawari_rename[ivar])
+    ds_out = ds_out.expand_dims(time=[np.datetime64(ds_in.attrs['nominal_product_time'])])
+    return(ds_out)
+
+folder = f'{himawari_bom}/{iproduct}/{icategory}'
+fl = sorted(glob.glob(f'{folder}/latest/{year}/{month:02d}/*/*.nc'))
+print(f'Number of files: {len(fl)}')
+odir = f'data/obs/jaxa/{himawari_rename[ivar]}'
+
+ds = xr.open_mfdataset(fl, combine='by_coords', parallel=True, data_vars='minimal', coords='minimal',compat='override', preprocess=lambda ds_in: preprocess_himawari(ds_in, ivar))[himawari_rename[ivar]]
+# ds = ds.chunk({'time': -1, 'nx': 50, 'ny': 50})
+
+ds_mm = xr.open_dataset(f'{odir}/{himawari_rename[ivar]}_{year}{month:02d}.nc')[himawari_rename[ivar]]
+ds_mhm = xr.open_dataset(f'{odir}/{himawari_rename[ivar]}_hourly_{year}{month:02d}.nc')[himawari_rename[ivar]]
+
+inx = 2000
+iny = 2000
+
+print(ds_mm[0, iny, inx].values)
+print(np.mean(ds[:, iny, inx]).values)
+
+print(ds_mhm[0, iny, inx, :].values)
+print(ds[:, iny, inx].groupby('time.hour').mean().values)
+print(ds[:, iny, inx].groupby('time.hour').mean(skipna=False).values)
 
 
 
+
+#-------------------------------- coordinates
+
+ancillary = xr.open_dataset('/g/data/ra22/satellite-products/arc/obs/himawari-ahi/fldk/latest/ancillary/00000000000000-P1S-ABOM_GEOM_SENSOR-PRJ_GEOS141_2000-HIMAWARI8-AHI.nc')
+subset = np.isfinite(ancillary['lat'].values[0]) & np.isfinite(ds_mm['lat'].values)
+
+print((ds_mm['lat'].values[subset] == ancillary['lat'].values[0][subset]).all())
+print((ds_mm['lon'].values[subset] == ancillary['lon'].values[0][subset]).all())
+
+
+print(np.max(np.abs(ds_mm['lat'].values[subset] - ancillary['lat'].values[0][subset])))
+print(np.max(np.abs(ds_mm['lon'].values[subset] - ancillary['lon'].values[0][subset])))
 
 #-------------------------------- others
 
@@ -225,4 +216,5 @@ products = ['solar']
 
 '''
 # endregion
+
 

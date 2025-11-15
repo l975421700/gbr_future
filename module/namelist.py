@@ -201,6 +201,12 @@ era5_varlabels = {
     'LCL': r'LCL [$m$]',
     'EIS': r'EIS [$K$]',
     'ECTEI': r'ECTEI [$K$]',
+    'COT': r'COT [-]',
+    'clphase': r'Cloud Top Phase [-]',
+    'Reff': r'Cloud Top $r_{eff}$ [$\mu m$]',
+    'CTH': r'CTH [$km$]',
+    'CTP': r'CTP [$hPa$]',
+    'CTT': r'CTT [$K$]',
 }
 
 
@@ -289,6 +295,12 @@ cmip6_era5_var = {
     'ACF': 'ACF',
     'BCF': 'BCF',
     'TCF': 'TCF',
+    'COT': 'COT',
+    'clphase': 'clphase',
+    'Reff': 'Reff',
+    'CTH': 'CTH',
+    'CTP': 'CTP',
+    'CTT': 'CTT',
     # 'wa',
 }
 # tcw = tcwv + tcsw + tcrw + tclw + tciw

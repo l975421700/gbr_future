@@ -29,6 +29,8 @@ mpl.rcParams['axes.linewidth'] = 0.2
 plt.rcParams.update({"mathtext.fontset": "stix"})
 import cartopy.feature as cfeature
 import matplotlib.ticker as mticker
+from matplotlib.colors import BoundaryNorm, ListedColormap
+from matplotlib import cm
 
 # management
 import os
@@ -53,6 +55,7 @@ from namelist import (
 
 from mapplot import (
     regional_plot,
+    remove_trailing_zero_pos,
     )
 
 
@@ -69,8 +72,11 @@ from component_plot import (
 # option
 year, month, day, hour, minute = 2020, 6, 2, 3, 0
 products = ['cloud']
-categories = ['cmic']
-vars = ['cmic_iwp', 'cmic_lwp', 'cwp']
+categories = ['ctth']
+# ['ctth_alti', 'ctth_pres', 'ctth_tempe', 'ctth_effectiv']
+# categories = ['cmic']
+# ['cmic_cot', 'cmic_phase', 'cmic_reff', 'cmic_iwp', 'cmic_lwp', 'cwp']
+vars = ['ctth_alti', 'ctth_pres', 'ctth_tempe', 'ctth_effectiv']
 plt_regions = ['himawari']
 
 # settings
@@ -105,49 +111,118 @@ for iproduct in products: #os.listdir(himawari_bom): #
         ds = ds.sel(lon=slice(np.nanmin(ancillary['lon']), np.nanmax(ancillary['lon'])))
         
         for ivar in vars:
+            # ivar = 'ctth_alti'
+            # ['cmic_cot', 'cmic_phase', 'cmic_reff', 'cmic_iwp', 'cmic_lwp', 'cwp']
+            # ['ctth_alti', 'ctth_pres', 'ctth_tempe', 'ctth_effectiv']
             print(f'#-------- {ivar}')
             
-            if ivar in ['cmic_iwp', 'cmic_lwp']:
-                # ivar = 'cmic_lwp'
-                plt_data = ds[ivar].attrs['scale_factor'] * (ds[ivar].rename(himawari_rename[ivar]) - ds[ivar].attrs['add_offset'])
+            if ivar == 'cmic_phase':
+                plt_data = ds[ivar].rename(himawari_rename[ivar])
+            elif ivar in himawari_rename.keys():
+                plt_data = ds[ivar].attrs['scale_factor'] * ds[ivar].rename(himawari_rename[ivar]) + ds[ivar].attrs['add_offset']
             elif ivar=='cwp':
-                # ivar = 'cwp'
-                plt_data = ((ds['cmic_iwp'].attrs['scale_factor'] * (ds['cmic_iwp'] - ds['cmic_iwp'].attrs['add_offset'])).fillna(0) + (ds['cmic_lwp'].attrs['scale_factor'] * (ds['cmic_lwp'] - ds['cmic_lwp'].attrs['add_offset'])).fillna(0)).rename(ivar)
+                plt_data = ((ds['cmic_iwp'].attrs['scale_factor'] * ds['cmic_iwp'] + ds['cmic_iwp'].attrs['add_offset']).fillna(0) + (ds['cmic_lwp'].attrs['scale_factor'] * ds['cmic_lwp'] + ds['cmic_lwp'].attrs['add_offset']).fillna(0)).rename(ivar)
             
             if ivar in ['cmic_iwp', 'cmic_lwp', 'cwp']:
                 plt_data *= 1000
+            elif ivar=='cmic_reff':
+                plt_data *= 10**6
+            elif ivar=='ctth_alti':
+                plt_data /= 1000
+            elif ivar=='ctth_pres':
+                plt_data /= 100
+            elif ivar=='ctth_effectiv':
+                plt_data *= 100
+            
+            print(f'Min: {np.nanmin(plt_data)}')
+            print(f'Mean: {np.nanmean(plt_data)}')
+            print(f'Max: {np.nanmax(plt_data)}')
+            
+            if ivar in ['cmic_iwp', 'cmic_lwp', 'cwp']:
                 pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-                    cm_min=0, cm_max=1600, cm_interval1=100, cm_interval2=200,
+                    cm_min=0, cm_max=800, cm_interval1=50, cm_interval2=100,
                     cmap='Purples_r',)
                 extend = 'max'
+            elif ivar=='cmic_cot':
+                pltlevel = [0, 1.3, 3.6, 9.4, 23, 60, 379]
+                pltticks = pltlevel
+                pltnorm = BoundaryNorm(boundaries=pltlevel, ncolors=len(pltlevel)-1, clip=True)
+                pltcmp = cm.get_cmap('Purples', len(pltlevel)-1)
+                extend = 'neither'
+            elif ivar=='cmic_phase':
+                pltticks = [1, 2, 3, 4, 5]
+                pltlabels = ['liquid', 'ice', 'mixed', 'cloud-free', 'undefined']
+                colors = ['#1f77b4', '#00FFFF', 'tab:orange', '#ffffff', '#000000']
+                pltcmp = ListedColormap(colors)
+                pltnorm = BoundaryNorm([0.5, 1.5, 2.5, 3.5, 4.5, 5.5], pltcmp.N)
+                extend = 'neither'
+            elif ivar=='cmic_reff':
+                pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+                    cm_min=0, cm_max=40, cm_interval1=2, cm_interval2=4,
+                    cmap='Greens_r',)
+                extend = 'max'
+            elif ivar=='ctth_alti':
+                pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+                    cm_min=0, cm_max=18, cm_interval1=1, cm_interval2=2,
+                    cmap='Blues_r',)
+                extend = 'max'
+            elif ivar=='ctth_pres':
+                pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+                    cm_min=100, cm_max=1000, cm_interval1=50, cm_interval2=100,
+                    cmap='Blues',)
+                extend = 'both'
+            elif ivar=='ctth_tempe':
+                pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+                    cm_min=180, cm_max=310, cm_interval1=10, cm_interval2=20,
+                    cmap='Blues',)
+                extend = 'both'
+            elif ivar=='ctth_effectiv':
+                pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+                    cm_min=0, cm_max=100, cm_interval1=5, cm_interval2=10,
+                    cmap='Blues_r',)
+                extend = 'neither'
             
             for iplt_region in plt_regions:
                 print(f'#---- {iplt_region}')
                 
-                opng = f'figures/3_satellites/3.0_hamawari/3.0.2_clp/3.0.2.0 himawari {iproduct} {icategory} {plt_data.name} {iplt_region} {year}{month:02d}{day:02d}{hour:02d}{minute:02d}.png'
+                opng = f'figures/3_satellites/3.0_hamawari/3.0.2_clp/3.0.2.0 {iproduct} {icategory} {plt_data.name} {iplt_region} {year}{month:02d}{day:02d}{hour:02d}{minute:02d}.png'
                 cbar_label = f'{year}-{month:02d}-{day:02d} {hour:02d}:{minute:02d} UTC Himawari {era5_varlabels[cmip6_era5_var[plt_data.name]]}'
                 
                 if iplt_region == 'himawari':
                     fig, ax = plt.subplots(figsize=np.array([7, 7+1])/2.54, subplot_kw={'projection': transform})
+                    ax.imshow(np.ones((100,100,3)),extent=extent,transform=transform,zorder=0)
                     fig.subplots_adjust(left=0.01, right=0.99, bottom=1/(7+1), top=0.99)
                     
-                ax.pcolormesh(
+                    coastline = cfeature.NaturalEarthFeature(
+                        'physical', 'coastline', '10m', edgecolor='k',
+                        facecolor='none', lw=0.1)
+                    ax.add_feature(coastline, zorder=2, alpha=0.75)
+                    borders = cfeature.NaturalEarthFeature(
+                        'cultural', 'admin_0_boundary_lines_land', '10m',
+                        edgecolor='k', facecolor='none', lw=0.1)
+                    ax.add_feature(borders, zorder=2, alpha=0.75)
+                    gl = ax.gridlines(
+                        crs=ccrs.PlateCarree(), lw=0.1, zorder=2, alpha=0.35,
+                        color='k', linestyle='--',)
+                    gl.xlocator = mticker.FixedLocator(np.arange(0, 360 + 1e-4, 10))
+                    gl.ylocator = mticker.FixedLocator(np.arange(-90, 90 + 1e-4, 10))
+                
+                plt_mesh = ax.pcolormesh(
                     plt_data.lon, plt_data.lat, plt_data,
                     norm=pltnorm, cmap=pltcmp, transform=ccrs.PlateCarree())
                 
-                coastline = cfeature.NaturalEarthFeature(
-                    'physical', 'coastline', '10m', edgecolor='k',
-                    facecolor='none', lw=0.1)
-                ax.add_feature(coastline, zorder=2, alpha=0.75)
-                borders = cfeature.NaturalEarthFeature(
-                    'cultural', 'admin_0_boundary_lines_land', '10m',
-                    edgecolor='k', facecolor='none', lw=0.1)
-                ax.add_feature(borders, zorder=2, alpha=0.75)
-                gl = ax.gridlines(
-                    crs=ccrs.PlateCarree(), lw=0.1, zorder=2, alpha=0.35,
-                    color='k', linestyle='--',)
-                gl.xlocator = mticker.FixedLocator(np.arange(0, 360 + 1e-4, 10))
-                gl.ylocator = mticker.FixedLocator(np.arange(-90, 90 + 1e-4, 10))
+                cbar = fig.colorbar(
+                    plt_mesh,
+                    format=remove_trailing_zero_pos,
+                    orientation="horizontal", ticks=pltticks, extend=extend,
+                    cax=fig.add_axes([0.04, 0.8/(7+1), 0.92, 0.02]))
+                cbar.ax.tick_params(labelsize=8, length=2, width=0.5, pad=1)
+                cbar.ax.tick_params(which='minor', length=1, width=0.5)
+                cbar.ax.set_xlabel(cbar_label, fontsize=8, labelpad=2)
+                
+                if ivar=='cmic_phase':
+                    cbar.ax.set_xticklabels(pltlabels)
+                
                 fig.savefig(opng)
 
 
