@@ -73,6 +73,7 @@ from component_plot import (
 year, month, day, hour, minute = 2020, 6, 2, 3, 0
 products = ['cloud']
 categories = ['ctth']
+# categories = ['ctth']
 # ['ctth_alti', 'ctth_pres', 'ctth_tempe', 'ctth_effectiv']
 # categories = ['cmic']
 # ['cmic_cot', 'cmic_phase', 'cmic_reff', 'cmic_iwp', 'cmic_lwp', 'cwp']
@@ -228,9 +229,78 @@ for iproduct in products: #os.listdir(himawari_bom): #
 
 
 
-
-
 '''
+#-------------------------------- alternative method: no reproject
+year, month, day, hour, minute = 2020, 6, 2, 3, 0
+iproduct = 'cloud'
+icategory = 'cmic'
+ivar = 'cwp'
+iplt_region = 'himawari'
+
+himawari_bom = '/g/data/rv74/satellite-products/arc/der/himawari-ahi'
+ancillary = xr.open_dataset('/g/data/ra22/satellite-products/arc/obs/himawari-ahi/fldk/latest/ancillary/00000000000000-P1S-ABOM_GEOM_SENSOR-PRJ_GEOS141_2000-HIMAWARI8-AHI.nc')
+ancillary['lon'] = ancillary['lon'] % 360
+himawari_rename = {
+    'cmic_cot': 'COT',
+    'cmic_iwp': 'clivi',
+    'cmic_lwp': 'clwvi',
+    'cmic_phase': 'clphase',
+    'cmic_reff': 'Reff',
+    'ctth_alti': 'CTH',
+    'ctth_effectiv': 'clt',
+    'ctth_pres': 'CTP',
+    'ctth_tempe': 'CTT'}
+extent = [-5499500., 5499500., -5499500., 5499500.]
+transform = ccrs.Geostationary(central_longitude=140.7, satellite_height=35785863.0)
+
+file = glob.glob(f'{himawari_bom}/{iproduct}/{icategory}/latest/{year}/{month:02d}/{day:02d}/*{hour:02d}{minute:02d}00Z.nc')[0]
+ds = xr.open_dataset(file)
+
+# plt_data = ((ds['cmic_iwp'].attrs['scale_factor'] * ds['cmic_iwp'] + ds['cmic_iwp'].attrs['add_offset']).fillna(0) + (ds['cmic_lwp'].attrs['scale_factor'] * ds['cmic_lwp'] + ds['cmic_lwp'].attrs['add_offset']).fillna(0)).rename(ivar)
+plt_data = (ds['cmic_iwp'].fillna(0) + ds['cmic_lwp'].fillna(0)).rename(ivar)
+plt_data *= 1000
+pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+    cm_min=0, cm_max=800, cm_interval1=50, cm_interval2=100,
+    cmap='Purples_r',)
+extend = 'max'
+
+opng = 'figures/0_gbr/test.png'
+cbar_label = f'{year}-{month:02d}-{day:02d} {hour:02d}:{minute:02d} UTC Himawari {era5_varlabels[cmip6_era5_var[plt_data.name]]}'
+
+fig, ax = plt.subplots(figsize=np.array([7, 7+1])/2.54, subplot_kw={'projection': transform})
+ax.imshow(np.ones((100,100,3)),extent=extent,transform=transform,zorder=0)
+fig.subplots_adjust(left=0.01, right=0.99, bottom=1/(7+1), top=0.99)
+
+coastline = cfeature.NaturalEarthFeature(
+    'physical', 'coastline', '10m', edgecolor='k',
+    facecolor='none', lw=0.1)
+ax.add_feature(coastline, zorder=2, alpha=0.75)
+borders = cfeature.NaturalEarthFeature(
+    'cultural', 'admin_0_boundary_lines_land', '10m',
+    edgecolor='k', facecolor='none', lw=0.1)
+ax.add_feature(borders, zorder=2, alpha=0.75)
+gl = ax.gridlines(
+    crs=ccrs.PlateCarree(), lw=0.1, zorder=2, alpha=0.35,
+    color='k', linestyle='--',)
+gl.xlocator = mticker.FixedLocator(np.arange(0, 360 + 1e-4, 10))
+gl.ylocator = mticker.FixedLocator(np.arange(-90, 90 + 1e-4, 10))
+
+plt_mesh = ax.pcolormesh(
+    plt_data.nx, plt_data.ny, plt_data,
+    norm=pltnorm, cmap=pltcmp, transform=transform)
+
+cbar = fig.colorbar(
+    plt_mesh,
+    format=remove_trailing_zero_pos,
+    orientation="horizontal", ticks=pltticks, extend=extend,
+    cax=fig.add_axes([0.04, 0.8/(7+1), 0.92, 0.02]))
+cbar.ax.tick_params(labelsize=8, length=2, width=0.5, pad=1)
+cbar.ax.tick_params(which='minor', length=1, width=0.5)
+cbar.ax.set_xlabel(cbar_label, fontsize=8, labelpad=2)
+
+fig.savefig(opng)
+
+
 #-------------------------------- original method
 
 cwp = xr.open_dataset('/g/data/rv74/satellite-products/arc/der/himawari-ahi/cloud/cmic/latest/2020/06/02/S_NWC_CMIC_HIMA08_HIMA-N-NR_20200602T033000Z.nc')

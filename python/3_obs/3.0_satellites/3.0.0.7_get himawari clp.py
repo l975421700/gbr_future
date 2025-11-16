@@ -38,6 +38,21 @@ process = psutil.Process()
 import warnings
 warnings.filterwarnings('ignore')
 
+from namelist import (
+    month_jan,
+    monthini,
+    seasons,
+    seconds_per_d,
+    zerok,
+    era5_varlabels,
+    cmip6_era5_var,
+    )
+
+from mapplot import (
+    regional_plot,
+    remove_trailing_zero_pos,
+    )
+
 from component_plot import (
     plt_mesh_pars,)
 
@@ -221,61 +236,88 @@ products = ['solar']
 # endregion
 
 
+# region get alltime monthly and hourly Himawari cmic
+
+
+
+# endregion
+
+
+
+
+
 # region check monthly data
 
+# option
+opng = f'figures/0_gbr/test.png'
+file = 'data/obs/jaxa/clwvi/clwvi_202501.nc'
+cbar_label = f'June 2020 Himawari {era5_varlabels[cmip6_era5_var['clwvi']]}'
+
+# setting
+extent = [-5499500., 5499500., -5499500., 5499500.]
+transform = ccrs.Geostationary(central_longitude=140.7, satellite_height=35785863.0)
 pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
     cm_min=0, cm_max=240, cm_interval1=10, cm_interval2=20,
     cmap='Purples_r',)
 extend = 'max'
 
-fig, ax = plt.subplots(figsize=np.array([7, 7+1])/2.54, subplot_kw={'projection': ccrs.PlateCarree(central_longitude=180)})
 
-ds = rxr.open_rasterio('data/obs/jaxa/clwvi/clwvi_202501.nc', masked=True)
-ds = ds.rio.write_crs(ccrs.Geostationary(central_longitude=140.7, satellite_height=35785863.0), inplace=False)
-ds = ds.rio.reproject('epsg:4326')
+ds = xr.open_dataset(file).squeeze()
 ds.clwvi[:] *= 1000
-ax.pcolormesh(
-    ds.x.values,
-    ds.y.values,
-    ds.clwvi.squeeze().values,
-    norm=pltnorm, cmap=pltcmp, transform=ccrs.PlateCarree())
-opng = f'figures/0_gbr/test.png'
 
-ds = xr.open_dataset('data/obs/jaxa/clwvi/clwvi_202501.nc', engine='rasterio')
-ds.clwvi[:] *= 1000
-ds.clwvi.plot(ax=ax, norm=pltnorm, cmap=pltcmp, transform=ccrs.PlateCarree())
 
-# ds = rxr.open_rasterio('data/obs/jaxa/clwvi/clwvi_202501.nc', masked=True)
-# ds.clwvi[:] *= 1000
-# ds.clwvi.plot(ax=ax, norm=pltnorm, cmap=pltcmp, transform=ccrs.PlateCarree())
-
-# ds = xr.open_dataset('data/obs/jaxa/clwvi/clwvi_202501.nc')['clwvi'].squeeze()
-# ds[:] *= 1000
-# ds.plot(ax=ax, norm=pltnorm, cmap=pltcmp, transform=ccrs.PlateCarree())
-# opng = f'figures/0_gbr/test1.png'
+fig, ax = plt.subplots(figsize=np.array([7, 7+1])/2.54, subplot_kw={'projection': transform})
+ax.imshow(np.ones((100,100,3)),extent=extent,transform=transform,zorder=0)
+fig.subplots_adjust(left=0.01, right=0.99, bottom=1/(7+1), top=0.99)
 
 coastline = cfeature.NaturalEarthFeature(
-    'physical', 'coastline', '10m', edgecolor='yellow',
+    'physical', 'coastline', '10m', edgecolor='k',
     facecolor='none', lw=0.1)
 ax.add_feature(coastline, zorder=2, alpha=0.75)
 borders = cfeature.NaturalEarthFeature(
     'cultural', 'admin_0_boundary_lines_land', '10m',
-    edgecolor='yellow', facecolor='none', lw=0.1)
+    edgecolor='k', facecolor='none', lw=0.1)
 ax.add_feature(borders, zorder=2, alpha=0.75)
 
 gl = ax.gridlines(
     crs=ccrs.PlateCarree(), lw=0.1, zorder=2, alpha=0.35,
-    color='yellow', linestyle='--',)
+    color='k', linestyle='--',)
 gl.xlocator = mticker.FixedLocator(np.arange(0, 360 + 1e-4, 10))
 gl.ylocator = mticker.FixedLocator(np.arange(-90, 90 + 1e-4, 10))
 
-fig.subplots_adjust(left=0.01, right=0.99, bottom=1/(7+1), top=0.99)
+plt_mesh = ax.pcolormesh(
+    ds.nx, ds.ny, ds.clwvi,
+    norm=pltnorm, cmap=pltcmp, transform=transform)
+
+cbar = fig.colorbar(
+    plt_mesh,
+    format=remove_trailing_zero_pos,
+    orientation="horizontal", ticks=pltticks, extend=extend,
+    cax=fig.add_axes([0.04, 0.8/(7+1), 0.92, 0.02]))
+cbar.ax.tick_params(labelsize=8, length=2, width=0.5, pad=1)
+cbar.ax.tick_params(which='minor', length=1, width=0.5)
+cbar.ax.set_xlabel(cbar_label, fontsize=8, labelpad=2)
+
 fig.savefig(opng)
 
 
 
 
+
 '''
+# rasterio engine
+ds = xr.open_dataset('data/obs/jaxa/clwvi/clwvi_202501.nc', engine='rasterio')
+
+
+# rxr
+ds = rxr.open_rasterio(file, masked=True)
+ds = ds.rio.write_crs(ccrs.Geostationary(central_longitude=140.7, satellite_height=35785863.0), inplace=False)
+ds = ds.rio.reproject('epsg:4326')
+
+
+# plot directly
+ds.clwvi.plot(ax=ax, norm=pltnorm, cmap=pltcmp, transform=ccrs.PlateCarree())
+
 
 ds = rxr.open_rasterio('scratch/gdata_rv74_himawari/cloud/cmic/latest/2020/06/02/S_NWC_CMIC_HIMA08_HIMA-N-NR_20200602T001000Z.nc', masked=True)[0]
 ds = ds.rio.reproject('epsg:4326')
