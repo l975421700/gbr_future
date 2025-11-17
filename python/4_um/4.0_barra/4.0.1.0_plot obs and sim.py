@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -P v46 -l walltime=1:00:00,ncpus=1,mem=192GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/qx55+gdata/gx60+gdata/py18
+# qsub -I -q normal -P fy29 -l walltime=3:00:00,ncpus=1,mem=192GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/qx55+gdata/gx60+gdata/py18+gdata/rv74+gdata/xp65
 
 
 # region import packages
@@ -26,6 +26,7 @@ import calendar
 import glob
 from metpy.calc import specific_humidity_from_dewpoint, relative_humidity_from_dewpoint, vertical_velocity_pressure, mixing_ratio_from_specific_humidity
 from xmip.preprocessing import replace_x_y_nominal_lat_lon
+import rioxarray as rxr
 
 # plot
 import matplotlib as mpl
@@ -114,13 +115,13 @@ from um_postprocess import (
 # options
 years = '2016'; yeare = '2023'
 # ['rsut', 'rlut'， 'cll', 'clm', 'clh', 'clt', 'clwvi', 'clivi', 'inversionh', 'LCL', 'LTS', 'EIS', 'ECTEI', 'pr', 'hfls', 'hfss']
-vars = ['rsut']
+vars = ['clwvi', 'clivi']
 # ['CERES', 'CM SAF', 'Himawari', 'BARRA-C2', 'BARPA-C', 'ERA5', 'BARRA-R2', 'BARPA-R', 'MOD08_M3', 'MYD08_M3', 'IMERG', 'OAFlux']
-ds_names = ['CERES', 'ERA5', 'BARRA-R2', 'BARPA-R']
-plt_regions = ['r2_domain'] # ['global', 'c2_domain', 'h9_domain', 'r2_domain']
+ds_names = ['CERES', 'CM SAF', 'Himawari']
+plt_regions = ['h9_domain'] # ['global', 'c2_domain', 'h9_domain', 'r2_domain']
 plt_modes = ['original', 'difference'] # ['original', 'difference']
-nrow = 1
-ncol = len(ds_names)
+nrow = 1 # 1 #
+ncol = 3 # len(ds_names) #
 
 # settings
 min_lon, max_lon, min_lat, max_lat = [110.58, 157.34, -43.69, -7.01]
@@ -221,10 +222,15 @@ for ivar in vars:
                 ds_data['ann'][ids] *= 1000
         elif ids == 'Himawari':
             # ids = 'Himawari'
-            if 'cltype_frequency_alltime' not in globals():
-                with open('data/obs/jaxa/clp/cltype_frequency_alltime.pkl', 'rb') as f:
-                    cltype_frequency_alltime = pickle.load(f)
-            ds_data['ann'][ids] = cltype_frequency_alltime['ann'].sel(types=cltypes[cmip6_era5_var[ivar]], time=slice(years, yeare)).sum(dim='types')
+            if ivar in ['cll', 'clm', 'clh', 'clt']:
+                if 'cltype_frequency_alltime' not in globals():
+                    with open('data/obs/jaxa/clp/cltype_frequency_alltime.pkl', 'rb') as f:
+                        cltype_frequency_alltime = pickle.load(f)
+                ds_data['ann'][ids] = cltype_frequency_alltime['ann'].sel(types=cltypes[cmip6_era5_var[ivar]], time=slice(years, yeare)).sum(dim='types')
+            elif ivar in ['clwvi', 'clivi']:
+                with open(f'data/obs/jaxa/{ivar}/{ivar}_alltime.pkl','rb') as f:
+                    himawari_mon_alltime = pickle.load(f)
+                ds_data['ann'][ids] = himawari_mon_alltime['ann'].sel(time=slice(years, yeare)).rio.write_crs(ccrs.Geostationary(central_longitude=140.7, satellite_height=35785863.0), inplace=False).rename({'nx':'x', 'ny':'y'}).rio.reproject('epsg:4326').rename({'x':'lon', 'y':'lat'})
         elif ids in ['MOD08_M3', 'MYD08_M3']:
             # ids = 'MYD08_M3'
             modis = xr.open_mfdataset(glob.glob(f'data/obs/MODIS/{ids}/*{ivar}*.nc')).sel(time=slice(years, yeare))
@@ -468,6 +474,22 @@ for ivar in vars:
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
                     cm_min=-30, cm_max=30, cm_interval1=5, cm_interval2=10,
                     cmap='BrBG_r',)
+            elif ivar in ['clwvi']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=0, cm_max=240, cm_interval1=10, cm_interval2=20,
+                    cmap='Purples_r',)
+                extend1 = 'max'
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-240, cm_max=240, cm_interval1=20, cm_interval2=40,
+                    cmap='BrBG_r')
+            elif ivar in ['clivi']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=0, cm_max=240, cm_interval1=10, cm_interval2=20,
+                    cmap='Purples_r',)
+                extend1 = 'max'
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-240, cm_max=240, cm_interval1=20, cm_interval2=40,
+                    cmap='BrBG_r')
         else:
             print('Warning: unspecified colorbar')
         
@@ -729,10 +751,10 @@ mpl.rc('font', family='Times New Roman', size=12)
 
 # options
 # ['rsut', 'clwvi', 'clivi', 'rlut', 'rsdt', 'cll', 'clm', 'clh', 'clt', 'pr']
-vars = ['pr']
+vars = ['clwvi', 'clivi']
 # ['CERES', 'Himawari']
-ds_names = ['ERA5', 'BARRA-R2', 'BARRA-C2', 'BARPA-R', 'BARPA-C', ]
-plt_modes = ['hourly'] # ['annual', 'monthly', 'hourly']
+ds_names = ['ERA5', 'BARRA-R2', 'BARRA-C2', 'BARPA-R', 'BARPA-C', 'Himawari']
+plt_modes = ['annual', 'monthly'] # ['annual', 'monthly', 'hourly']
 
 # settings
 years = '2016'; yeare = '2023'
@@ -749,7 +771,7 @@ cltypes = {
     'tcc': ['Cirrus', 'Cirrostratus', 'Deep convection', 'Altocumulus', 'Altostratus', 'Nimbostratus', 'Cumulus', 'Stratocumulus', 'Stratus']}
 
 for ivar in vars:
-  # ivar = 'rsutcs'
+  # ivar = 'clwvi'
   print(f'#-------------------------------- {ivar}')
   for plt_mode in plt_modes:
     # plt_mode = 'annual'

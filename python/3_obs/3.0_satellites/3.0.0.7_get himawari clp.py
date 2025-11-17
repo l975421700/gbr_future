@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -P v46 -l walltime=6:00:00,ncpus=1,mem=96GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/qx55+gdata/gx60+gdata/py18+gdata/rv74+gdata/xp65
+# qsub -I -q normal -P v46 -l walltime=3:00:00,ncpus=1,mem=96GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/qx55+gdata/gx60+gdata/py18+gdata/rv74+gdata/xp65
 
 
 # region import packages
@@ -15,6 +15,8 @@ pbar = ProgressBar()
 pbar.register()
 import glob
 import rioxarray as rxr
+import calendar
+import pickle
 
 # plot
 import matplotlib as mpl
@@ -55,6 +57,10 @@ from mapplot import (
 
 from component_plot import (
     plt_mesh_pars,)
+
+from calculations import (
+    mon_sea_ann,
+    )
 
 # endregion
 
@@ -237,11 +243,70 @@ products = ['solar']
 
 
 # region get alltime monthly and hourly Himawari cmic
+# mm: Memory Used: 37.72GB, Walltime Used: 00:06:09
+
+years = '2016'
+yeare = '2024'
+for ivar in ['clwvi', 'clivi']:
+    # ivar = 'clivi'
+    print(f'#-------------------------------- {ivar}')
+    
+    for iperiod in ['mm', 'mhm']:
+        # iperiod = 'mhm'
+        print(f'#---------------- {iperiod}')
+        
+        if iperiod == 'mm':
+            fl = sorted(glob.glob(f'data/obs/jaxa/{ivar}/{ivar}_??????.nc'))
+            ofile = f'data/obs/jaxa/{ivar}/{ivar}_alltime.pkl'
+        elif iperiod == 'mhm':
+            fl = sorted(glob.glob(f'data/obs/jaxa/{ivar}/{ivar}_hourly_*.nc'))
+            ofile = f'data/obs/jaxa/{ivar}/{ivar}_hourly_alltime.pkl'
+        
+        himawari_mon = xr.open_mfdataset(fl, combine='by_coords', parallel=True, data_vars='minimal',compat='override', coords='minimal')[ivar].sel(time=slice(years, yeare))
+        
+        if ivar in ['clwvi', 'clivi']:
+            himawari_mon *= 1000
+        
+        himawari_mon_alltime = mon_sea_ann(
+            var_monthly=himawari_mon, lcopy=False, mm=True, sm=True, am=True)
+        
+        if os.path.exists(ofile): os.remove(ofile)
+        with open(ofile,'wb') as f:
+            pickle.dump(himawari_mon_alltime, f)
 
 
 
+
+'''
+#-------------------------------- check
+year = 2020; month = 6
+for ivar in ['clwvi', 'clivi']:
+    # ivar = 'clwvi'
+    print(f'#-------------------------------- {ivar}')
+    for iperiod in ['mm']:
+        # iperiod = 'mhm'
+        # ['mm', 'mhm']
+        print(f'#---------------- {iperiod}')
+        
+        if iperiod == 'mm':
+            ifile = f'data/obs/jaxa/{ivar}/{ivar}_{year}{month:02d}.nc'
+            ofile = f'data/obs/jaxa/{ivar}/{ivar}_alltime.pkl'
+        elif iperiod == 'mhm':
+            ifile = f'data/obs/jaxa/{ivar}/{ivar}_hourly_{year}{month:02d}.nc'
+            ofile = f'data/obs/jaxa/{ivar}/{ivar}_hourly_alltime.pkl'
+        
+        data1 = xr.open_dataset(ifile)[ivar]
+        if ivar in ['clwvi', 'clivi']:
+            data1 *= 1000
+        
+        with open(ofile,'rb') as f:
+            data2 = pickle.load(f)
+        
+        print((data1.values[np.isfinite(data1.values)] == data2['mon'].sel(time=f'{year}-{month:02d}').values[np.isfinite(data2['mon'].sel(time=f'{year}-{month:02d}').values)]).all())
+
+
+'''
 # endregion
-
 
 
 
@@ -249,9 +314,10 @@ products = ['solar']
 # region check monthly data
 
 # option
-opng = f'figures/0_gbr/test.png'
-file = 'data/obs/jaxa/clwvi/clwvi_202501.nc'
-cbar_label = f'June 2020 Himawari {era5_varlabels[cmip6_era5_var['clwvi']]}'
+ivar = 'clwvi'
+year = 2020; month = 6
+file = f'data/obs/jaxa/{ivar}/{ivar}_{year}{month:02d}.nc'
+cbar_label = f'{calendar.month_name[month]} {year} Himawari {era5_varlabels[cmip6_era5_var['clwvi']]}'
 
 # setting
 extent = [-5499500., 5499500., -5499500., 5499500.]
@@ -260,11 +326,6 @@ pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
     cm_min=0, cm_max=240, cm_interval1=10, cm_interval2=20,
     cmap='Purples_r',)
 extend = 'max'
-
-
-ds = xr.open_dataset(file).squeeze()
-ds.clwvi[:] *= 1000
-
 
 fig, ax = plt.subplots(figsize=np.array([7, 7+1])/2.54, subplot_kw={'projection': transform})
 ax.imshow(np.ones((100,100,3)),extent=extent,transform=transform,zorder=0)
@@ -285,9 +346,43 @@ gl = ax.gridlines(
 gl.xlocator = mticker.FixedLocator(np.arange(0, 360 + 1e-4, 10))
 gl.ylocator = mticker.FixedLocator(np.arange(-90, 90 + 1e-4, 10))
 
+# opng = f'figures/0_gbr/test.png'
+# ds = xr.open_dataset(file).squeeze()
+# ds.clwvi[:] *= 1000
+# plt_mesh = ax.pcolormesh(
+#     ds.nx, ds.ny, ds.clwvi,
+#     norm=pltnorm, cmap=pltcmp, transform=transform)
+
+# opng = f'figures/0_gbr/test2.png'
+# ds = xr.open_dataset(file).squeeze()
+# ds = ds.rio.write_crs(ccrs.Geostationary(central_longitude=140.7, satellite_height=35785863.0), inplace=False)
+# ds = ds.rio.reproject('epsg:4326')
+# ds.clwvi[:] *= 1000
+# plt_mesh = ax.pcolormesh(
+#     ds.x, ds.y, ds.clwvi,
+#     norm=pltnorm, cmap=pltcmp, transform=ccrs.PlateCarree())
+
+# cbar_label = f'2016-2024 Himawari {era5_varlabels[cmip6_era5_var['clwvi']]}'
+# opng = f'figures/0_gbr/test3.png'
+# with open(f'data/obs/jaxa/{ivar}/{ivar}_alltime.pkl','rb') as f:
+#     himawari_mon_alltime = pickle.load(f)
+# plt_mesh = ax.pcolormesh(
+#     himawari_mon_alltime['am'].nx,
+#     himawari_mon_alltime['am'].ny,
+#     himawari_mon_alltime['am'].squeeze(),
+#     norm=pltnorm, cmap=pltcmp, transform=transform)
+
+cbar_label = f'2016-2024 Himawari {era5_varlabels[cmip6_era5_var['clwvi']]}'
+opng = f'figures/0_gbr/test4.png'
+with open(f'data/obs/jaxa/{ivar}/{ivar}_alltime.pkl','rb') as f:
+    himawari_mon_alltime = pickle.load(f)
+himawari_mon_alltime['am'] = himawari_mon_alltime['am'].rio.write_crs(ccrs.Geostationary(central_longitude=140.7, satellite_height=35785863.0), inplace=False)
+himawari_mon_alltime['am'] = himawari_mon_alltime['am'].rename({'nx':'x', 'ny':'y'}).rio.reproject('epsg:4326')
 plt_mesh = ax.pcolormesh(
-    ds.nx, ds.ny, ds.clwvi,
-    norm=pltnorm, cmap=pltcmp, transform=transform)
+    himawari_mon_alltime['am'].x,
+    himawari_mon_alltime['am'].y,
+    himawari_mon_alltime['am'].squeeze(),
+    norm=pltnorm, cmap=pltcmp, transform=ccrs.PlateCarree())
 
 cbar = fig.colorbar(
     plt_mesh,
@@ -305,23 +400,11 @@ fig.savefig(opng)
 
 
 '''
-# rasterio engine
-ds = xr.open_dataset('data/obs/jaxa/clwvi/clwvi_202501.nc', engine='rasterio')
-
-
-# rxr
-ds = rxr.open_rasterio(file, masked=True)
-ds = ds.rio.write_crs(ccrs.Geostationary(central_longitude=140.7, satellite_height=35785863.0), inplace=False)
-ds = ds.rio.reproject('epsg:4326')
-
+# ds = xr.open_dataset(file, engine='rasterio').squeeze()
+# ds = rxr.open_rasterio(file, masked=True).squeeze()
 
 # plot directly
 ds.clwvi.plot(ax=ax, norm=pltnorm, cmap=pltcmp, transform=ccrs.PlateCarree())
-
-
-ds = rxr.open_rasterio('scratch/gdata_rv74_himawari/cloud/cmic/latest/2020/06/02/S_NWC_CMIC_HIMA08_HIMA-N-NR_20200602T001000Z.nc', masked=True)[0]
-ds = ds.rio.reproject('epsg:4326')
-
 
 '''
 # endregion

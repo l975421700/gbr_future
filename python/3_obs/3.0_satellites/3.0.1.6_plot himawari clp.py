@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -P v46 -l walltime=6:00:00,ncpus=1,mem=96GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/qx55+gdata/gx60+gdata/py18+gdata/rv74+gdata/xp65
+# qsub -I -q normal -P v46 -l walltime=3:00:00,ncpus=1,mem=96GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/qx55+gdata/gx60+gdata/py18+gdata/rv74+gdata/xp65
 
 
 # region import packages
@@ -70,14 +70,26 @@ from component_plot import (
 # region plot Himawari clp
 
 # option
-year, month, day, hour, minute = 2020, 6, 2, 3, 0
+year, month, day, hour, minute = 2020, 6, 2, 3, 30
 products = ['cloud']
-categories = ['ctth']
+categories = ['cmic']
+# products = ['precip']
+# categories = ['crrph']
+# ['crrph_accum', 'crrph_conditions', 'crrph_intensity', 'crrph_quality', 'crrph_status_flag', ]
+# categories = ['crr']
+# ['crr', 'crr_accum', 'crr_conditions', 'crr_intensity', 'crr_quality', 'crr_status_flag']
+# products = ['cloud']
+# categories = ['ct']
+# ['ct', 'ct_conditions', 'ct_cumuliform', 'ct_multilayer', 'ct_quality', 'ct_status_flag']
+# categories = ['cma']
+# ['cma', 'cma_status_flag', 'cma_testlist1', 'cma_testlist2', 'cma_volcanic', 'cma_cloudsnow', 'cma_conditions', 'cma_dust', 'cma_quality', 'cma_smoke']
 # categories = ['ctth']
 # ['ctth_alti', 'ctth_pres', 'ctth_tempe', 'ctth_effectiv']
+# ['ctth_status_flag', 'ctth_conditions', 'ctth_method', 'ctth_quality']
 # categories = ['cmic']
 # ['cmic_cot', 'cmic_phase', 'cmic_reff', 'cmic_iwp', 'cmic_lwp', 'cwp']
-vars = ['ctth_alti', 'ctth_pres', 'ctth_tempe', 'ctth_effectiv']
+# ['cmic_conditions', 'cmic_quality', 'cmic_status_flag']
+vars = ['cmic_cot', 'cmic_phase', 'cmic_reff', 'cmic_iwp', 'cmic_lwp', 'cwp', 'cmic_conditions', 'cmic_quality', 'cmic_status_flag']
 plt_regions = ['himawari']
 
 # settings
@@ -97,28 +109,69 @@ himawari_rename = {
 extent = [-5499500., 5499500., -5499500., 5499500.]
 transform = ccrs.Geostationary(central_longitude=140.7, satellite_height=35785863.0)
 
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap, BoundaryNorm
+
+def make_discrete_cmap(values, cmap_name="tab20", nan_color="lightgray"):
+    """
+    Create discrete colormap + norm for unique values.
+    """
+
+    vals = np.array(values)
+    uniq = np.unique(vals[~np.isnan(vals)])
+    uniq_sorted = np.sort(uniq)
+
+    # Colors
+    base = plt.get_cmap(cmap_name)
+    colors = base(np.linspace(0, 1, len(uniq_sorted)))
+    cmap = ListedColormap(np.vstack([colors, plt.matplotlib.colors.to_rgba(nan_color)]))
+
+    # Compute boundaries safely (no inf)
+    if len(uniq_sorted) == 1:
+        boundaries = [uniq_sorted[0] - 0.5, uniq_sorted[0] + 0.5]
+    else:
+        midpoints = (uniq_sorted[:-1] + uniq_sorted[1:]) / 2
+        boundaries = np.concatenate([
+            [uniq_sorted[0] - (midpoints[0] - uniq_sorted[0])],
+            midpoints,
+            [uniq_sorted[-1] + (uniq_sorted[-1] - midpoints[-1])]
+        ])
+
+    norm = BoundaryNorm(boundaries, cmap.N)
+
+    return cmap, norm, uniq_sorted, boundaries
+
+
 for iproduct in products: #os.listdir(himawari_bom): #
     print(f'#-------------------------------- {iproduct}')
     for icategory in categories: #os.listdir(f'{himawari_bom}/{iproduct}'): #
         print(f'#---------------- {icategory}')
         
         file = glob.glob(f'{himawari_bom}/{iproduct}/{icategory}/latest/{year}/{month:02d}/{day:02d}/*{hour:02d}{minute:02d}00Z.nc')[0]
-        ds = rxr.open_rasterio(file, masked=True)[0]
+        ds = rxr.open_rasterio(file, masked=True)[0].squeeze()
         ds = ds.rio.write_crs(transform)
         ds = ds.rio.reproject('epsg:4326')
-        ds = ds.squeeze().rename({'x': 'lon', 'y': 'lat'})
+        ds = ds.rename({'x': 'lon', 'y': 'lat'})
         ds['lon'] = ds['lon'] % 360
         ds = ds.sortby(['lon', 'lat'])
         ds = ds.sel(lon=slice(np.nanmin(ancillary['lon']), np.nanmax(ancillary['lon'])))
         
         for ivar in vars:
-            # ivar = 'ctth_alti'
+            # ivar = 'cmic_quality'
             # ['cmic_cot', 'cmic_phase', 'cmic_reff', 'cmic_iwp', 'cmic_lwp', 'cwp']
             # ['ctth_alti', 'ctth_pres', 'ctth_tempe', 'ctth_effectiv']
+            # ['cmic_conditions', 'cmic_quality', 'cmic_status_flag']
+            # ['ctth_status_flag', 'ctth_conditions', 'ctth_method', 'ctth_quality']
             print(f'#-------- {ivar}')
             
-            if ivar == 'cmic_phase':
+            if ivar in ['cmic_phase']:
                 plt_data = ds[ivar].rename(himawari_rename[ivar])
+            elif ivar in ['cmic_conditions','cmic_quality','cmic_status_flag', 'ctth_status_flag', 'ctth_conditions', 'ctth_method', 'ctth_quality']:
+                plt_data = ds[ivar]
+                print(f'Unique values: {np.unique(plt_data)}')
+            elif ivar in ['cma', 'cma_status_flag', 'cma_testlist1', 'cma_testlist2', 'cma_volcanic', 'cma_cloudsnow', 'cma_conditions', 'cma_dust', 'cma_quality', 'cma_smoke', 'ct', 'ct_conditions', 'ct_cumuliform', 'ct_multilayer', 'ct_quality', 'ct_status_flag', 'crr', 'crr_accum', 'crr_conditions', 'crr_intensity', 'crr_quality', 'crr_status_flag', 'crrph_accum', 'crrph_conditions', 'crrph_intensity', 'crrph_quality', 'crrph_status_flag']:
+                plt_data = ds[ivar]
             elif ivar in himawari_rename.keys():
                 plt_data = ds[ivar].attrs['scale_factor'] * ds[ivar].rename(himawari_rename[ivar]) + ds[ivar].attrs['add_offset']
             elif ivar=='cwp':
@@ -142,13 +195,16 @@ for iproduct in products: #os.listdir(himawari_bom): #
             if ivar in ['cmic_iwp', 'cmic_lwp', 'cwp']:
                 pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
                     cm_min=0, cm_max=800, cm_interval1=50, cm_interval2=100,
-                    cmap='Purples_r',)
+                    cmap='viridis',
+                    # cmap='Purples_r',
+                    )
                 extend = 'max'
             elif ivar=='cmic_cot':
                 pltlevel = [0, 1.3, 3.6, 9.4, 23, 60, 379]
                 pltticks = pltlevel
                 pltnorm = BoundaryNorm(boundaries=pltlevel, ncolors=len(pltlevel)-1, clip=True)
-                pltcmp = cm.get_cmap('Purples', len(pltlevel)-1)
+                pltcmp = cm.get_cmap('viridis', len(pltlevel)-1)
+                # pltcmp = cm.get_cmap('Purples', len(pltlevel)-1)
                 extend = 'neither'
             elif ivar=='cmic_phase':
                 pltticks = [1, 2, 3, 4, 5]
@@ -160,34 +216,59 @@ for iproduct in products: #os.listdir(himawari_bom): #
             elif ivar=='cmic_reff':
                 pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
                     cm_min=0, cm_max=40, cm_interval1=2, cm_interval2=4,
-                    cmap='Greens_r',)
+                    cmap='viridis',
+                    # cmap='Greens_r',
+                    )
                 extend = 'max'
             elif ivar=='ctth_alti':
                 pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
                     cm_min=0, cm_max=18, cm_interval1=1, cm_interval2=2,
-                    cmap='Blues_r',)
+                    cmap='viridis',
+                    # cmap='Blues_r',
+                    )
                 extend = 'max'
             elif ivar=='ctth_pres':
                 pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
                     cm_min=100, cm_max=1000, cm_interval1=50, cm_interval2=100,
-                    cmap='Blues',)
+                    cmap='viridis',
+                    # cmap='Blues',
+                    )
                 extend = 'both'
             elif ivar=='ctth_tempe':
                 pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
                     cm_min=180, cm_max=310, cm_interval1=10, cm_interval2=20,
-                    cmap='Blues',)
+                    cmap='viridis',
+                    # cmap='Blues',
+                    )
                 extend = 'both'
             elif ivar=='ctth_effectiv':
                 pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
                     cm_min=0, cm_max=100, cm_interval1=5, cm_interval2=10,
-                    cmap='Blues_r',)
+                    cmap='viridis',
+                    # cmap='Blues_r',
+                    )
+                extend = 'neither'
+            elif ivar in ['cmic_conditions','cmic_quality','cmic_status_flag', 'ctth_status_flag', 'ctth_conditions', 'ctth_method', 'ctth_quality']:
+                pltcmp, pltnorm, pltticks, boundaries = make_discrete_cmap(plt_data.values.flatten())
+                extend = 'neither'
+            elif ivar in ['cma', 'cma_status_flag', 'cma_testlist1', 'cma_testlist2', 'cma_volcanic', 'cma_cloudsnow', 'cma_conditions', 'cma_dust', 'cma_quality', 'cma_smoke', 'ct', 'ct_conditions', 'ct_cumuliform', 'ct_multilayer', 'ct_quality', 'ct_status_flag', 'crr', 'crr_accum', 'crr_conditions', 'crr_intensity', 'crr_quality', 'crr_status_flag', 'crrph_accum', 'crrph_conditions', 'crrph_intensity', 'crrph_quality', 'crrph_status_flag']:
+                if len(np.unique(plt_data.values.flatten())) > 100:
+                    pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
+                        cm_min=0, cm_max=np.nanmax(plt_data), cm_interval1=np.nanmax(plt_data)/10, cm_interval2=np.nanmax(plt_data)/10,
+                        cmap='viridis',
+                        )
+                else:
+                    pltcmp, pltnorm, pltticks, boundaries = make_discrete_cmap(plt_data.values.flatten())
                 extend = 'neither'
             
             for iplt_region in plt_regions:
                 print(f'#---- {iplt_region}')
                 
                 opng = f'figures/3_satellites/3.0_hamawari/3.0.2_clp/3.0.2.0 {iproduct} {icategory} {plt_data.name} {iplt_region} {year}{month:02d}{day:02d}{hour:02d}{minute:02d}.png'
-                cbar_label = f'{year}-{month:02d}-{day:02d} {hour:02d}:{minute:02d} UTC Himawari {era5_varlabels[cmip6_era5_var[plt_data.name]]}'
+                if ivar in ['cmic_conditions','cmic_quality','cmic_status_flag', 'ctth_status_flag', 'ctth_conditions', 'ctth_method', 'ctth_quality', 'cma', 'cma_status_flag', 'cma_testlist1', 'cma_testlist2', 'cma_volcanic', 'cma_cloudsnow', 'cma_conditions', 'cma_dust', 'cma_quality', 'cma_smoke', 'ct', 'ct_conditions', 'ct_cumuliform', 'ct_multilayer', 'ct_quality', 'ct_status_flag', 'crr', 'crr_accum', 'crr_conditions', 'crr_intensity', 'crr_quality', 'crr_status_flag', 'crrph_accum', 'crrph_conditions', 'crrph_intensity', 'crrph_quality', 'crrph_status_flag']:
+                    cbar_label = f'{year}-{month:02d}-{day:02d} {hour:02d}:{minute:02d} UTC Himawari {plt_data.name}'
+                else:
+                    cbar_label = f'{year}-{month:02d}-{day:02d} {hour:02d}:{minute:02d} UTC Himawari {era5_varlabels[cmip6_era5_var[plt_data.name]]}'
                 
                 if iplt_region == 'himawari':
                     fig, ax = plt.subplots(figsize=np.array([7, 7+1])/2.54, subplot_kw={'projection': transform})

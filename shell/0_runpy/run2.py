@@ -12,6 +12,8 @@ pbar = ProgressBar()
 pbar.register()
 import glob
 import rioxarray as rxr
+import calendar
+import pickle
 
 # plot
 import matplotlib as mpl
@@ -35,186 +37,64 @@ process = psutil.Process()
 import warnings
 warnings.filterwarnings('ignore')
 
+from namelist import (
+    month_jan,
+    monthini,
+    seasons,
+    seconds_per_d,
+    zerok,
+    era5_varlabels,
+    cmip6_era5_var,
+    )
+
+from mapplot import (
+    regional_plot,
+    remove_trailing_zero_pos,
+    )
+
 from component_plot import (
     plt_mesh_pars,)
 
+from calculations import (
+    mon_sea_ann,
+    )
+
 # endregion
 
 
-# region get monthly and hourly Himawari cmic
-# Memory Used: 300GB; Walltime Used: 04:00
+# region get alltime monthly and hourly Himawari cmic
 
-import argparse
-parser=argparse.ArgumentParser()
-parser.add_argument('-y', '--year', type=int, required=True,)
-parser.add_argument('-m', '--month', type=int, required=True,)
-args = parser.parse_args()
-
-year=args.year; month=args.month
-# year = 2015; month = 7
-
-# option
-products = ['cloud']
-categories = ['cmic']
-vars = ['cmic_iwp']
-# ['cmic_cot', 'cmic_iwp', 'cmic_lwp', 'cmic_phase', 'cmic_reff']
-# categories = ['ctth']
-# vars = ['ctth_alti']
-# ['ctth_alti', 'ctth_effectiv', 'ctth_pres', 'ctth_tempe']
-
-# settings
-himawari_bom = '/g/data/rv74/satellite-products/arc/der/himawari-ahi'
-himawari_rename = {
-    'cmic_cot': 'COT',
-    'cmic_iwp': 'clivi',
-    'cmic_lwp': 'clwvi',
-    'cmic_phase': 'clphase',
-    'cmic_reff': 'Reff',
-    'ctth_alti': 'CTH',
-    'ctth_effectiv': 'clt',
-    'ctth_pres': 'CTP',
-    'ctth_tempe': 'CTT'}
-
-def preprocess_himawari(ds_in, ivar):
-    # ds_in = xr.open_dataset(fl[5])
-    ds_out = ds_in[ivar].rename(himawari_rename[ivar])
-    ds_out = ds_out.expand_dims(time=[np.datetime64(ds_in.attrs['nominal_product_time'])])
-    return(ds_out)
-
-for iproduct in products: #os.listdir(himawari_bom): #
-    print(f'#-------------------------------- {iproduct}')
-    for icategory in categories: #os.listdir(f'{himawari_bom}/{iproduct}'): #
-        print(f'#---------------- {icategory}')
+years = '2016'
+yeare = '2024'
+for ivar in ['clwvi']:
+    # ivar = 'clivi'
+    print(f'#-------------------------------- {ivar}')
+    
+    for iperiod in ['mhm']:
+        # iperiod = 'mhm'
+        print(f'#---------------- {iperiod}')
         
-        folder = f'{himawari_bom}/{iproduct}/{icategory}'
-        if os.path.isdir(folder):
-            fl = sorted(glob.glob(f'{folder}/latest/{year}/{month:02d}/*/*.nc'))
-            print(f'Number of files: {len(fl)}')
-            # print(os.path.getsize(fl[-1])/2**20)
-            
-            for ivar in vars:
-                print(f'#-------- {ivar}')
-                odir = f'data/obs/jaxa/{himawari_rename[ivar]}'
-                os.makedirs(odir, exist_ok=True)
-                
-                ds = xr.open_mfdataset(fl, combine='by_coords', parallel=True, data_vars='minimal', coords='minimal',compat='override', preprocess=lambda ds_in: preprocess_himawari(ds_in, ivar))[himawari_rename[ivar]]
-                ds = ds.chunk({'time': -1, 'nx': 50, 'ny': 50})
-                
-                if ivar in ['cmic_iwp', 'cmic_lwp']:
-                    print('get mm')
-                    ofile1 = f'{odir}/{himawari_rename[ivar]}_{year}{month:02d}.nc'
-                    if not os.path.exists(ofile1):
-                        ds_mm = ds.resample({'time': '1M'}).mean().compute()
-                        ds_mm.to_netcdf(ofile1)
-                    
-                    print('get mhm')
-                    ofile2 = f'{odir}/{himawari_rename[ivar]}_hourly_{year}{month:02d}.nc'
-                    if not os.path.exists(ofile2):
-                        ds_mhm = ds.resample(time='1M').map(lambda x: x.groupby('time.hour').mean()).compute()
-                        ds_mhm.to_netcdf(ofile2)
+        if iperiod == 'mm':
+            fl = sorted(glob.glob(f'data/obs/jaxa/{ivar}/{ivar}_??????.nc'))
+            ofile = f'data/obs/jaxa/{ivar}/{ivar}_alltime.pkl'
+        elif iperiod == 'mhm':
+            fl = sorted(glob.glob(f'data/obs/jaxa/{ivar}/{ivar}_hourly_*.nc'))
+            ofile = f'data/obs/jaxa/{ivar}/{ivar}_hourly_alltime.pkl'
+        
+        himawari_mon = xr.open_mfdataset(fl, combine='by_coords', parallel=True, data_vars='minimal',compat='override', coords='minimal')[ivar].sel(time=slice(years, yeare))
+        
+        if ivar in ['clwvi', 'clivi']:
+            himawari_mon *= 1000
+        
+        himawari_mon_alltime = mon_sea_ann(
+            var_monthly=himawari_mon, lcopy=False, mm=True, sm=True, am=True)
+        
+        if os.path.exists(ofile): os.remove(ofile)
+        with open(ofile,'wb') as f:
+            pickle.dump(himawari_mon_alltime, f)
 
 
 
 
-'''
-#-------------------------------- check
-year = 2025; month = 1
-iproduct = 'cloud'
-icategory = 'cmic'
-ivar = 'cmic_lwp'
-
-himawari_bom = '/g/data/rv74/satellite-products/arc/der/himawari-ahi'
-himawari_rename = {
-    'cmic_cot': 'COT',
-    'cmic_iwp': 'clivi',
-    'cmic_lwp': 'clwvi',
-    'cmic_phase': 'clphase',
-    'cmic_reff': 'Reff',
-    'ctth_alti': 'CTH',
-    'ctth_effectiv': 'clt',
-    'ctth_pres': 'CTP',
-    'ctth_tempe': 'CTT'}
-
-def preprocess_himawari(ds_in, ivar):
-    # ds_in = xr.open_dataset(fl[5])
-    ds_out = ds_in[ivar].rename(himawari_rename[ivar])
-    ds_out = ds_out.expand_dims(time=[np.datetime64(ds_in.attrs['nominal_product_time'])])
-    return(ds_out)
-
-folder = f'{himawari_bom}/{iproduct}/{icategory}'
-fl = sorted(glob.glob(f'{folder}/latest/{year}/{month:02d}/*/*.nc'))
-print(f'Number of files: {len(fl)}')
-odir = f'data/obs/jaxa/{himawari_rename[ivar]}'
-
-ds = xr.open_mfdataset(fl, combine='by_coords', parallel=True, data_vars='minimal', coords='minimal',compat='override', preprocess=lambda ds_in: preprocess_himawari(ds_in, ivar))[himawari_rename[ivar]]
-# ds = ds.chunk({'time': -1, 'nx': 50, 'ny': 50})
-
-ds_mm = xr.open_dataset(f'{odir}/{himawari_rename[ivar]}_{year}{month:02d}.nc')[himawari_rename[ivar]]
-ds_mhm = xr.open_dataset(f'{odir}/{himawari_rename[ivar]}_hourly_{year}{month:02d}.nc')[himawari_rename[ivar]]
-
-inx = 2000
-iny = 2000
-
-print(ds_mm[0, iny, inx].values)
-print(np.mean(ds[:, iny, inx]).values)
-
-print(ds_mhm[0, iny, inx, :].values)
-print(ds[:, iny, inx].groupby('time.hour').mean().values)
-print(ds[:, iny, inx].groupby('time.hour').mean(skipna=False).values)
-
-
-
-
-#-------------------------------- coordinates
-
-ancillary = xr.open_dataset('/g/data/ra22/satellite-products/arc/obs/himawari-ahi/fldk/latest/ancillary/00000000000000-P1S-ABOM_GEOM_SENSOR-PRJ_GEOS141_2000-HIMAWARI8-AHI.nc')
-subset = np.isfinite(ancillary['lat'].values[0]) & np.isfinite(ds_mm['lat'].values)
-
-print((ds_mm['lat'].values[subset] == ancillary['lat'].values[0][subset]).all())
-print((ds_mm['lon'].values[subset] == ancillary['lon'].values[0][subset]).all())
-
-
-print(np.max(np.abs(ds_mm['lat'].values[subset] - ancillary['lat'].values[0][subset])))
-print(np.max(np.abs(ds_mm['lon'].values[subset] - ancillary['lon'].values[0][subset])))
-
-#-------------------------------- others
-
-products = ['cloud']
-
-categories = ['cmic']
-vars = ['cmic_cot', 'cmic_iwp', 'cmic_lwp', 'cmic_phase', 'cmic_reff'] # ['cmic_conditions', 'cmic_cot', 'cmic_iwp', 'cmic_lwp', 'cmic_phase', 'cmic_quality', 'cmic_reff', 'cmic_status_flag']
-
-categories = ['ctth']
-vars = ['ctth_alti', 'ctth_effectiv', 'ctth_pres', 'ctth_tempe'] #['ctth_alti', 'ctth_conditions', 'ctth_effectiv', 'ctth_method', 'ctth_pres', 'ctth_quality', 'ctth_status_flag', 'ctth_tempe']
-
-# categories = ['ct']
-# vars = ['ct', 'ct_conditions', 'ct_cumuliform', 'ct_multilayer', 'ct_quality', 'ct_status_flag']
-# categories = ['cma']
-# vars = ['cma', 'cma_cloudsnow', 'cma_conditions', 'cma_dust', 'cma_quality', 'cma_smoke', 'cma_status_flag', 'cma_testlist1', 'cma_testlist2', 'cma_volcanic']
-
-
-products = ['precip']
-
-# categories = ['crrph']
-# vars = ['crrph_accum', 'crrph_conditions', 'crrph_intensity', 'crrph_quality', 'crrph_status_flag']
-
-# categories = ['crr']
-# vars = ['crr', 'crr_accum', 'crr_conditions', 'crr_intensity', 'crr_quality', 'crr_status_flag']
-
-
-products = ['solar']
-
-# categories = ['p1s']
-# vars = ['surface_global_irradiance', 'direct_normal_irradiance', 'surface_diffuse_irradiance', 'quality_mask', 'cloud_type', 'cloud_optical_depth', 'solar_elevation', 'solar_azimuth', 'julian_date']
-
-# categories = ['p1d']
-# vars = ['daily_integral_of_surface_global_irradiance', 'daily_integral_of_direct_normal_irradiance', 'daily_integral_of_surface_diffuse_irradiance', 'number_of_observations', 'number_of_cloud_observations', 'quality_mask']
-
-# categories = ['p1h']
-# vars = ['hourly_integral_of_surface_global_irradiance', 'hourly_integral_of_direct_normal_irradiance', 'hourly_integral_of_surface_diffuse_irradiance', 'number_of_observations', 'number_of_cloud_observations', 'quality_mask']
-
-
-'''
 # endregion
-
 
