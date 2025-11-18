@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -P fy29 -l walltime=3:00:00,ncpus=1,mem=192GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/qx55+gdata/gx60+gdata/py18+gdata/rv74+gdata/xp65
+# qsub -I -q normal -P fy29 -l walltime=3:00:00,ncpus=1,mem=96GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/qx55+gdata/gx60+gdata/py18+gdata/rv74+gdata/xp65
 
 
 # region import packages
@@ -115,12 +115,12 @@ from um_postprocess import (
 # options
 years = '2016'; yeare = '2023'
 # ['rsut', 'rlut'， 'cll', 'clm', 'clh', 'clt', 'clwvi', 'clivi', 'inversionh', 'LCL', 'LTS', 'EIS', 'ECTEI', 'pr', 'hfls', 'hfss']
-vars = ['clwvi', 'clivi']
+vars = ['cll_mol']
 # ['CERES', 'CM SAF', 'Himawari', 'BARRA-C2', 'BARPA-C', 'ERA5', 'BARRA-R2', 'BARPA-R', 'MOD08_M3', 'MYD08_M3', 'IMERG', 'OAFlux']
-ds_names = ['CERES', 'CM SAF', 'Himawari']
-plt_regions = ['h9_domain'] # ['global', 'c2_domain', 'h9_domain', 'r2_domain']
+ds_names = ['Himawari', 'BARRA-C2', 'BARPA-C', 'ERA5', 'BARRA-R2', 'BARPA-R']
+plt_regions = ['c2_domain'] # ['global', 'c2_domain', 'h9_domain', 'r2_domain']
 plt_modes = ['original', 'difference'] # ['original', 'difference']
-nrow = 1 # 1 #
+nrow = 2 # 1 #
 ncol = 3 # len(ds_names) #
 
 # settings
@@ -231,6 +231,11 @@ for ivar in vars:
                 with open(f'data/obs/jaxa/{ivar}/{ivar}_alltime.pkl','rb') as f:
                     himawari_mon_alltime = pickle.load(f)
                 ds_data['ann'][ids] = himawari_mon_alltime['ann'].sel(time=slice(years, yeare)).rio.write_crs(ccrs.Geostationary(central_longitude=140.7, satellite_height=35785863.0), inplace=False).rename({'nx':'x', 'ny':'y'}).rio.reproject('epsg:4326').rename({'x':'lon', 'y':'lat'})
+            elif ivar in ['cll_mol']:
+                if 'cltype_frequency_alltime' not in globals():
+                    with open('data/obs/jaxa/clp/cltype_frequency_alltime.pkl', 'rb') as f:
+                        cltype_frequency_alltime = pickle.load(f)
+                ds_data['ann'][ids] = cltype_frequency_alltime['ann'].sel(types=cltypes[cmip6_era5_var['cll']], time=slice(years, yeare)).sum(dim='types')
         elif ids in ['MOD08_M3', 'MYD08_M3']:
             # ids = 'MYD08_M3'
             modis = xr.open_mfdataset(glob.glob(f'data/obs/MODIS/{ids}/*{ivar}*.nc')).sel(time=slice(years, yeare))
@@ -362,7 +367,7 @@ for ivar in vars:
                     # cm_min=-10, cm_max=10, cm_interval1=1, cm_interval2=2,
                     cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10,
                     cmap='BrBG')
-            elif ivar in ['clh', 'clm', 'cll']:
+            elif ivar in ['clh', 'clm', 'cll', 'cll_mol']:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
                     cm_min=0, cm_max=60, cm_interval1=5, cm_interval2=10,
                     cmap='Blues_r',)
@@ -458,7 +463,7 @@ for ivar in vars:
                     cmap='Greens_r',)
                 extend1 = 'max'
         elif plt_region == 'h9_domain':
-            if ivar in ['clh', 'clm', 'cll']:
+            if ivar in ['clh', 'clm', 'cll', 'cll_mol']:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
                     cm_min=0, cm_max=80, cm_interval1=5, cm_interval2=10,
                     cmap='Blues_r',)

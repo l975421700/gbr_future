@@ -19,6 +19,7 @@ import calendar
 from metpy.calc import geopotential_to_height, relative_humidity_from_dewpoint, specific_humidity_from_dewpoint
 from metpy.constants import water_heat_vaporization, dry_air_spec_heat_press
 from metpy.units import units
+import time
 
 # management
 import os
@@ -44,9 +45,9 @@ from namelist import cmip6_units, zerok, seconds_per_d, cmip6_era5_var
 # region get era5 sl mon data
 # Memory Used: 14.87GB, Walltime Used: 00:15:42
 
-for var in ['ECTEI']:
+for var in ['cll_mol']:
     # var = 'tp'
-    # 'tp', 'e', 'cp', 'lsp', 'pev', 'msl', 'sst', '2t', '2d', 'skt', 'hcc', 'mcc', 'lcc', 'tcc', 'z', 'mper', 'tciw', 'tclw', 'mtdwswrf', 'mtnlwrf', 'mtnswrf', 'mtnlwrfcs', 'mtnswrfcs'
+    # 'tp', 'e', 'cp', 'lsp', 'pev', 'msl', 'sst', '2t', '2d', 'skt', 'hcc', 'mcc', 'lcc', 'tcc', 'z', 'mper', 'tciw', 'tclw', 'mtdwswrf', 'mtnlwrf', 'mtnswrf', 'mtnlwrfcs', 'mtnswrfcs', 'ECTEI'
     print(var)
     
     # fl = sorted([
@@ -61,8 +62,11 @@ for var in ['ECTEI']:
     # if var == '100v': var='v100'
     # era5_sl_mon = xr.open_mfdataset(fl, parallel=True).rename({'latitude': 'lat', 'longitude': 'lon'})[var]
     
-    fl = sorted(glob.glob(f'data/sim/era5/hourly/{var}/{var}_monthly_*.nc'))
-    era5_sl_mon = xr.open_mfdataset(fl)[var].sel(time=slice('2016', '2023'))
+    # fl = sorted(glob.glob(f'data/sim/era5/hourly/{var}/{var}_monthly_*.nc'))
+    # era5_sl_mon = xr.open_mfdataset(fl)[var].sel(time=slice('2016', '2023'))
+    
+    fl = sorted(glob.glob(f'data/sim/era5/{var}/{var}_??????.nc'))
+    era5_sl_mon = xr.open_mfdataset(fl).rename({'latitude': 'lat', 'longitude': 'lon'})[var].sel(time=slice('2016', '2023'))
     
     if var in ['tp', 'e', 'cp', 'lsp', 'pev']:
         era5_sl_mon = era5_sl_mon * 1000
@@ -70,7 +74,7 @@ for var in ['ECTEI']:
         era5_sl_mon = era5_sl_mon / 100
     elif var in ['sst', 't2m', 'd2m', 'skt']:
         era5_sl_mon = era5_sl_mon - zerok
-    elif var in ['hcc', 'mcc', 'lcc', 'tcc']:
+    elif var in ['hcc', 'mcc', 'lcc', 'tcc', 'cll_mol']:
         era5_sl_mon = era5_sl_mon * 100
     elif var in ['z']:
         era5_sl_mon = era5_sl_mon / 9.80665
@@ -915,4 +919,88 @@ print(np.nanmean(ds_in[:, ilat, ilon].values) - ds_out[0, ilat, ilon].values)
 
 '''
 # endregion
+
+
+
+
+# region get MOL and ROL cll, clm, clt
+# Memory Used: 46.43GB, Walltime Used: 00:02:09
+
+import argparse
+parser=argparse.ArgumentParser()
+parser.add_argument('-y', '--year', type=int, required=True,)
+parser.add_argument('-m', '--month', type=int, required=True,)
+args = parser.parse_args()
+
+year=args.year; month=args.month
+# year = 2016; month = 10
+
+# option
+var_vars = {
+    'cll_mol': ['lcc', 'mcc', 'hcc'],
+}
+
+# settings
+start_time = time.perf_counter()
+
+for var in var_vars.keys():
+    print(f'#-------------------------------- {var}')
+    odir = f'data/sim/era5/{var}'
+    os.makedirs(odir, exist_ok=True)
+    
+    ds = {}
+    for var2 in var_vars[var]:
+        print(f'#---------------- {var2}')
+        ds[var2] = xr.open_dataset(f'/g/data/rt52/era5/single-levels/reanalysis/{var2}/{year}/{var2}_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')[var2]
+    
+    if var=='cll_mol':
+        # var='cll_mol'
+        ds[var] = (ds['lcc'] - xr.apply_ufunc(np.maximum, ds['mcc'], ds['hcc'])).clip(min=0)
+    
+    print('get mm')
+    ds_mm = ds[var].resample({'time': '1ME'}).mean().rename(var)
+    ofile1 = f'{odir}/{var}_{year}{month:02d}.nc'
+    if os.path.exists(ofile1): os.remove(ofile1)
+    ds_mm.to_netcdf(ofile1)
+    
+    print('get mhm')
+    ds_mhm = ds[var].resample(time='1ME').map(lambda x: x.groupby('time.hour').mean()).rename(var)
+    ofile2 = f'{odir}/{var}_hourly_{year}{month:02d}.nc'
+    if os.path.exists(ofile2): os.remove(ofile2)
+    ds_mhm.to_netcdf(ofile2)
+
+end_time = time.perf_counter()
+print(f"Execution time: {end_time - start_time:.1f} seconds")
+# 91.4 s
+
+
+
+'''
+#-------------------------------- check
+year = 2020; month = 6
+var_vars = {'cll_mol': ['lcc', 'mcc', 'hcc']}
+ilat = 200; ilon = 200
+
+for var in var_vars.keys():
+    print(f'#-------------------------------- {var}')
+    odir = f'data/sim/era5/{var}'
+    ds = {}
+    for var2 in var_vars[var]:
+        print(f'#---------------- {var2}')
+        ds[var2] = xr.open_dataset(f'/g/data/rt52/era5/single-levels/reanalysis/{var2}/{year}/{var2}_era5_oper_sfc_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc')[var2]
+    
+    ds_mm = xr.open_dataset(f'{odir}/{var}_{year}{month:02d}.nc')[var]
+    ds_mhm = xr.open_dataset(f'{odir}/{var}_hourly_{year}{month:02d}.nc')[var]
+    
+    if var=='cll_mol':
+        data1 = (ds['lcc'][:, ilat, ilon] - np.maximum(ds['mcc'][:, ilat, ilon], ds['hcc'][:, ilat, ilon])).clip(min=0)
+    print(np.mean(data1).values.astype('float32') == ds_mm[0, ilat, ilon].values.astype('float32'))
+    print((data1.groupby('time.hour').mean().values.astype('float32') == ds_mhm[0, ilat, ilon, :].values.astype('float32')).all())
+
+
+
+'''
+# endregion
+
+
 

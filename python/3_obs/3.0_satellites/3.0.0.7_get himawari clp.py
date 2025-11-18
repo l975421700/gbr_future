@@ -244,6 +244,7 @@ products = ['solar']
 
 # region get alltime monthly and hourly Himawari cmic
 # mm: Memory Used: 37.72GB, Walltime Used: 00:06:09
+# mhm: Memory Used: 500.0GB, Walltime Used: 04:23:35
 
 years = '2016'
 yeare = '2024'
