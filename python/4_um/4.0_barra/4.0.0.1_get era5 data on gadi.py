@@ -45,9 +45,9 @@ from namelist import cmip6_units, zerok, seconds_per_d, cmip6_era5_var
 # region get era5 sl mon data
 # Memory Used: 14.87GB, Walltime Used: 00:15:42
 
-for var in ['cll_mol']:
+for var in ['cll_rol']:
     # var = 'tp'
-    # 'tp', 'e', 'cp', 'lsp', 'pev', 'msl', 'sst', '2t', '2d', 'skt', 'hcc', 'mcc', 'lcc', 'tcc', 'z', 'mper', 'tciw', 'tclw', 'mtdwswrf', 'mtnlwrf', 'mtnswrf', 'mtnlwrfcs', 'mtnswrfcs', 'ECTEI'
+    # 'tp', 'e', 'cp', 'lsp', 'pev', 'msl', 'sst', '2t', '2d', 'skt', 'hcc', 'mcc', 'lcc', 'tcc', 'z', 'mper', 'tciw', 'tclw', 'mtdwswrf', 'mtnlwrf', 'mtnswrf', 'mtnlwrfcs', 'mtnswrfcs', 'ECTEI', 'cll_mol'
     print(var)
     
     # fl = sorted([
@@ -74,7 +74,7 @@ for var in ['cll_mol']:
         era5_sl_mon = era5_sl_mon / 100
     elif var in ['sst', 't2m', 'd2m', 'skt']:
         era5_sl_mon = era5_sl_mon - zerok
-    elif var in ['hcc', 'mcc', 'lcc', 'tcc', 'cll_mol']:
+    elif var in ['hcc', 'mcc', 'lcc', 'tcc', 'cll_mol', 'cll_rol']:
         era5_sl_mon = era5_sl_mon * 100
     elif var in ['z']:
         era5_sl_mon = era5_sl_mon / 9.80665
@@ -517,9 +517,9 @@ for var in ['mtnswrf', 'mtdwswrf', 'mtnlwrf']:
 # region get era5 alltime hourly data
 
 
-for var in ['mtnswrf', 'mtdwswrf', 'mtnlwrf']:
+for var in ['cll_mol', 'cll_rol']:
     # var = 'lcc'
-    # ['tcwv', 'tclw', 'tciw', 'lcc', 'mcc', 'hcc', 'tcc', 'tp', '2t']
+    # ['tcwv', 'tclw', 'tciw', 'lcc', 'mcc', 'hcc', 'tcc', 'tp', '2t', 'mtnswrf', 'mtdwswrf', 'mtnlwrf']
     print(f'#-------------------------------- {var}')
     odir = f'data/sim/era5/{var}'
     
@@ -532,7 +532,7 @@ for var in ['mtnswrf', 'mtdwswrf', 'mtnlwrf']:
     if var == '100v': var='v100'
     
     fl = sorted(glob.glob(f'{odir}/{var}_hourly_*.nc'))
-    era5_hourly = xr.open_mfdataset(fl)[var].sel(time=slice('1979', '2023'))
+    era5_hourly = xr.open_mfdataset(fl)[var].sel(time=slice('2016', '2023'))
     era5_hourly_alltime = mon_sea_ann(
         var_monthly=era5_hourly, lcopy=False, mm=True, sm=True, am=True)
     
@@ -937,7 +937,8 @@ year=args.year; month=args.month
 
 # option
 var_vars = {
-    'cll_mol': ['lcc', 'mcc', 'hcc'],
+    # 'cll_mol': ['lcc', 'mcc', 'hcc'],
+    'cll_rol': ['lcc', 'mcc', 'hcc'],
 }
 
 # settings
@@ -956,6 +957,9 @@ for var in var_vars.keys():
     if var=='cll_mol':
         # var='cll_mol'
         ds[var] = (ds['lcc'] - xr.apply_ufunc(np.maximum, ds['mcc'], ds['hcc'])).clip(min=0)
+    elif var=='cll_rol':
+        # var='cll_rol'
+        ds[var] = ds['lcc'] * (1 - ds['mcc']) * (1 - ds['hcc'])
     
     print('get mm')
     ds_mm = ds[var].resample({'time': '1ME'}).mean().rename(var)
@@ -978,8 +982,9 @@ print(f"Execution time: {end_time - start_time:.1f} seconds")
 '''
 #-------------------------------- check
 year = 2020; month = 6
-var_vars = {'cll_mol': ['lcc', 'mcc', 'hcc']}
-ilat = 200; ilon = 200
+# var_vars = {'cll_mol': ['lcc', 'mcc', 'hcc']}
+var_vars = {'cll_rol': ['lcc', 'mcc', 'hcc']}
+ilat = 100; ilon = 100
 
 for var in var_vars.keys():
     print(f'#-------------------------------- {var}')
@@ -994,6 +999,8 @@ for var in var_vars.keys():
     
     if var=='cll_mol':
         data1 = (ds['lcc'][:, ilat, ilon] - np.maximum(ds['mcc'][:, ilat, ilon], ds['hcc'][:, ilat, ilon])).clip(min=0)
+    elif var=='cll_rol':
+        data1 = ds['lcc'][:, ilat, ilon] - ds['lcc'][:, ilat, ilon] * ds['mcc'][:, ilat, ilon] - ds['lcc'][:, ilat, ilon] * ds['hcc'][:, ilat, ilon] + ds['lcc'][:, ilat, ilon] * ds['mcc'][:, ilat, ilon] * ds['hcc'][:, ilat, ilon]
     print(np.mean(data1).values.astype('float32') == ds_mm[0, ilat, ilon].values.astype('float32'))
     print((data1.groupby('time.hour').mean().values.astype('float32') == ds_mhm[0, ilat, ilon, :].values.astype('float32')).all())
 

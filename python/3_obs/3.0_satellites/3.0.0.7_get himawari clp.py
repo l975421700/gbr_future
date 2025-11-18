@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -P v46 -l walltime=3:00:00,ncpus=1,mem=96GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/qx55+gdata/gx60+gdata/py18+gdata/rv74+gdata/xp65
+# qsub -I -q normal -P v46 -l walltime=6:00:00,ncpus=1,mem=192GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/qx55+gdata/gx60+gdata/py18+gdata/rv74+gdata/xp65
 
 
 # region import packages
@@ -112,9 +112,14 @@ for iproduct in products: #os.listdir(himawari_bom): #
         
         folder = f'{himawari_bom}/{iproduct}/{icategory}'
         if os.path.isdir(folder):
-            fl = sorted(glob.glob(f'{folder}/latest/{year}/{month:02d}/*/*.nc'))
+            # flsza = sorted(glob.glob(f'/g/data/ra22/satellite-products/arc/obs/himawari-ahi/fldk/latest/{year}/{month:02d}/*/*/*-P1S-ABOM_GEOM_SOLAR-PRJ_GEOS141_2000-HIMAWARI?-AHI.nc'))
+            # fl = sorted(glob.glob(f'{folder}/latest/{year}/{month:02d}/*/*.nc'))
+            flsza = sorted(glob.glob(f'/g/data/ra22/satellite-products/arc/obs/himawari-ahi/fldk/latest/{year}/{month:02d}/*/*/*0000-P1S-ABOM_GEOM_SOLAR-PRJ_GEOS141_2000-HIMAWARI?-AHI.nc'))
+            fl = sorted(glob.glob(f'{folder}/latest/{year}/{month:02d}/*/*0000Z.nc'))
             print(f'Number of files: {len(fl)}')
             # print(os.path.getsize(fl[-1])/2**20)
+            
+            sza = xr.open_mfdataset(flsza, combine='by_coords', parallel=True, data_vars='minimal', coords='minimal',compat='override')['solar_zenith_angle']
             
             for ivar in vars:
                 print(f'#-------- {ivar}')
@@ -122,7 +127,16 @@ for iproduct in products: #os.listdir(himawari_bom): #
                 os.makedirs(odir, exist_ok=True)
                 
                 ds = xr.open_mfdataset(fl, combine='by_coords', parallel=True, data_vars='minimal', coords='minimal',compat='override', preprocess=lambda ds_in: preprocess_himawari(ds_in, ivar))[himawari_rename[ivar]]
-                ds = ds.chunk({'time': -1, 'nx': 50, 'ny': 50})
+                if len(fl) != len(flsza):
+                    print('Warning: filelist lengths do not match')
+                    common_time = np.intersect1d(sza['time'], ds['time'])
+                    sza = sza.sel(time=common_time)
+                    ds  = ds.sel(time=common_time)
+                # filter ds
+                ds = ds.where((~ds.isnull() | sza.isnull().values | (sza >= 70).values), 0).compute()
+                # ds[0].values
+                # sza[0].values
+                # ds[0].where((~ds[0].isnull() | sza[0].isnull().values | (sza[0] >= 70).values), 0).compute()
                 
                 if ivar in ['cmic_iwp', 'cmic_lwp']:
                     print('get mm')
@@ -142,7 +156,7 @@ for iproduct in products: #os.listdir(himawari_bom): #
 
 '''
 #-------------------------------- check
-year = 2025; month = 1
+year = 2015; month = 7
 iproduct = 'cloud'
 icategory = 'cmic'
 ivar = 'cmic_lwp'
@@ -166,12 +180,18 @@ def preprocess_himawari(ds_in, ivar):
     return(ds_out)
 
 folder = f'{himawari_bom}/{iproduct}/{icategory}'
-fl = sorted(glob.glob(f'{folder}/latest/{year}/{month:02d}/*/*.nc'))
+fl = sorted(glob.glob(f'{folder}/latest/{year}/{month:02d}/*/*0000Z.nc'))
 print(f'Number of files: {len(fl)}')
 odir = f'data/obs/jaxa/{himawari_rename[ivar]}'
+flsza = sorted(glob.glob(f'/g/data/ra22/satellite-products/arc/obs/himawari-ahi/fldk/latest/{year}/{month:02d}/*/*/*0000-P1S-ABOM_GEOM_SOLAR-PRJ_GEOS141_2000-HIMAWARI?-AHI.nc'))
 
+sza = xr.open_mfdataset(flsza, combine='by_coords', parallel=True, data_vars='minimal', coords='minimal',compat='override')['solar_zenith_angle']
 ds = xr.open_mfdataset(fl, combine='by_coords', parallel=True, data_vars='minimal', coords='minimal',compat='override', preprocess=lambda ds_in: preprocess_himawari(ds_in, ivar))[himawari_rename[ivar]]
-# ds = ds.chunk({'time': -1, 'nx': 50, 'ny': 50})
+if len(fl) != len(flsza):
+    print('Warning: filelist lengths do not match')
+    common_time = np.intersect1d(sza['time'], ds['time'])
+    sza = sza.sel(time=common_time)
+    ds  = ds.sel(time=common_time)
 
 ds_mm = xr.open_dataset(f'{odir}/{himawari_rename[ivar]}_{year}{month:02d}.nc')[himawari_rename[ivar]]
 ds_mhm = xr.open_dataset(f'{odir}/{himawari_rename[ivar]}_hourly_{year}{month:02d}.nc')[himawari_rename[ivar]]
@@ -179,12 +199,14 @@ ds_mhm = xr.open_dataset(f'{odir}/{himawari_rename[ivar]}_hourly_{year}{month:02
 inx = 2000
 iny = 2000
 
+data = ds[:, iny, inx].where((~ds[:, iny, inx].isnull() | sza[:, iny, inx].isnull().values | (sza[:, iny, inx] >= 70).values), 0).compute()
 print(ds_mm[0, iny, inx].values)
+print(np.mean(data).values)
 print(np.mean(ds[:, iny, inx]).values)
 
 print(ds_mhm[0, iny, inx, :].values)
+print(data.groupby('time.hour').mean().values)
 print(ds[:, iny, inx].groupby('time.hour').mean().values)
-print(ds[:, iny, inx].groupby('time.hour').mean(skipna=False).values)
 
 
 

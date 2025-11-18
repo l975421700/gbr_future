@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -l walltime=1:00:00,ncpus=1,mem=20GB,jobfs=100MB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/py18+gdata/gx60
+# qsub -I -q normal -l walltime=1:00:00,ncpus=1,mem=96GB,jobfs=100MB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/py18+gdata/gx60
 
 
 # region import packages
@@ -41,15 +41,15 @@ from namelist import zerok, seconds_per_d
 
 years = '2016'
 yeare = '2023'
-for var in ['cll_mol']:
+for var in ['cll_rol']:
     # var = 'pr'
-    # ['pr', 'clh', 'clm', 'cll', 'clt', 'evspsbl', 'hfls', 'hfss', 'psl', 'rlds', 'rldscs', 'rlus', 'rluscs', 'rlut', 'rlutcs', 'rsds', 'rsdscs', 'rsdt', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'sfcWind', 'tas', 'ts', 'evspsblpot', 'hurs', 'huss', 'uas', 'vas', 'clivi', 'clwvi', 'zmla']
+    # ['pr', 'clh', 'clm', 'cll', 'clt', 'evspsbl', 'hfls', 'hfss', 'psl', 'rlds', 'rldscs', 'rlus', 'rluscs', 'rlut', 'rlutcs', 'rsds', 'rsdscs', 'rsdt', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'sfcWind', 'tas', 'ts', 'evspsblpot', 'hurs', 'huss', 'uas', 'vas', 'clivi', 'clwvi', 'zmla', 'cll_mol']
     print(var)
     
     # fl = sorted(glob.glob(f'/g/data/py18/BARPA/output/CMIP6/DD/AUS-15/BOM/ERA5/evaluation/r1i1p1f1/BARPA-R/v1-r1/mon/{var}/latest/*.nc'))
     # barpa_r_mon = xr.open_mfdataset(fl, drop_variables=["crs"])[var].sel(time=slice(years, yeare))
     
-    fl = sorted(glob.glob(f'data/sim/um/barpa_r/cll_mol/cll_mol_??????.nc'))
+    fl = sorted(glob.glob(f'data/sim/um/barpa_r/{var}/{var}_??????.nc'))
     barpa_r_mon = xr.open_mfdataset(fl)[var].sel(time=slice(years, yeare))
     
     if var in ['pr', 'evspsbl', 'evspsblpot']:
@@ -188,7 +188,7 @@ for var in ['cll', 'clm', 'clh', 'rsut', 'rsutcs', 'clwvi', 'clivi', 'rlut', 'rl
 
 years = '2016'
 yeare = '2023'
-for var in ['cll']:
+for var in ['cll_mol', 'cll_rol']:
     # var = 'cll'
     # 'cll', 'clm', 'clh', 'clt', 'rsut', 'rsutcs', 'clwvi', 'clivi', 'rlut', 'rlutcs', 'pr', 'hfls', 'hfss', 'hurs', 'huss'
     print(f'#-------------------------------- {var}')
@@ -341,7 +341,8 @@ year=args.year; month=args.month
 
 # option
 var_vars = {
-    'cll_mol': ['cll', 'clm', 'clh'],
+    # 'cll_mol': ['cll', 'clm', 'clh'],
+    'cll_rol': ['cll', 'clm', 'clh'],
 }
 
 # settings
@@ -361,6 +362,9 @@ for var in var_vars.keys():
     if var=='cll_mol':
         # var='cll_mol'
         ds[var] = (ds['cll'] - xr.apply_ufunc(np.maximum, ds['clm'], ds['clh'])).clip(min=0)
+    elif var=='cll_rol':
+        # var='cll_rol'
+        ds[var] = ds['cll'] * (1 - ds['clm']/100) * (1 - ds['clh']/100)
     
     print('get mm')
     ds_mm = ds[var].resample({'time': '1ME'}).mean().rename(var)
@@ -383,9 +387,10 @@ print(f"Execution time: {end_time - start_time:.1f} seconds")
 '''
 #-------------------------------- check
 year = 2020; month = 6
-var_vars = {'cll_mol': ['cll', 'clm', 'clh']}
+# var_vars = {'cll_mol': ['cll', 'clm', 'clh']}
+var_vars = {'cll_rol': ['cll', 'clm', 'clh']}
 min_lon, max_lon, min_lat, max_lat = [110.58, 157.34, -43.69, -7.01]
-ilat = 200; ilon = 200
+ilat = 100; ilon = 100
 
 for var in var_vars.keys():
     print(f'#-------------------------------- {var}')
@@ -400,8 +405,10 @@ for var in var_vars.keys():
     
     if var=='cll_mol':
         data1 = (ds['cll'][:, ilat, ilon] - np.maximum(ds['clm'][:, ilat, ilon], ds['clh'][:, ilat, ilon])).clip(min=0)
-    print(np.mean(data1).values == ds_mm[0, ilat, ilon].values)
-    print((data1.groupby('time.hour').mean().values == ds_mhm[0, ilat, ilon, :].values).all())
+    elif var=='cll_rol':
+        data1 = ds['cll'][:, ilat, ilon] - ds['cll'][:, ilat, ilon] * ds['clm'][:, ilat, ilon]/100 - ds['cll'][:, ilat, ilon] * ds['clh'][:, ilat, ilon]/100 + ds['cll'][:, ilat, ilon] * ds['clm'][:, ilat, ilon]/100 * ds['clh'][:, ilat, ilon]/100
+    print(np.mean(data1).values.astype('float32') == ds_mm[0, ilat, ilon].values.astype('float32'))
+    print((data1.groupby('time.hour').mean().values.astype('float32') == ds_mhm[0, ilat, ilon, :].values.astype('float32')).all())
 
 
 

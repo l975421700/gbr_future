@@ -89,7 +89,7 @@ categories = ['cmic']
 # categories = ['cmic']
 # ['cmic_cot', 'cmic_phase', 'cmic_reff', 'cmic_iwp', 'cmic_lwp', 'cwp']
 # ['cmic_conditions', 'cmic_quality', 'cmic_status_flag']
-vars = ['cmic_cot', 'cmic_phase', 'cmic_reff', 'cmic_iwp', 'cmic_lwp', 'cwp', 'cmic_conditions', 'cmic_quality', 'cmic_status_flag']
+vars = ['cmic_lwp']
 plt_regions = ['himawari']
 
 # settings
@@ -148,8 +148,11 @@ for iproduct in products: #os.listdir(himawari_bom): #
     for icategory in categories: #os.listdir(f'{himawari_bom}/{iproduct}'): #
         print(f'#---------------- {icategory}')
         
+        sza = xr.open_dataset(f'/g/data/ra22/satellite-products/arc/obs/himawari-ahi/fldk/latest/{year}/{month:02d}/{day:02d}/{hour:02d}{minute:02d}/{year}{month:02d}{day:02d}{hour:02d}{minute:02d}00-P1S-ABOM_GEOM_SOLAR-PRJ_GEOS141_2000-HIMAWARI8-AHI.nc')['solar_zenith_angle'].squeeze()
+        
         file = glob.glob(f'{himawari_bom}/{iproduct}/{icategory}/latest/{year}/{month:02d}/{day:02d}/*{hour:02d}{minute:02d}00Z.nc')[0]
         ds = rxr.open_rasterio(file, masked=True)[0].squeeze()
+        ds['cmic_lwp'] = ds['cmic_lwp'].where((~ds['cmic_lwp'].isnull() | sza.isnull().values | (sza >= 70).values), 0)
         ds = ds.rio.write_crs(transform)
         ds = ds.rio.reproject('epsg:4326')
         ds = ds.rename({'x': 'lon', 'y': 'lat'})
@@ -290,7 +293,7 @@ for iproduct in products: #os.listdir(himawari_bom): #
                     gl.ylocator = mticker.FixedLocator(np.arange(-90, 90 + 1e-4, 10))
                 
                 plt_mesh = ax.pcolormesh(
-                    plt_data.lon, plt_data.lat, plt_data,
+                    plt_data.lon, plt_data.lat, plt_data, zorder=10,
                     norm=pltnorm, cmap=pltcmp, transform=ccrs.PlateCarree())
                 
                 cbar = fig.colorbar(

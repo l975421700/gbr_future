@@ -32,11 +32,12 @@ parser.add_argument('-m', '--month', type=int, required=True,)
 args = parser.parse_args()
 
 year=args.year; month=args.month
-# year = 2024; month = 1
+# year = 2016; month = 10
 
 # option
 var_vars = {
-    'cll_mol': ['lcc', 'mcc', 'hcc'],
+    # 'cll_mol': ['lcc', 'mcc', 'hcc'],
+    'cll_rol': ['lcc', 'mcc', 'hcc'],
 }
 
 # settings
@@ -55,6 +56,9 @@ for var in var_vars.keys():
     if var=='cll_mol':
         # var='cll_mol'
         ds[var] = (ds['lcc'] - xr.apply_ufunc(np.maximum, ds['mcc'], ds['hcc'])).clip(min=0)
+    elif var=='cll_rol':
+        # var='cll_rol'
+        ds[var] = ds['lcc'] * (1 - ds['mcc']) * (1 - ds['hcc'])
     
     print('get mm')
     ds_mm = ds[var].resample({'time': '1ME'}).mean().rename(var)
@@ -76,10 +80,10 @@ print(f"Execution time: {end_time - start_time:.1f} seconds")
 
 '''
 #-------------------------------- check
-year = 2024; month = 12
-var_vars = {'cll_mol': ['lcc', 'mcc', 'hcc']}
-min_lon, max_lon, min_lat, max_lat = [110.58, 157.34, -43.69, -7.01]
-ilat = 100; ilon = 100
+year = 2024; month = 1
+# var_vars = {'cll_mol': ['lcc', 'mcc', 'hcc']}
+var_vars = {'cll_rol': ['lcc', 'mcc', 'hcc']}
+ilat = 200; ilon = 200
 
 for var in var_vars.keys():
     print(f'#-------------------------------- {var}')
@@ -94,8 +98,10 @@ for var in var_vars.keys():
     
     if var=='cll_mol':
         data1 = (ds['lcc'][:, ilat, ilon] - np.maximum(ds['mcc'][:, ilat, ilon], ds['hcc'][:, ilat, ilon])).clip(min=0)
-    print(np.mean(data1).values == ds_mm[0, ilat, ilon].values)
-    print((data1.groupby('time.hour').mean().values == ds_mhm[0, ilat, ilon, :].values).all())
+    elif var=='cll_rol':
+        data1 = ds['lcc'][:, ilat, ilon] - ds['lcc'][:, ilat, ilon] * ds['mcc'][:, ilat, ilon] - ds['lcc'][:, ilat, ilon] * ds['hcc'][:, ilat, ilon] + ds['lcc'][:, ilat, ilon] * ds['mcc'][:, ilat, ilon] * ds['hcc'][:, ilat, ilon]
+    print(np.mean(data1).values.astype('float32') == ds_mm[0, ilat, ilon].values.astype('float32'))
+    print((data1.groupby('time.hour').mean().values.astype('float32') == ds_mhm[0, ilat, ilon, :].values.astype('float32')).all())
 
 
 

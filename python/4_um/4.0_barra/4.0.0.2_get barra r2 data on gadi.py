@@ -48,9 +48,9 @@ from namelist import cmip6_units, zerok, seconds_per_d
 
 years = '2016'
 yeare = '2023'
-for var in ['cll_mol']:
+for var in ['cll_rol']:
     # var = 'rsut'
-    # 'pr', 'clh', 'clm', 'cll', 'clt', 'rsut', 'clivi', 'clwvi', 'zmla', 'rlut', 'rsdt', 'ECTEI'
+    # 'pr', 'clh', 'clm', 'cll', 'clt', 'rsut', 'clivi', 'clwvi', 'zmla', 'rlut', 'rsdt', 'ECTEI', 'cll_mol'
     print(var)
     
     # fl = sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/mon/{var}/latest/*')) #[:540]
@@ -653,12 +653,13 @@ joblib.Parallel(n_jobs=12)(joblib.delayed(process_year_month)(year, month, var, 
 # region get BARRA-R2 alltime hourly data
 
 
-for var in ['rsdt', 'rsut', 'rlut']:
+for var in ['cll_mol', 'cll_rol']:
     # var = 'cll'
+    # 'rsdt', 'rsut', 'rlut'
     print(f'#-------------------------------- {var}')
     
-    fl = sorted(glob.glob(f'scratch/data/sim/um/barra_r2/{var}/{var}_hourly_*.nc'))
-    barra_r2_hourly = xr.open_mfdataset(fl)[var].sel(time=slice('1979', '2023'))
+    fl = sorted(glob.glob(f'data/sim/um/barra_r2/{var}/{var}_hourly_*.nc'))
+    barra_r2_hourly = xr.open_mfdataset(fl)[var].sel(time=slice('2016', '2023'))
     barra_r2_hourly_alltime = mon_sea_ann(
         var_monthly=barra_r2_hourly, lcopy=False, mm=True, sm=True, am=True)
     
@@ -936,7 +937,8 @@ year=args.year; month=args.month
 
 # option
 var_vars = {
-    'cll_mol': ['cll', 'clm', 'clh'],
+    # 'cll_mol': ['cll', 'clm', 'clh'],
+    'cll_rol': ['cll', 'clm', 'clh'],
 }
 
 # settings
@@ -956,6 +958,9 @@ for var in var_vars.keys():
     if var=='cll_mol':
         # var='cll_mol'
         ds[var] = (ds['cll'] - xr.apply_ufunc(np.maximum, ds['clm'], ds['clh'])).clip(min=0)
+    elif var=='cll_rol':
+        # var='cll_rol'
+        ds[var] = ds['cll'] * (1 - ds['clm']/100) * (1 - ds['clh']/100)
     
     print('get mm')
     ds_mm = ds[var].resample({'time': '1ME'}).mean().rename(var)
@@ -978,9 +983,10 @@ print(f"Execution time: {end_time - start_time:.1f} seconds")
 '''
 #-------------------------------- check
 year = 2020; month = 6
-var_vars = {'cll_mol': ['cll', 'clm', 'clh']}
+# var_vars = {'cll_mol': ['cll', 'clm', 'clh']}
+var_vars = {'cll_rol': ['cll', 'clm', 'clh']}
 min_lon, max_lon, min_lat, max_lat = [110.58, 157.34, -43.69, -7.01]
-ilat = 200; ilon = 200
+ilat = 300; ilon = 300
 
 for var in var_vars.keys():
     print(f'#-------------------------------- {var}')
@@ -995,8 +1001,10 @@ for var in var_vars.keys():
     
     if var=='cll_mol':
         data1 = (ds['cll'][:, ilat, ilon] - np.maximum(ds['clm'][:, ilat, ilon], ds['clh'][:, ilat, ilon])).clip(min=0)
-    print(np.mean(data1).values == ds_mm[0, ilat, ilon].values)
-    print((data1.groupby('time.hour').mean().values == ds_mhm[0, ilat, ilon, :].values).all())
+    elif var=='cll_rol':
+        data1 = ds['cll'][:, ilat, ilon] - ds['cll'][:, ilat, ilon] * ds['clm'][:, ilat, ilon]/100 - ds['cll'][:, ilat, ilon] * ds['clh'][:, ilat, ilon]/100 + ds['cll'][:, ilat, ilon] * ds['clm'][:, ilat, ilon]/100 * ds['clh'][:, ilat, ilon]/100
+    print(np.mean(data1).values.astype('float32') == ds_mm[0, ilat, ilon].values.astype('float32'))
+    print((data1.groupby('time.hour').mean().values.astype('float32') == ds_mhm[0, ilat, ilon, :].values.astype('float32')).all())
 
 
 
