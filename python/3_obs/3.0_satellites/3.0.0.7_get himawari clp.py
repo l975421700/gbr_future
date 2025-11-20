@@ -66,7 +66,7 @@ from calculations import (
 
 
 # region get monthly and hourly Himawari cmic
-# Memory Used: 300GB; Walltime Used: 04:00
+# Memory Used: 519.23GB; Walltime Used: 02:35:24
 
 import argparse
 parser=argparse.ArgumentParser()
@@ -156,10 +156,10 @@ for iproduct in products: #os.listdir(himawari_bom): #
 
 '''
 #-------------------------------- check
-year = 2015; month = 7
+year = 2025; month = 1
 iproduct = 'cloud'
 icategory = 'cmic'
-ivar = 'cmic_lwp'
+ivar = 'cmic_iwp'
 
 himawari_bom = '/g/data/rv74/satellite-products/arc/der/himawari-ahi'
 himawari_rename = {
@@ -180,12 +180,12 @@ def preprocess_himawari(ds_in, ivar):
     return(ds_out)
 
 folder = f'{himawari_bom}/{iproduct}/{icategory}'
+flsza = sorted(glob.glob(f'/g/data/ra22/satellite-products/arc/obs/himawari-ahi/fldk/latest/{year}/{month:02d}/*/*/*0000-P1S-ABOM_GEOM_SOLAR-PRJ_GEOS141_2000-HIMAWARI?-AHI.nc'))
 fl = sorted(glob.glob(f'{folder}/latest/{year}/{month:02d}/*/*0000Z.nc'))
 print(f'Number of files: {len(fl)}')
-odir = f'data/obs/jaxa/{himawari_rename[ivar]}'
-flsza = sorted(glob.glob(f'/g/data/ra22/satellite-products/arc/obs/himawari-ahi/fldk/latest/{year}/{month:02d}/*/*/*0000-P1S-ABOM_GEOM_SOLAR-PRJ_GEOS141_2000-HIMAWARI?-AHI.nc'))
-
 sza = xr.open_mfdataset(flsza, combine='by_coords', parallel=True, data_vars='minimal', coords='minimal',compat='override')['solar_zenith_angle']
+odir = f'data/obs/jaxa/{himawari_rename[ivar]}'
+
 ds = xr.open_mfdataset(fl, combine='by_coords', parallel=True, data_vars='minimal', coords='minimal',compat='override', preprocess=lambda ds_in: preprocess_himawari(ds_in, ivar))[himawari_rename[ivar]]
 if len(fl) != len(flsza):
     print('Warning: filelist lengths do not match')
@@ -196,8 +196,8 @@ if len(fl) != len(flsza):
 ds_mm = xr.open_dataset(f'{odir}/{himawari_rename[ivar]}_{year}{month:02d}.nc')[himawari_rename[ivar]]
 ds_mhm = xr.open_dataset(f'{odir}/{himawari_rename[ivar]}_hourly_{year}{month:02d}.nc')[himawari_rename[ivar]]
 
-inx = 2000
-iny = 2000
+inx = 3000
+iny = 3000
 
 data = ds[:, iny, inx].where((~ds[:, iny, inx].isnull() | sza[:, iny, inx].isnull().values | (sza[:, iny, inx] >= 70).values), 0).compute()
 print(ds_mm[0, iny, inx].values)
@@ -208,7 +208,11 @@ print(ds_mhm[0, iny, inx, :].values)
 print(data.groupby('time.hour').mean().values)
 print(ds[:, iny, inx].groupby('time.hour').mean().values)
 
-
+itime = 100
+ds1 = xr.open_dataset(fl[itime])[ivar]
+sza1 = xr.open_dataset(flsza[itime])['solar_zenith_angle'].squeeze()
+data = ds1.where((~ds1.isnull() | sza1.isnull().values | (sza1 >= 70).values), 0).compute()
+data.to_netcdf('scratch/tmp/test.nc')
 
 
 #-------------------------------- coordinates

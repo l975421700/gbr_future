@@ -1,12 +1,12 @@
 for year in $(seq 2025 2025); do
-    for month in $(seq 1 1); do
+    for month in $(seq 2 5); do
         # month=$(printf '%02d' $month)
         echo $year $month
         qsub -v year=$year,month=$month <<EOF
-#PBS -N qjob7_${year}$(printf '%02d' $month)
+#PBS -N qjob6_${year}$(printf '%02d' $month)
 #PBS -q hugemem
-#PBS -l walltime=10:00:00
-#PBS -l mem=490GB
+#PBS -l walltime=4:00:00
+#PBS -l mem=600GB
 #PBS -l jobfs=100MB
 #PBS -l ncpus=1
 #PBS -j oe
@@ -22,7 +22,7 @@ cd ${HOME}
 
 module use /g/data/xp65/public/modules
 module load conda/analysis3
-/g/data/xp65/public/apps/med_conda_scripts/analysis3-25.10.d/bin/python code/gbr_future/shell/0_runpy/run7.py -y $year -m $month
+/g/data/xp65/public/apps/med_conda_scripts/analysis3-25.10.d/bin/python code/gbr_future/shell/0_runpy/run6.py -y $year -m $month
 
 EOF
     done
