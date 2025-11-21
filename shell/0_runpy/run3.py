@@ -10,101 +10,122 @@ dask.config.set({"array.slicing.split_large_chunks": True})
 from dask.diagnostics import ProgressBar
 pbar = ProgressBar()
 pbar.register()
-import argparse
-import time
+import glob
+import rioxarray as rxr
+import calendar
+import pickle
+
+# plot
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import cartopy.crs as ccrs
+plt.rcParams['pcolor.shading'] = 'auto'
+mpl.rcParams['figure.dpi'] = 600
+mpl.rc('font', family='Times New Roman', size=12)
+mpl.rcParams['axes.linewidth'] = 0.2
+plt.rcParams.update({"mathtext.fontset": "stix"})
+import matplotlib.ticker as mticker
+import cartopy.feature as cfeature
 
 # management
 import os
 import sys  # print(sys.path)
 sys.path.append(os.getcwd() + '/code/gbr_future/module')
+import psutil
+process = psutil.Process()
+# print(process.memory_info().rss / 2**30)
+import warnings
+warnings.filterwarnings('ignore')
+
+from namelist import (
+    month_jan,
+    monthini,
+    seasons,
+    seconds_per_d,
+    zerok,
+    era5_varlabels,
+    cmip6_era5_var,
+    )
+
+from mapplot import (
+    regional_plot,
+    remove_trailing_zero_pos,
+    )
+
+from component_plot import (
+    plt_mesh_pars,)
+
+from calculations import (
+    mon_sea_ann,
+    )
 
 # endregion
 
 
-# region get MOL and ROL cll, clm, clt
-# Memory Used: 46.43GB, Walltime Used: 00:02:09
+# region get alltime monthly and hourly Himawari cmic
+# mm: Memory Used: 37.72GB, Walltime Used: 00:06:09
+# mhm: Memory Used: 500.0GB, Walltime Used: 04:23:35
 
-import argparse
-parser=argparse.ArgumentParser()
-parser.add_argument('-y', '--year', type=int, required=True,)
-parser.add_argument('-m', '--month', type=int, required=True,)
-args = parser.parse_args()
-
-year=args.year; month=args.month
-# year = 2013; month = 1
-
-# option
-var_vars = {
-    # 'cll_mol': ['cll', 'clm', 'clh'],
-    'cll_rol': ['cll', 'clm', 'clh'],
-}
-
-# settings
-min_lon, max_lon, min_lat, max_lat = [110.58, 157.34, -43.69, -7.01]
-start_time = time.perf_counter()
-
-for var in var_vars.keys():
-    print(f'#-------------------------------- {var}')
-    odir = f'data/sim/um/barpa_c/{var}'
-    os.makedirs(odir, exist_ok=True)
+years = '2016'
+yeare = '2024'
+for ivar in ['clwvi']:
+    # ivar = 'clivi'
+    print(f'#-------------------------------- {ivar}')
     
-    ds = {}
-    for var2 in var_vars[var]:
-        print(f'#---------------- {var2}')
-        ds[var2] = xr.open_dataset(f'/g/data/py18/BARPA/output/CMIP6/DD/AUST-04/BOM/ERA5/evaluation/r1i1p1f1/BARPA-C/v1-r1/1hr/{var2}/latest/{var2}_AUST-04_ERA5_evaluation_r1i1p1f1_BOM_BARPA-C_v1-r1_1hr_{year}{month:02d}-{year}{month:02d}.nc')[var2].sel(lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat))
-    
-    if var=='cll_mol':
-        # var='cll_mol'
-        ds[var] = (ds['cll'] - xr.apply_ufunc(np.maximum, ds['clm'], ds['clh'])).clip(min=0)
-    elif var=='cll_rol':
-        # var='cll_rol'
-        ds[var] = ds['cll'] * (1 - ds['clm']/100) * (1 - ds['clh']/100)
-    
-    print('get mm')
-    ds_mm = ds[var].resample({'time': '1ME'}).mean().rename(var)
-    ofile1 = f'{odir}/{var}_{year}{month:02d}.nc'
-    if os.path.exists(ofile1): os.remove(ofile1)
-    ds_mm.to_netcdf(ofile1)
-    
-    print('get mhm')
-    ds_mhm = ds[var].resample(time='1ME').map(lambda x: x.groupby('time.hour').mean()).rename(var)
-    ofile2 = f'{odir}/{var}_hourly_{year}{month:02d}.nc'
-    if os.path.exists(ofile2): os.remove(ofile2)
-    ds_mhm.to_netcdf(ofile2)
+    for iperiod in ['mhm']:
+        # iperiod = 'mhm'
+        print(f'#---------------- {iperiod}')
+        
+        if iperiod == 'mm':
+            fl = sorted(glob.glob(f'data/obs/jaxa/{ivar}/{ivar}_??????.nc'))
+            ofile = f'data/obs/jaxa/{ivar}/{ivar}_alltime.pkl'
+        elif iperiod == 'mhm':
+            fl = sorted(glob.glob(f'data/obs/jaxa/{ivar}/{ivar}_hourly_*.nc'))
+            ofile = f'data/obs/jaxa/{ivar}/{ivar}_hourly_alltime.pkl'
+        
+        himawari_mon = xr.open_mfdataset(fl, combine='by_coords', parallel=True, data_vars='minimal',compat='override', coords='minimal')[ivar].sel(time=slice(years, yeare))
+        
+        if ivar in ['clwvi', 'clivi']:
+            himawari_mon *= 1000
+        
+        himawari_mon_alltime = mon_sea_ann(
+            var_monthly=himawari_mon, lcopy=False, mm=True, sm=True, am=True)
+        
+        if os.path.exists(ofile): os.remove(ofile)
+        with open(ofile,'wb') as f:
+            pickle.dump(himawari_mon_alltime, f)
 
-end_time = time.perf_counter()
-print(f"Execution time: {end_time - start_time:.1f} seconds")
-# 91.4 s
 
 
 
 '''
 #-------------------------------- check
 year = 2020; month = 6
-# var_vars = {'cll_mol': ['cll', 'clm', 'clh']}
-var_vars = {'cll_rol': ['cll', 'clm', 'clh']}
-min_lon, max_lon, min_lat, max_lat = [110.58, 157.34, -43.69, -7.01]
-ilat = 200; ilon = 200
-
-for var in var_vars.keys():
-    print(f'#-------------------------------- {var}')
-    odir = f'data/sim/um/barpa_c/{var}'
-    ds = {}
-    for var2 in var_vars[var]:
-        print(f'#---------------- {var2}')
-        ds[var2] = xr.open_dataset(f'/g/data/py18/BARPA/output/CMIP6/DD/AUST-04/BOM/ERA5/evaluation/r1i1p1f1/BARPA-C/v1-r1/1hr/{var2}/latest/{var2}_AUST-04_ERA5_evaluation_r1i1p1f1_BOM_BARPA-C_v1-r1_1hr_{year}{month:02d}-{year}{month:02d}.nc')[var2].sel(lon=slice(min_lon, max_lon), lat=slice(min_lat, max_lat))
-    
-    ds_mm = xr.open_dataset(f'{odir}/{var}_{year}{month:02d}.nc')[var]
-    ds_mhm = xr.open_dataset(f'{odir}/{var}_hourly_{year}{month:02d}.nc')[var]
-    
-    if var=='cll_mol':
-        data1 = (ds['cll'][:, ilat, ilon] - np.maximum(ds['clm'][:, ilat, ilon], ds['clh'][:, ilat, ilon])).clip(min=0)
-    elif var=='cll_rol':
-        data1 = ds['cll'][:, ilat, ilon] - ds['cll'][:, ilat, ilon] * ds['clm'][:, ilat, ilon]/100 - ds['cll'][:, ilat, ilon] * ds['clh'][:, ilat, ilon]/100 + ds['cll'][:, ilat, ilon] * ds['clm'][:, ilat, ilon]/100 * ds['clh'][:, ilat, ilon]/100
-    print(np.mean(data1).values == ds_mm[0, ilat, ilon].values)
-    print((data1.groupby('time.hour').mean().values == ds_mhm[0, ilat, ilon, :].values).all())
-
+for ivar in ['clwvi', 'clivi']:
+    # ivar = 'clwvi'
+    print(f'#-------------------------------- {ivar}')
+    for iperiod in ['mm']:
+        # iperiod = 'mhm'
+        # ['mm', 'mhm']
+        print(f'#---------------- {iperiod}')
+        
+        if iperiod == 'mm':
+            ifile = f'data/obs/jaxa/{ivar}/{ivar}_{year}{month:02d}.nc'
+            ofile = f'data/obs/jaxa/{ivar}/{ivar}_alltime.pkl'
+        elif iperiod == 'mhm':
+            ifile = f'data/obs/jaxa/{ivar}/{ivar}_hourly_{year}{month:02d}.nc'
+            ofile = f'data/obs/jaxa/{ivar}/{ivar}_hourly_alltime.pkl'
+        
+        data1 = xr.open_dataset(ifile)[ivar]
+        if ivar in ['clwvi', 'clivi']:
+            data1 *= 1000
+        
+        with open(ofile,'rb') as f:
+            data2 = pickle.load(f)
+        
+        print((data1.values[np.isfinite(data1.values)] == data2['mon'].sel(time=f'{year}-{month:02d}').values[np.isfinite(data2['mon'].sel(time=f'{year}-{month:02d}').values)]).all())
 
 
 '''
 # endregion
+

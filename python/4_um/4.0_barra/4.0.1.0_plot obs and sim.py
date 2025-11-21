@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -P fy29 -l walltime=3:00:00,ncpus=1,mem=96GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/qx55+gdata/gx60+gdata/py18+gdata/rv74+gdata/xp65
+# qsub -I -q normal -P v46 -l walltime=3:00:00,ncpus=1,mem=96GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/qx55+gdata/gx60+gdata/py18+gdata/rv74+gdata/xp65
 
 
 # region import packages
@@ -115,12 +115,12 @@ from um_postprocess import (
 # options
 years = '2016'; yeare = '2023'
 # ['rsut', 'rlut'， 'cll', 'clm', 'clh', 'clt', 'clwvi', 'clivi', 'inversionh', 'LCL', 'LTS', 'EIS', 'ECTEI', 'pr', 'hfls', 'hfss', 'cll_mol', 'cll_rol']
-vars = ['cll_rol']
+vars = ['clwvi', 'clivi']
 # ['CERES', 'CM SAF', 'Himawari', 'BARRA-C2', 'BARPA-C', 'ERA5', 'BARRA-R2', 'BARPA-R', 'MOD08_M3', 'MYD08_M3', 'IMERG', 'OAFlux']
-ds_names = ['Himawari', 'BARRA-C2', 'BARPA-C', 'ERA5', 'BARRA-R2', 'BARPA-R']
-plt_regions = ['c2_domain'] # ['global', 'c2_domain', 'h9_domain', 'r2_domain']
+ds_names = ['CERES', 'CM SAF', 'Himawari']
+plt_regions = ['c2_domain', 'h9_domain'] # ['global', 'c2_domain', 'h9_domain', 'r2_domain']
 plt_modes = ['original', 'difference'] # ['original', 'difference']
-nrow = 2 # 1 #
+nrow = 1 # 1 #
 ncol = 3 # len(ds_names) #
 
 # settings

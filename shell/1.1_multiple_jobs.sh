@@ -1,19 +1,19 @@
-for idx in $(seq 4 4); do
+for idx in $(seq 3 4); do
     qsub -v idx=$idx <<EOF
 #PBS -N qjob$idx
 #PBS -q hugemem
-#PBS -l walltime=5:00:00
+#PBS -l walltime=10:00:00
 #PBS -l mem=500GB
 #PBS -l jobfs=100MB
 #PBS -l ncpus=1
 #PBS -j oe
 #PBS -l storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/py18+gdata/gx60+gdata/xp65+gdata/qx55+gdata/rv74
-#PBS -P fy29
+#PBS -P v46
 #PBS -r y
 
 cd ${HOME}
-source miniconda3/bin/activate lowclouds
 
+source miniconda3/bin/activate lowclouds
 python code/gbr_future/shell/0_runpy/run${idx}.py
 
 # code/gbr_future/shell/2.2_get_cloudsat.sh $idx 2B-GEOPROF.P1_R05 #2B-CWC-RO.P1_R05 #2B-GEOPROF-LIDAR.P2_R05
