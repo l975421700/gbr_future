@@ -5,7 +5,7 @@
 # 2) check <change the units and sign convention>
 
 
-# qsub -I -q normal -P nf33 -l walltime=4:00:00,ncpus=1,mem=192GB,jobfs=10GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/py18+gdata/gx60+gdata/xp65+gdata/qx55+gdata/rv74
+# qsub -I -q normal -P v46 -l walltime=4:00:00,ncpus=1,mem=64GB,jobfs=10GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/py18+gdata/gx60+gdata/xp65+gdata/qx55+gdata/rv74+gdata/al33+gdata/rr3
 
 
 # region import packages
@@ -34,6 +34,8 @@ process = psutil.Process()
 import gc
 import warnings
 warnings.filterwarnings('ignore')
+import json
+import time
 
 # self defined function
 from calculations import (
@@ -52,260 +54,295 @@ cmip_info['institution_id'].unique()
 # endregion
 
 
-# region get source_ids and preferred member_ids
+# region get source_ids and member_ids
 
-cmip6 = intake.open_catalog('/g/data/hh5/public/apps/nci-intake-catalogue/catalogue_new.yaml').esgf.cmip6
+cmip_dir = {
+    # 'cmip5': ['cmip5_al33', 'cmip5_rr3'],
+    'cmip6': ['cmip6_fs38', 'cmip6_oi10'],
+    }
 
-# get the exps
-source_intersect = cmip6.df.source_id.unique()
-
-for experiment_id in [['piControl', 'esm-piControl'], ['abrupt-4xCO2'], ['historical', 'esm-hist']]:
-    print(experiment_id)
-    for table_id, variable_id in zip(['Amon', 'Amon', 'Amon', 'Amon'], ['tas', 'rsut', 'rsdt', 'rlut']):
-        print(f'{table_id} {variable_id}')
+for icmip in cmip_dir.keys():
+    # icmip = 'cmip6'
+    print(f'#-------------------------------- {icmip}')
+    
+    source_ids_member_ids = {}
+    for idir in cmip_dir[icmip]:
+        # idir = 'cmip6_oi10'
+        print(f'#---------------- {idir}')
         
-        source_intersect = sorted(set(source_intersect) & set(cmip6.search(experiment_id=experiment_id, table_id=table_id, variable_id=variable_id).df.source_id.unique()))
+        source_ids = sorted(list(intake.cat.access_nri[idir].search(
+            experiment_id=['piControl', 'abrupt-4xCO2'],
+            table_id='Amon',
+            variable_id=['tas', 'rsut', 'rsdt', 'rlut'],
+            require_all_on=["source_id"]
+            ).df.source_id.unique()))
+        print(f'No. of source_ids: {len(source_ids)}')
+        
+        experiment_id_counts = intake.cat.access_nri[idir].search(
+            source_id = source_ids,
+            experiment_id = ['piControl', 'abrupt-4xCO2', 'amip', 'historical', 'ssp585', 'esm-piControl', 'esm-hist', 'esm-ssp585']
+            ).df.groupby(['source_id', 'member_id']).experiment_id.nunique()
+        
+        source_ids_member_ids = source_ids_member_ids | {
+            source_id: member_id
+            for source_id, member_id in experiment_id_counts.groupby(level='source_id').idxmax().values
+            }
+    
+    source_ids_member_ids = dict(sorted(source_ids_member_ids.items()))
+    
+    ofile = f'data/sim/cmip/{icmip}_source_ids_member_ids.json'
+    if os.path.exists(ofile): os.remove(ofile)
+    with open(ofile, 'w') as f:
+        json.dump(source_ids_member_ids, f, indent=2)
 
-print(len(source_intersect))
-
-# get the members
-exp_counts = cmip6.search(source_id=source_intersect, experiment_id=['piControl', 'amip', 'abrupt-4xCO2', 'historical', 'ssp585', 'esm-piControl', 'esm-hist', 'esm-ssp585']).df.groupby(['source_id', 'member_id']).experiment_id.nunique()
-
-cmip6_ids = {
-    source_id: member_id
-    for source_id, member_id in exp_counts.groupby(level=0).idxmax().values}
-
-with open('data/sim/cmip6/cmip6_ids.pkl', 'wb') as f:
-    pickle.dump(cmip6_ids, f)
 
 
 
 '''
-# check
-with open('data/sim/cmip6/cmip6_ids.pkl', 'rb') as f:
-    cmip6_ids = pickle.load(f)
-for source_id, member_id in cmip6_ids.items():
-    # source_id = source_ids[0]; member_id = member_ids[0]
-    nexp = cmip6.search(source_id=source_id, member_id=member_id, experiment_id=['piControl', 'amip', 'abrupt-4xCO2', 'historical', 'ssp585', 'esm-piControl', 'esm-hist', 'esm-ssp585']).df.experiment_id.nunique()
-    print(f'{source_id}  {member_id} {nexp} {exp_counts.groupby(level=0).max()[source_id]}')
+# python2_
+# https://access-nri-intake-catalog.readthedocs.io/en/latest/usage/quickstart.html#
+# print(sorted(intake.cat.access_nri.keys()))
 
-# check what is missing in removed source
-source_subset = sorted(cmip6.search(experiment_id=['piControl', 'amip', 'abrupt-4xCO2', 'historical', 'ssp585', 'esm-piControl', 'esm-hist', 'esm-ssp585']).df.source_id.unique()) #72
-source_removed = sorted(set(source_subset) - set(source_intersect)) #22
+#-------------------------------- check
+cmip_dir = {
+    # 'cmip5': ['cmip5_al33', 'cmip5_rr3'],
+    'cmip6': ['cmip6_fs38', 'cmip6_oi10'],
+    }
 
-for source_id in ['CAS-ESM2-0', 'ICON-ESM-LR', 'MCM-UA-1-0']:
-    print(f'#---------------- {source_id}')
-    for experiment_id in [['piControl', 'esm-piControl'], ['abrupt-4xCO2'], ['historical', 'esm-hist']]:
-        print(experiment_id)
-        for table_id, variable_id in zip(['Amon', 'Amon', 'Amon', 'Amon', 'Amon'], ['tas', 'rsut', 'rsdt', 'rlut', 'pr', ]):
-            print(f'{table_id} {variable_id}')
-            print(cmip6.search(source_id=source_id, experiment_id=experiment_id, table_id=table_id, variable_id=variable_id).df.shape)
+for icmip in cmip_dir.keys():
+    # icmip = 'cmip6'
+    print(f'#-------------------------------- {icmip}')
+    
+    with open(f'data/sim/cmip/{icmip}_source_ids_member_ids.json', 'r') as f:
+        source_ids_member_ids = json.load(f)
+    
+    for source_id, member_id in source_ids_member_ids.items():
+        # source_id, member_id = next(iter(source_ids_member_ids.items()))
+        Nexp = np.sum([intake.cat.access_nri[idir].search(
+            source_id=source_id,
+            member_id=member_id,
+            experiment_id=['piControl', 'amip', 'abrupt-4xCO2', 'historical', 'ssp585', 'esm-piControl', 'esm-hist', 'esm-ssp585']
+            ).df.experiment_id.nunique() for idir in cmip_dir[icmip]])
+        print(f'{source_id}  {member_id} {Nexp}')
 
-
-source_piControl = cmip6.search(experiment_id=['piControl', 'esm-piControl'], table_id='Amon', variable_id='tas').df.source_id.unique()
-source_abrupt4CO2 = cmip6.search(experiment_id=['abrupt-4xCO2'], table_id='Amon', variable_id='tas').df.source_id.unique()
-source_historical = cmip6.search(experiment_id=['historical', 'esm-hist'], table_id='Amon', variable_id='tas').df.source_id.unique()
-source_intersect = sorted(set(source_piControl) & set(source_abrupt4CO2) & set(source_historical))
-print(len(source_intersect))
-# cmip6.search(experiment_id=['piControl', 'esm-piControl'], table_id='Amon').df.variable_id.unique()
-
-exp_amip = cmip6.search(experiment_id=['amip']).df['source_id'].unique()
-exp_ssp585 = cmip6.search(experiment_id=['ssp585', 'esm-ssp585']).df['source_id'].unique()
-# & set(exp_amip) & set(exp_ssp585)
-
-set(source_intersect) == set(cmip6.search(experiment_id=['piControl', 'abrupt-4xCO2', 'historical'], table_id='Amon', variable_id=['tas', 'rsut', 'rsdt', 'rlut'], require_all_on=["source_id"]).df.source_id.unique())
 
 '''
 # endregion
 
 
 # region get original data
+# Memory Used: 23.19GB; Walltime Used: 00:12:41
 
-cmip6 = intake.open_catalog('/g/data/hh5/public/apps/nci-intake-catalogue/catalogue_new.yaml').esgf.cmip6
-with open('/home/563/qg8515/data/sim/cmip6/cmip6_ids.pkl', 'rb') as f:
-    cmip6_ids = pickle.load(f)
+# option
+cmip_dir = {
+    # 'cmip5': ['cmip5_al33', 'cmip5_rr3'],
+    'cmip6': ['cmip6_fs38', 'cmip6_oi10'],}
+experiment_ids  = ['piControl', 'abrupt-4xCO2']
+# 'piControl', 'abrupt-4xCO2', 'historical', 'esm-hist', 'esm-piControl', 'amip', 'ssp585', 'esm-ssp585'
+table_ids       = ['Amon']
+variable_ids    = ['tas', 'rsut', 'rsdt', 'rlut']
 
-cmip6_data = {}
-
-for experiment_id in [['ssp585', 'esm-ssp585']]:
-    # experiment_id = ['amip']
-    # [['piControl', 'esm-piControl'], ['abrupt-4xCO2'], ['historical', 'esm-hist'], ['amip'], ['ssp585', 'esm-ssp585']]
-    print(f'#-------------------------------- {experiment_id}')
-    cmip6_data[experiment_id[0]] = {}
+for icmip in cmip_dir.keys():
+    # icmip = 'cmip6'
+    print(f'#-------------------------------- {icmip}')
     
-    for table_id, variable_id in zip(['Amon'], ['tas']):
-        # table_id = 'Omon'; variable_id = 'tos'
-        # ['Amon'], ['tas']
-        # ['Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Omon'], ['tas', 'rsut', 'rsdt', 'rlut', 'pr', 'tos']
-        # ['Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon'], ['clt', 'evspsbl', 'hfls', 'hfss', 'psl', 'rlds', 'rldscs', 'rlus', 'rlutcs', 'rsds', 'rsdscs', 'rsus', 'rsuscs', 'rsutcs']
-        print(f'#---------------- {table_id} {variable_id}')
-        cmip6_data[experiment_id[0]][table_id]={}
-        cmip6_data[experiment_id[0]][table_id][variable_id]={}
+    with open(f'data/sim/cmip/{icmip}_source_ids_member_ids.json', 'r') as f:
+        source_ids_member_ids = json.load(f)
+    
+    for experiment_id in experiment_ids:
+        # experiment_id = 'piControl'
+        print(f'#---------------- {experiment_id}')
         
-        for source_id, member_id in cmip6_ids.items():
-            # source_id = list(cmip6_ids.keys())[0]; member_id = cmip6_ids[source_id]
-            # source_id = 'NorESM2-LM'; member_id = cmip6_ids[source_id]
-            # source_id = 'AWI-CM-1-1-MR'; member_id = 'r1i1p1f1'
-            # source_id = 'EC-Earth3-AerChem'; member_id = 'r1i1p1f1'
-            print(f'#-------- {source_id}  {member_id}')
+        for table_id in table_ids:
+            # table_id = 'Amon'
+            print(f'#-------- {table_id}')
             
-            data_catalogue = cmip6.search(experiment_id=experiment_id, table_id=table_id, variable_id=variable_id, source_id=source_id, member_id=member_id).df
-            
-            if len(data_catalogue) == 0:
-                print('Change to other member_ids')
-                data_catalogue = cmip6.search(experiment_id=experiment_id, table_id=table_id, variable_id=variable_id, source_id=source_id).df
-                if len(data_catalogue) == 0:
-                    print('Warning no data found')
-                    continue
-            
-            # choose the latest version
-            if len(data_catalogue.version.unique()) > 1:
-                print(f'Choose version: {data_catalogue.version.unique()}')
-                version = sorted(data_catalogue.version.unique(), reverse=True)[0]
-                data_catalogue=data_catalogue[data_catalogue.version==version]
-                print(f'{version} chosen')
-            
-            # choose grid_label
-            if len(data_catalogue.grid_label.unique()) > 1:
-                print(f'Choose grid_label: {data_catalogue.grid_label.unique()}')
-                grid_label = sorted(data_catalogue.grid_label.unique())[0]
-                data_catalogue=data_catalogue[data_catalogue.grid_label==grid_label]
-                print(f'{grid_label} chosen')
-            
-            # choose member_id
-            if len(data_catalogue.member_id.unique()) > 1:
-                print(f'Choose member_id: {data_catalogue.member_id.unique()}')
-                member_id = sorted(data_catalogue.member_id.unique())[0]
-                data_catalogue=data_catalogue[data_catalogue.member_id==member_id]
-                print(f'{member_id} chosen')
-            
-            # choose experiment_id
-            if len(data_catalogue.experiment_id.unique()) > 1:
-                print(f'Choose experiment_id: {data_catalogue.experiment_id.unique()}')
-                exp_id = sorted(data_catalogue.experiment_id.unique(), reverse=True)[0]
-                data_catalogue=data_catalogue[data_catalogue.experiment_id==exp_id]
-                print(f'{exp_id} chosen')
-            
-            # get data
-            try:
-                dset = xr.open_mfdataset(sorted(data_catalogue.path.values), use_cftime=True, parallel=True, data_vars='minimal', compat='override', coords='minimal')
+            for variable_id in variable_ids:
+                # variable_id = 'tas'
+                print(f'#---- {variable_id}')
                 
-                if len(dset.time) < 120:
-                    print('Warning simulation length less than 10 yrs')
-                    continue
+                start_time = time.perf_counter()
+                ds = {}
+                for source_id, member_id in source_ids_member_ids.items():
+                    # source_id, member_id = next(iter(source_ids_member_ids.items()))
+                    print(f'#-- {source_id}  {member_id}')
+                    
+                    catalogue = pd.concat([intake.cat.access_nri[idir].search(
+                        experiment_id=experiment_id,
+                        table_id=table_id,
+                        variable_id=variable_id,
+                        source_id=source_id,
+                        member_id=member_id
+                        ).df for idir in cmip_dir[icmip]], ignore_index=True)
+                    
+                    if len(catalogue) == 0:
+                        print('Change to other member_id')
+                        catalogue = pd.concat(
+                            [intake.cat.access_nri[idir].search(
+                                experiment_id=experiment_id,
+                                table_id=table_id,
+                                variable_id=variable_id,
+                                source_id=source_id,
+                                ).df for idir in cmip_dir[icmip]],
+                            ignore_index=True)
+                        if len(catalogue) == 0:
+                            print('Warning no data found')
+                            continue
+                    
+                    if len(catalogue.version.unique()) > 1:
+                        print(f'Versions: {list(catalogue.version.unique())}')
+                        version = sorted(catalogue.version.unique())[-1]
+                        catalogue=catalogue[catalogue.version==version]
+                        print(f'{version} chosen')
+                    
+                    if len(catalogue.grid_label.unique()) > 1:
+                        print(f'grid_labels: {catalogue.grid_label.unique()}')
+                        grid_label = sorted(catalogue.grid_label.unique())[0]
+                        catalogue=catalogue[catalogue.grid_label==grid_label]
+                        print(f'{grid_label} chosen')
+                    
+                    if len(catalogue.member_id.unique()) > 1:
+                        print(f'member_ids: {catalogue.member_id.unique()}')
+                        member_id = sorted(catalogue.member_id.unique())[0]
+                        catalogue=catalogue[catalogue.member_id==member_id]
+                        print(f'{member_id} chosen')
+                    
+                    if len(catalogue.experiment_id.unique()) > 1:
+                        print(f'experiment_ids: {catalogue.experiment_id.unique()}')
+                        experiment_id = sorted(catalogue.experiment_id.unique())[-1]
+                        catalogue=catalogue[catalogue.experiment_id==experiment_id]
+                        print(f'{experiment_id} chosen')
+                    
+                    try:
+                        dset = xr.open_mfdataset(sorted(list(catalogue.path)), use_cftime=True, parallel=True, data_vars='minimal', compat='override', coords='minimal')
+                        
+                        if len(dset.time) < 120:
+                            print('Warning simulation shorter than 10 years')
+                            continue
+                        
+                        ds[source_id] = dset
+                    except FileNotFoundError:
+                        print('Warning no file found')
+                    except ValueError:
+                        print('Warning file opening error')
                 
-                cmip6_data[experiment_id[0]][table_id][variable_id][source_id]=dset
-            except FileNotFoundError:
-                print('Warning no file found')
-            except ValueError:
-                print('Warning file opening error')
-        
-        if len(cmip6_data[experiment_id[0]][table_id][variable_id]) > 0:
-            ofile = f'/home/563/qg8515/data/sim/cmip6/{experiment_id[0]}_{table_id}_{variable_id}.pkl'
-            if os.path.exists(ofile): os.remove(ofile)
-            with open(ofile, 'wb') as f:
-                pickle.dump(cmip6_data[experiment_id[0]][table_id][variable_id], f)
-            del cmip6_data[experiment_id[0]][table_id][variable_id]
+                if len(ds) > 0:
+                    odir = f'data/sim/cmip/{icmip}/{experiment_id}/'
+                    os.makedirs(odir, exist_ok=True)
+                    ofile = f'{odir}/{table_id}_{variable_id}.pkl'
+                    if os.path.exists(ofile): os.remove(ofile)
+                    with open(ofile, 'wb') as f:
+                        pickle.dump(ds, f)
+                    del ds
+                
+                end_time = time.perf_counter()
+                print(f"Execution time: {(end_time - start_time)/60:.1f} min")
 
 
 
 
 '''
-# check availabel data
-cmip6 = intake.open_catalog('/g/data/hh5/public/apps/nci-intake-catalogue/catalogue_new.yaml').esgf.cmip6
-with open('/home/563/qg8515/data/sim/cmip6/cmip6_ids.pkl', 'rb') as f:
-    cmip6_ids = pickle.load(f)
-
-data_catalogue = cmip6.search(experiment_id=['piControl', 'esm-piControl', 'abrupt-4xCO2', 'historical', 'esm-hist', 'amip', 'ssp585', 'esm-ssp585'], source_id=list(cmip6_ids.keys()), variable_id='rluscs').df
-cmip6.search(variable_id='rluscs').df
-
-
 #-------------------------------- check
-cmip6 = intake.open_catalog('/g/data/hh5/public/apps/nci-intake-catalogue/catalogue_new.yaml').esgf.cmip6
-with open('/home/563/qg8515/data/sim/cmip6/cmip6_ids.pkl', 'rb') as f:
-    cmip6_ids = pickle.load(f)
-cmip6_data = {}
+isource_id = 5
+cmip_dir = {
+    # 'cmip5': ['cmip5_al33', 'cmip5_rr3'],
+    'cmip6': ['cmip6_fs38', 'cmip6_oi10'],}
+experiment_ids  = ['piControl', 'abrupt-4xCO2']
+# 'piControl', 'abrupt-4xCO2', 'historical', 'esm-hist', 'esm-piControl', 'amip', 'ssp585', 'esm-ssp585'
+table_ids       = ['Amon']
+variable_ids    = ['tas', 'rsut', 'rsdt', 'rlut']
 
-ith_source_id=-1
-
-for experiment_id in [['piControl', 'esm-piControl'], ['abrupt-4xCO2'], ['historical', 'esm-hist'], ['amip'], ['ssp585', 'esm-ssp585']]:
-    # experiment_id = ['piControl', 'esm-piControl']
-    # [['piControl', 'esm-piControl'], ['abrupt-4xCO2'], ['historical', 'esm-hist'], ['amip'], ['ssp585', 'esm-ssp585']]
-    print(f'#-------------------------------- {experiment_id}')
-    cmip6_data[experiment_id[0]] = {}
+for icmip in cmip_dir.keys():
+    # icmip = 'cmip6'
+    print(f'#-------------------------------- {icmip}')
     
-    for table_id, variable_id in zip(['Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Omon'], ['tas', 'rsut', 'rsdt', 'rlut', 'pr', 'tos']):
-        # table_id = 'Amon'; variable_id = 'tas'
-        # ['Amon'], ['tas']
-        # ['Omon'], ['tos']
-        # ['Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Omon'], ['tas', 'rsut', 'rsdt', 'rlut', 'pr', 'tos']
-        print(f'#---------------- {table_id} {variable_id}')
-        cmip6_data[experiment_id[0]][table_id]={}
+    with open(f'data/sim/cmip/{icmip}_source_ids_member_ids.json', 'r') as f:
+        source_ids_member_ids = json.load(f)
+    
+    for experiment_id in experiment_ids:
+        # experiment_id = 'piControl'
+        print(f'#---------------- {experiment_id}')
         
-        with open(f'/home/563/qg8515/data/sim/cmip6/{experiment_id[0]}_{table_id}_{variable_id}.pkl', 'rb') as f:
-            cmip6_data[experiment_id[0]][table_id][variable_id] = pickle.load(f)
-        
-        for source_id in cmip6_data[experiment_id[0]][table_id][variable_id].keys():
-            print(f'#-------- {source_id}')
-            print(cmip6_data[experiment_id[0]][table_id][variable_id][source_id][variable_id].shape)
-        
-        source_id = list(cmip6_data[experiment_id[0]][table_id][variable_id].keys())[ith_source_id]
-        
-        data_catalogue = cmip6.search(experiment_id=experiment_id, table_id=table_id, variable_id=variable_id, source_id=source_id, member_id=cmip6_ids[source_id]).df
-        if len(data_catalogue) == 0:
-            print('Change to other member_ids')
-            data_catalogue = cmip6.search(experiment_id=experiment_id, table_id=table_id, variable_id=variable_id, source_id=source_id).df
-        
-        # choose the latest version
-        if len(data_catalogue.version.unique()) > 1:
-            print(f'Choose version: {data_catalogue.version.unique()}')
-            version = sorted(data_catalogue.version.unique(), reverse=True)[0]
-            data_catalogue=data_catalogue[data_catalogue.version==version]
-            print(f'{version} chosen')
-        
-        # choose grid_label
-        if len(data_catalogue.grid_label.unique()) > 1:
-            print(f'Choose grid_label: {data_catalogue.grid_label.unique()}')
-            grid_label = sorted(data_catalogue.grid_label.unique())[0]
-            data_catalogue=data_catalogue[data_catalogue.grid_label==grid_label]
-            print(f'{grid_label} chosen')
-        
-        # choose member_id
-        if len(data_catalogue.member_id.unique()) > 1:
-            print(f'Choose member_id: {data_catalogue.member_id.unique()}')
-            member_id = sorted(data_catalogue.member_id.unique())[0]
-            data_catalogue=data_catalogue[data_catalogue.member_id==member_id]
-            print(f'{member_id} chosen')
-        
-        # choose experiment_id
-        if len(data_catalogue.experiment_id.unique()) > 1:
-            print(f'Choose experiment_id: {data_catalogue.experiment_id.unique()}')
-            exp_id = sorted(data_catalogue.experiment_id.unique(), reverse=True)[0]
-            data_catalogue=data_catalogue[data_catalogue.experiment_id==exp_id]
-            print(f'{exp_id} chosen')
-        
-        dset = xr.open_mfdataset(sorted(data_catalogue.path.values), use_cftime=True, parallel=True)
-        
-        print(dset[variable_id].shape)
-        print(cmip6_data[experiment_id[0]][table_id][variable_id][source_id][variable_id].shape)
-        
-        del dset, cmip6_data[experiment_id[0]][table_id][variable_id]
+        for table_id in table_ids:
+            # table_id = 'Amon'
+            print(f'#-------- {table_id}')
+            
+            for variable_id in variable_ids:
+                # variable_id = 'tas'
+                print(f'#---- {variable_id}')
+                
+                ofile = f'data/sim/cmip/{icmip}/{experiment_id}/{table_id}_{variable_id}.pkl'
+                with open(ofile, 'rb') as f:
+                    ds = pickle.load(f)
+                print(len(ds))
+                
+                # for source_id in ds.keys():
+                #     # source_id = list(ds.keys())[0]
+                #     print(f'#-- {source_id}')
+                #     print(ds[source_id][variable_id].shape)
+                
+                source_id = list(ds.keys())[isource_id]
+                catalogue = pd.concat([intake.cat.access_nri[idir].search(
+                        experiment_id=experiment_id,
+                        table_id=table_id,
+                        variable_id=variable_id,
+                        source_id=source_id,
+                        member_id=source_ids_member_ids[source_id]
+                        ).df for idir in cmip_dir[icmip]], ignore_index=True)
+                
+                if len(catalogue) == 0:
+                    print('Change to other member_id')
+                    catalogue = pd.concat(
+                        [intake.cat.access_nri[idir].search(
+                            experiment_id=experiment_id,
+                            table_id=table_id,
+                            variable_id=variable_id,
+                            source_id=source_id,
+                            ).df for idir in cmip_dir[icmip]],
+                        ignore_index=True)
+                    if len(catalogue) == 0:
+                        print('Warning no data found')
+                        continue
+                
+                if len(catalogue.version.unique()) > 1:
+                    print(f'versions: {catalogue.version.unique()}')
+                    version = sorted(catalogue.version.unique())[-1]
+                    catalogue=catalogue[catalogue.version==version]
+                    print(f'{version} chosen')
 
+                if len(catalogue.grid_label.unique()) > 1:
+                    print(f'grid_labels: {catalogue.grid_label.unique()}')
+                    grid_label = sorted(catalogue.grid_label.unique())[0]
+                    catalogue=catalogue[catalogue.grid_label==grid_label]
+                    print(f'{grid_label} chosen')
 
+                if len(catalogue.member_id.unique()) > 1:
+                    print(f'member_ids: {catalogue.member_id.unique()}')
+                    member_id = sorted(catalogue.member_id.unique())[0]
+                    catalogue=catalogue[catalogue.member_id==member_id]
+                    print(f'{member_id} chosen')
 
-# check
-experiment_id = ['ssp585', 'esm-ssp585']
-table_id = 'Amon'; variable_id = 'rsdt'; source_id = 'CIESM'
-# table_id = 'Omon'; variable_id = 'tos'; source_id = 'GISS-E2-1-H'
+                if len(catalogue.experiment_id.unique()) > 1:
+                    print(f'experiment_ids: {catalogue.experiment_id.unique()}')
+                    exp_id = sorted(catalogue.experiment_id.unique())[-1]
+                    catalogue=catalogue[catalogue.experiment_id==exp_id]
+                    print(f'{exp_id} chosen')
+                
+                try:
+                    dset = xr.open_mfdataset(sorted(catalogue.path.values), use_cftime=True, parallel=True)
+                    if len(dset.time) < 120:
+                        print('Warning simulation shorter than 10 years')
+                        continue
+                    
+                    data1 = ds[source_id][variable_id].values
+                    data2 = dset[variable_id].values
+                    print((data1[np.isfinite(data1)] == data2[np.isfinite(data2)]).all())
+                    
+                except FileNotFoundError:
+                    print('Warning no file found')
+                except ValueError:
+                    print('Warning file opening error')
 
-cmip6_data = {}
-cmip6_data[experiment_id[0]] = {}
-cmip6_data[experiment_id[0]][table_id]={}
-with open(f'data/sim/cmip6/{experiment_id[0]}_{table_id}_{variable_id}.pkl', 'rb') as f:
-    cmip6_data[experiment_id[0]][table_id][variable_id] = pickle.load(f)
-
-
-cmip6_data[experiment_id[0]][table_id][variable_id][source_id]
 
 
 

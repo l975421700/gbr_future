@@ -3,236 +3,258 @@
 # region import packages
 
 # data analysis
-import numpy as np
-import xarray as xr
 import dask
 dask.config.set({"array.slicing.split_large_chunks": True})
-from dask.diagnostics import ProgressBar
-pbar = ProgressBar()
-pbar.register()
-import glob
-import rioxarray as rxr
-
-# plot
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-import cartopy.crs as ccrs
-plt.rcParams['pcolor.shading'] = 'auto'
-mpl.rcParams['figure.dpi'] = 600
-mpl.rc('font', family='Times New Roman', size=12)
-mpl.rcParams['axes.linewidth'] = 0.2
-plt.rcParams.update({"mathtext.fontset": "stix"})
+import pandas as pd
+import intake
+from cdo import Cdo
+cdo=Cdo()
+import xarray as xr
+# from dask.diagnostics import ProgressBar
+# pbar = ProgressBar()
+# pbar.register()
+import numpy as np
+import os
 
 # management
-import os
 import sys  # print(sys.path)
-sys.path.append(os.getcwd() + '/code/gbr_future/module')
+sys.path.append('/home/563/qg8515/code/gbr_future/module')
+import pickle
 import psutil
 process = psutil.Process()
 # print(process.memory_info().rss / 2**30)
+import gc
 import warnings
 warnings.filterwarnings('ignore')
+import json
+import time
+
+# self defined function
+from calculations import (
+    mon_sea_ann,
+    cdo_regrid,
+    )
+from xmip.preprocessing import rename_cmip6, broadcast_lonlat, correct_lon, promote_empty_dims, replace_x_y_nominal_lat_lon, correct_units, correct_coordinates, parse_lon_lat_bounds, maybe_convert_bounds_to_vertex, maybe_convert_vertex_to_bounds, combined_preprocessing
+
+from namelist import cmip6_units, zerok, seconds_per_d
 
 
+'''
+cmip_info['experiment_id'].unique()
+cmip_info['institution_id'].unique()
+'''
 # endregion
 
 
-# region get monthly and hourly Himawari cmic
-# Memory Used: 300GB; Walltime Used: 04:00
-
-import argparse
-parser=argparse.ArgumentParser()
-parser.add_argument('-y', '--year', type=int, required=True,)
-parser.add_argument('-m', '--month', type=int, required=True,)
-args = parser.parse_args()
-
-year=args.year; month=args.month
-# year = 2015; month = 7
+# region get original data
 
 # option
-products = ['cloud']
-categories = ['cmic']
-vars = ['cmic_lwp']
-# ['cmic_cot', 'cmic_iwp', 'cmic_lwp', 'cmic_phase', 'cmic_reff']
-# categories = ['ctth']
-# vars = ['ctth_alti']
-# ['ctth_alti', 'ctth_effectiv', 'ctth_pres', 'ctth_tempe']
+cmip_dir = {
+    # 'cmip5': ['cmip5_al33', 'cmip5_rr3'],
+    'cmip6': ['cmip6_fs38', 'cmip6_oi10'],}
+experiment_ids  = ['abrupt-4xCO2']
+# 'piControl', 'abrupt-4xCO2', 'historical', 'esm-hist', 'esm-piControl', 'amip', 'ssp585', 'esm-ssp585'
+table_ids       = ['Amon']
+variable_ids    = ['rsut']
 
-# settings
-himawari_bom = '/g/data/rv74/satellite-products/arc/der/himawari-ahi'
-himawari_rename = {
-    'cmic_cot': 'COT',
-    'cmic_iwp': 'clivi',
-    'cmic_lwp': 'clwvi',
-    'cmic_phase': 'clphase',
-    'cmic_reff': 'Reff',
-    'ctth_alti': 'CTH',
-    'ctth_effectiv': 'clt',
-    'ctth_pres': 'CTP',
-    'ctth_tempe': 'CTT'}
-
-def preprocess_himawari(ds_in, ivar):
-    # ds_in = xr.open_dataset(fl[5])
-    ds_out = ds_in[ivar].rename(himawari_rename[ivar])
-    ds_out = ds_out.expand_dims(time=[np.datetime64(ds_in.attrs['nominal_product_time'])])
-    return(ds_out)
-
-for iproduct in products: #os.listdir(himawari_bom): #
-    print(f'#-------------------------------- {iproduct}')
-    for icategory in categories: #os.listdir(f'{himawari_bom}/{iproduct}'): #
-        print(f'#---------------- {icategory}')
+for icmip in cmip_dir.keys():
+    # icmip = 'cmip6'
+    print(f'#-------------------------------- {icmip}')
+    
+    with open(f'data/sim/cmip/{icmip}_source_ids_member_ids.json', 'r') as f:
+        source_ids_member_ids = json.load(f)
+    
+    for experiment_id in experiment_ids:
+        # experiment_id = 'piControl'
+        print(f'#---------------- {experiment_id}')
         
-        folder = f'{himawari_bom}/{iproduct}/{icategory}'
-        if os.path.isdir(folder):
-            # flsza = sorted(glob.glob(f'/g/data/ra22/satellite-products/arc/obs/himawari-ahi/fldk/latest/{year}/{month:02d}/*/*/*-P1S-ABOM_GEOM_SOLAR-PRJ_GEOS141_2000-HIMAWARI?-AHI.nc'))
-            # fl = sorted(glob.glob(f'{folder}/latest/{year}/{month:02d}/*/*.nc'))
-            flsza = sorted(glob.glob(f'/g/data/ra22/satellite-products/arc/obs/himawari-ahi/fldk/latest/{year}/{month:02d}/*/*/*0000-P1S-ABOM_GEOM_SOLAR-PRJ_GEOS141_2000-HIMAWARI?-AHI.nc'))
-            fl = sorted(glob.glob(f'{folder}/latest/{year}/{month:02d}/*/*0000Z.nc'))
-            print(f'Number of files: {len(fl)}')
-            # print(os.path.getsize(fl[-1])/2**20)
+        for table_id in table_ids:
+            # table_id = 'Amon'
+            print(f'#-------- {table_id}')
             
-            sza = xr.open_mfdataset(flsza, combine='by_coords', parallel=True, data_vars='minimal', coords='minimal',compat='override')['solar_zenith_angle']
-            
-            for ivar in vars:
-                print(f'#-------- {ivar}')
-                odir = f'data/obs/jaxa/{himawari_rename[ivar]}'
-                os.makedirs(odir, exist_ok=True)
+            for variable_id in variable_ids:
+                # variable_id = 'tas'
+                print(f'#---- {variable_id}')
                 
-                ds = xr.open_mfdataset(fl, combine='by_coords', parallel=True, data_vars='minimal', coords='minimal',compat='override', preprocess=lambda ds_in: preprocess_himawari(ds_in, ivar))[himawari_rename[ivar]]
-                if len(fl) != len(flsza):
-                    print('Warning: filelist lengths do not match')
-                    common_time = np.intersect1d(sza['time'], ds['time'])
-                    sza = sza.sel(time=common_time)
-                    ds  = ds.sel(time=common_time)
-                # filter ds
-                ds = ds.where((~ds.isnull() | sza.isnull().values | (sza >= 70).values), 0).compute()
-                # ds[0].values
-                # sza[0].values
-                # ds[0].where((~ds[0].isnull() | sza[0].isnull().values | (sza[0] >= 70).values), 0).compute()
-                
-                if ivar in ['cmic_iwp', 'cmic_lwp']:
-                    print('get mm')
-                    ofile1 = f'{odir}/{himawari_rename[ivar]}_{year}{month:02d}.nc'
-                    if not os.path.exists(ofile1):
-                        ds_mm = ds.resample({'time': '1M'}).mean().compute()
-                        ds_mm.to_netcdf(ofile1)
+                start_time = time.perf_counter()
+                ds = {}
+                for source_id, member_id in source_ids_member_ids.items():
+                    # source_id, member_id = next(iter(source_ids_member_ids.items()))
+                    print(f'#-- {source_id}  {member_id}')
                     
-                    print('get mhm')
-                    ofile2 = f'{odir}/{himawari_rename[ivar]}_hourly_{year}{month:02d}.nc'
-                    if not os.path.exists(ofile2):
-                        ds_mhm = ds.resample(time='1M').map(lambda x: x.groupby('time.hour').mean()).compute()
-                        ds_mhm.to_netcdf(ofile2)
+                    catalogue = pd.concat([intake.cat.access_nri[idir].search(
+                        experiment_id=experiment_id,
+                        table_id=table_id,
+                        variable_id=variable_id,
+                        source_id=source_id,
+                        member_id=member_id
+                        ).df for idir in cmip_dir[icmip]], ignore_index=True)
+                    
+                    if len(catalogue) == 0:
+                        print('Change to other member_id')
+                        catalogue = pd.concat(
+                            [intake.cat.access_nri[idir].search(
+                                experiment_id=experiment_id,
+                                table_id=table_id,
+                                variable_id=variable_id,
+                                source_id=source_id,
+                                ).df for idir in cmip_dir[icmip]],
+                            ignore_index=True)
+                        if len(catalogue) == 0:
+                            print('Warning no data found')
+                            continue
+                    
+                    if len(catalogue.version.unique()) > 1:
+                        print(f'Versions: {list(catalogue.version.unique())}')
+                        version = sorted(catalogue.version.unique())[-1]
+                        catalogue=catalogue[catalogue.version==version]
+                        print(f'{version} chosen')
+                    
+                    if len(catalogue.grid_label.unique()) > 1:
+                        print(f'grid_labels: {catalogue.grid_label.unique()}')
+                        grid_label = sorted(catalogue.grid_label.unique())[0]
+                        catalogue=catalogue[catalogue.grid_label==grid_label]
+                        print(f'{grid_label} chosen')
+                    
+                    if len(catalogue.member_id.unique()) > 1:
+                        print(f'member_ids: {catalogue.member_id.unique()}')
+                        member_id = sorted(catalogue.member_id.unique())[0]
+                        catalogue=catalogue[catalogue.member_id==member_id]
+                        print(f'{member_id} chosen')
+                    
+                    if len(catalogue.experiment_id.unique()) > 1:
+                        print(f'experiment_ids: {catalogue.experiment_id.unique()}')
+                        experiment_id = sorted(catalogue.experiment_id.unique())[-1]
+                        catalogue=catalogue[catalogue.experiment_id==experiment_id]
+                        print(f'{experiment_id} chosen')
+                    
+                    try:
+                        dset = xr.open_mfdataset(sorted(list(catalogue.path)), use_cftime=True, parallel=True, data_vars='minimal', compat='override', coords='minimal')
+                        
+                        if len(dset.time) < 120:
+                            print('Warning simulation shorter than 10 years')
+                            continue
+                        
+                        ds[source_id] = dset
+                    except FileNotFoundError:
+                        print('Warning no file found')
+                    except ValueError:
+                        print('Warning file opening error')
+                
+                if len(ds) > 0:
+                    odir = f'data/sim/cmip/{icmip}/{experiment_id}/'
+                    os.makedirs(odir, exist_ok=True)
+                    ofile = f'{odir}/{table_id}_{variable_id}.pkl'
+                    if os.path.exists(ofile): os.remove(ofile)
+                    with open(ofile, 'wb') as f:
+                        pickle.dump(ds, f)
+                    del ds
+                
+                end_time = time.perf_counter()
+                print(f"Execution time: {(end_time - start_time)/60:.1f} min")
 
 
 
 
 '''
+# check availabel data
+cmip6 = intake.open_catalog('/g/data/hh5/public/apps/nci-intake-catalogue/catalogue_new.yaml').esgf.cmip6
+with open('/home/563/qg8515/data/sim/cmip6/cmip6_ids.pkl', 'rb') as f:
+    cmip6_ids = pickle.load(f)
+
+data_catalogue = cmip6.search(experiment_id=['piControl', 'esm-piControl', 'abrupt-4xCO2', 'historical', 'esm-hist', 'amip', 'ssp585', 'esm-ssp585'], source_id=list(cmip6_ids.keys()), variable_id='rluscs').df
+cmip6.search(variable_id='rluscs').df
+
+
 #-------------------------------- check
-year = 2015; month = 7
-iproduct = 'cloud'
-icategory = 'cmic'
-ivar = 'cmic_lwp'
+cmip6 = intake.open_catalog('/g/data/hh5/public/apps/nci-intake-catalogue/catalogue_new.yaml').esgf.cmip6
+with open('/home/563/qg8515/data/sim/cmip6/cmip6_ids.pkl', 'rb') as f:
+    cmip6_ids = pickle.load(f)
+cmip6_data = {}
 
-himawari_bom = '/g/data/rv74/satellite-products/arc/der/himawari-ahi'
-himawari_rename = {
-    'cmic_cot': 'COT',
-    'cmic_iwp': 'clivi',
-    'cmic_lwp': 'clwvi',
-    'cmic_phase': 'clphase',
-    'cmic_reff': 'Reff',
-    'ctth_alti': 'CTH',
-    'ctth_effectiv': 'clt',
-    'ctth_pres': 'CTP',
-    'ctth_tempe': 'CTT'}
+ith_source_id=-1
 
-def preprocess_himawari(ds_in, ivar):
-    # ds_in = xr.open_dataset(fl[5])
-    ds_out = ds_in[ivar].rename(himawari_rename[ivar])
-    ds_out = ds_out.expand_dims(time=[np.datetime64(ds_in.attrs['nominal_product_time'])])
-    return(ds_out)
-
-folder = f'{himawari_bom}/{iproduct}/{icategory}'
-fl = sorted(glob.glob(f'{folder}/latest/{year}/{month:02d}/*/*0000Z.nc'))
-print(f'Number of files: {len(fl)}')
-odir = f'data/obs/jaxa/{himawari_rename[ivar]}'
-flsza = sorted(glob.glob(f'/g/data/ra22/satellite-products/arc/obs/himawari-ahi/fldk/latest/{year}/{month:02d}/*/*/*0000-P1S-ABOM_GEOM_SOLAR-PRJ_GEOS141_2000-HIMAWARI?-AHI.nc'))
-
-sza = xr.open_mfdataset(flsza, combine='by_coords', parallel=True, data_vars='minimal', coords='minimal',compat='override')['solar_zenith_angle']
-ds = xr.open_mfdataset(fl, combine='by_coords', parallel=True, data_vars='minimal', coords='minimal',compat='override', preprocess=lambda ds_in: preprocess_himawari(ds_in, ivar))[himawari_rename[ivar]]
-if len(fl) != len(flsza):
-    print('Warning: filelist lengths do not match')
-    common_time = np.intersect1d(sza['time'], ds['time'])
-    sza = sza.sel(time=common_time)
-    ds  = ds.sel(time=common_time)
-
-ds_mm = xr.open_dataset(f'{odir}/{himawari_rename[ivar]}_{year}{month:02d}.nc')[himawari_rename[ivar]]
-ds_mhm = xr.open_dataset(f'{odir}/{himawari_rename[ivar]}_hourly_{year}{month:02d}.nc')[himawari_rename[ivar]]
-
-inx = 2000
-iny = 2000
-
-data = ds[:, iny, inx].where((~ds[:, iny, inx].isnull() | sza[:, iny, inx].isnull().values | (sza[:, iny, inx] >= 70).values), 0).compute()
-print(ds_mm[0, iny, inx].values)
-print(np.mean(data).values)
-print(np.mean(ds[:, iny, inx]).values)
-
-print(ds_mhm[0, iny, inx, :].values)
-print(data.groupby('time.hour').mean().values)
-print(ds[:, iny, inx].groupby('time.hour').mean().values)
-
-
-
-
-#-------------------------------- coordinates
-
-ancillary = xr.open_dataset('/g/data/ra22/satellite-products/arc/obs/himawari-ahi/fldk/latest/ancillary/00000000000000-P1S-ABOM_GEOM_SENSOR-PRJ_GEOS141_2000-HIMAWARI8-AHI.nc')
-subset = np.isfinite(ancillary['lat'].values[0]) & np.isfinite(ds_mm['lat'].values)
-
-print((ds_mm['lat'].values[subset] == ancillary['lat'].values[0][subset]).all())
-print((ds_mm['lon'].values[subset] == ancillary['lon'].values[0][subset]).all())
-
-
-print(np.max(np.abs(ds_mm['lat'].values[subset] - ancillary['lat'].values[0][subset])))
-print(np.max(np.abs(ds_mm['lon'].values[subset] - ancillary['lon'].values[0][subset])))
-
-#-------------------------------- others
-
-products = ['cloud']
-
-categories = ['cmic']
-vars = ['cmic_cot', 'cmic_iwp', 'cmic_lwp', 'cmic_phase', 'cmic_reff'] # ['cmic_conditions', 'cmic_cot', 'cmic_iwp', 'cmic_lwp', 'cmic_phase', 'cmic_quality', 'cmic_reff', 'cmic_status_flag']
-
-categories = ['ctth']
-vars = ['ctth_alti', 'ctth_effectiv', 'ctth_pres', 'ctth_tempe'] #['ctth_alti', 'ctth_conditions', 'ctth_effectiv', 'ctth_method', 'ctth_pres', 'ctth_quality', 'ctth_status_flag', 'ctth_tempe']
-
-# categories = ['ct']
-# vars = ['ct', 'ct_conditions', 'ct_cumuliform', 'ct_multilayer', 'ct_quality', 'ct_status_flag']
-# categories = ['cma']
-# vars = ['cma', 'cma_cloudsnow', 'cma_conditions', 'cma_dust', 'cma_quality', 'cma_smoke', 'cma_status_flag', 'cma_testlist1', 'cma_testlist2', 'cma_volcanic']
+for experiment_id in [['piControl', 'esm-piControl'], ['abrupt-4xCO2'], ['historical', 'esm-hist'], ['amip'], ['ssp585', 'esm-ssp585']]:
+    # experiment_id = ['piControl', 'esm-piControl']
+    # [['piControl', 'esm-piControl'], ['abrupt-4xCO2'], ['historical', 'esm-hist'], ['amip'], ['ssp585', 'esm-ssp585']]
+    print(f'#-------------------------------- {experiment_id}')
+    cmip6_data[experiment_id[0]] = {}
+    
+    for table_id, variable_id in zip(['Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Omon'], ['tas', 'rsut', 'rsdt', 'rlut', 'pr', 'tos']):
+        # table_id = 'Amon'; variable_id = 'tas'
+        # ['Amon'], ['tas']
+        # ['Omon'], ['tos']
+        # ['Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Omon'], ['tas', 'rsut', 'rsdt', 'rlut', 'pr', 'tos']
+        print(f'#---------------- {table_id} {variable_id}')
+        cmip6_data[experiment_id[0]][table_id]={}
+        
+        with open(f'/home/563/qg8515/data/sim/cmip6/{experiment_id[0]}_{table_id}_{variable_id}.pkl', 'rb') as f:
+            cmip6_data[experiment_id[0]][table_id][variable_id] = pickle.load(f)
+        
+        for source_id in cmip6_data[experiment_id[0]][table_id][variable_id].keys():
+            print(f'#-------- {source_id}')
+            print(cmip6_data[experiment_id[0]][table_id][variable_id][source_id][variable_id].shape)
+        
+        source_id = list(cmip6_data[experiment_id[0]][table_id][variable_id].keys())[ith_source_id]
+        
+        data_catalogue = cmip6.search(experiment_id=experiment_id, table_id=table_id, variable_id=variable_id, source_id=source_id, member_id=cmip6_ids[source_id]).df
+        if len(data_catalogue) == 0:
+            print('Change to other member_ids')
+            data_catalogue = cmip6.search(experiment_id=experiment_id, table_id=table_id, variable_id=variable_id, source_id=source_id).df
+        
+        # choose the latest version
+        if len(data_catalogue.version.unique()) > 1:
+            print(f'Choose version: {data_catalogue.version.unique()}')
+            version = sorted(data_catalogue.version.unique(), reverse=True)[0]
+            data_catalogue=data_catalogue[data_catalogue.version==version]
+            print(f'{version} chosen')
+        
+        # choose grid_label
+        if len(data_catalogue.grid_label.unique()) > 1:
+            print(f'Choose grid_label: {data_catalogue.grid_label.unique()}')
+            grid_label = sorted(data_catalogue.grid_label.unique())[0]
+            data_catalogue=data_catalogue[data_catalogue.grid_label==grid_label]
+            print(f'{grid_label} chosen')
+        
+        # choose member_id
+        if len(data_catalogue.member_id.unique()) > 1:
+            print(f'Choose member_id: {data_catalogue.member_id.unique()}')
+            member_id = sorted(data_catalogue.member_id.unique())[0]
+            data_catalogue=data_catalogue[data_catalogue.member_id==member_id]
+            print(f'{member_id} chosen')
+        
+        # choose experiment_id
+        if len(data_catalogue.experiment_id.unique()) > 1:
+            print(f'Choose experiment_id: {data_catalogue.experiment_id.unique()}')
+            exp_id = sorted(data_catalogue.experiment_id.unique(), reverse=True)[0]
+            data_catalogue=data_catalogue[data_catalogue.experiment_id==exp_id]
+            print(f'{exp_id} chosen')
+        
+        dset = xr.open_mfdataset(sorted(data_catalogue.path.values), use_cftime=True, parallel=True)
+        
+        print(dset[variable_id].shape)
+        print(cmip6_data[experiment_id[0]][table_id][variable_id][source_id][variable_id].shape)
+        
+        del dset, cmip6_data[experiment_id[0]][table_id][variable_id]
 
 
-products = ['precip']
 
-# categories = ['crrph']
-# vars = ['crrph_accum', 'crrph_conditions', 'crrph_intensity', 'crrph_quality', 'crrph_status_flag']
+# check
+experiment_id = ['ssp585', 'esm-ssp585']
+table_id = 'Amon'; variable_id = 'rsdt'; source_id = 'CIESM'
+# table_id = 'Omon'; variable_id = 'tos'; source_id = 'GISS-E2-1-H'
 
-# categories = ['crr']
-# vars = ['crr', 'crr_accum', 'crr_conditions', 'crr_intensity', 'crr_quality', 'crr_status_flag']
+cmip6_data = {}
+cmip6_data[experiment_id[0]] = {}
+cmip6_data[experiment_id[0]][table_id]={}
+with open(f'data/sim/cmip6/{experiment_id[0]}_{table_id}_{variable_id}.pkl', 'rb') as f:
+    cmip6_data[experiment_id[0]][table_id][variable_id] = pickle.load(f)
 
 
-products = ['solar']
+cmip6_data[experiment_id[0]][table_id][variable_id][source_id]
 
-# categories = ['p1s']
-# vars = ['surface_global_irradiance', 'direct_normal_irradiance', 'surface_diffuse_irradiance', 'quality_mask', 'cloud_type', 'cloud_optical_depth', 'solar_elevation', 'solar_azimuth', 'julian_date']
-
-# categories = ['p1d']
-# vars = ['daily_integral_of_surface_global_irradiance', 'daily_integral_of_direct_normal_irradiance', 'daily_integral_of_surface_diffuse_irradiance', 'number_of_observations', 'number_of_cloud_observations', 'quality_mask']
-
-# categories = ['p1h']
-# vars = ['hourly_integral_of_surface_global_irradiance', 'hourly_integral_of_direct_normal_irradiance', 'hourly_integral_of_surface_diffuse_irradiance', 'number_of_observations', 'number_of_cloud_observations', 'quality_mask']
 
 
 '''
 # endregion
-
 

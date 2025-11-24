@@ -44,7 +44,8 @@ mamba install -c rttools typhon -y
 mamba install regionmask -y
 mamba install rioxarray -y
 mamba install libgdal-hdf5 -y
-conda clean -a -y -y -y -y -y
+mamba install -c accessnri access-nri-intake -y
+mamba clean -a -y -y -y -y -y
 
 #-------------------------------- Other packages
 # mamba install windrose -y
