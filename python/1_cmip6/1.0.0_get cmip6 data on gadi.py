@@ -1,11 +1,6 @@
 
 
-# when adding new variables:
-# 1) update cmip6_units in namelist.py
-# 2) check <change the units and sign convention>
-
-
-# qsub -I -q normal -P v46 -l walltime=4:00:00,ncpus=1,mem=64GB,jobfs=10GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/py18+gdata/gx60+gdata/xp65+gdata/qx55+gdata/rv74+gdata/al33+gdata/rr3
+# qsub -I -q normal -P v46 -l walltime=4:00:00,ncpus=1,mem=192GB,jobfs=10GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/py18+gdata/gx60+gdata/xp65+gdata/qx55+gdata/rv74+gdata/al33+gdata/rr3
 
 
 # region import packages
@@ -350,351 +345,346 @@ for icmip in cmip_dir.keys():
 # endregion
 
 
-# region get alltime, regridded_alltime, or regridded_alltime_ens data
+# region get alltime, regridded_alltime, and regridded_alltime_ens data
+# Memory Used: 158.68GB, Walltime Used: 00:30:58, JobFS used: 893.75MB
 
-cmip6_data = {}
-cmip6_data_alltime = {}
-cmip6_data_regridded_alltime = {}
-cmip6_data_regridded_alltime_ens = {}
+# option
+cmips = ['cmip6']
+experiment_ids  = ['piControl', 'abrupt-4xCO2']
+table_ids       = ['Amon']
+variable_ids    = ['tas', 'rsut', 'rsdt', 'rlut']
 
-for experiment_id in ['historical', 'amip', 'ssp585']:
-    # experiment_id = 'piControl'
-    # ['abrupt-4xCO2', 'piControl', 'historical', 'amip', 'ssp585']
-    print(f'#-------------------------------- {experiment_id}')
-    cmip6_data[experiment_id] = {}
-    cmip6_data_alltime[experiment_id] = {}
-    cmip6_data_regridded_alltime[experiment_id] = {}
-    cmip6_data_regridded_alltime_ens[experiment_id] = {}
-    
-    for table_id, variable_id in zip(['Amon', 'Amon', 'Amon'], ['rsut', 'rsdt', 'rlut']):
-        # table_id = 'Amon'; variable_id = 'tas'
-        # ['Amon'], ['tas']
-        # ['Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Omon'], ['tas', 'rsut', 'rsdt', 'rlut', 'pr', 'tos']
-        # ['Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon'], ['clt', 'evspsbl', 'hfls', 'hfss', 'psl', 'rlds', 'rldscs', 'rlus', 'rlutcs', 'rsds', 'rsdscs', 'rsus', 'rsuscs', 'rsutcs']
-        print(f'#---------------- {table_id} {variable_id}')
-        cmip6_data[experiment_id][table_id]={}
-        cmip6_data_alltime[experiment_id][table_id] = {}
-        cmip6_data_regridded_alltime[experiment_id][table_id] = {}
-        cmip6_data_regridded_alltime_ens[experiment_id][table_id] = {}
-        
-        cmip6_data_alltime[experiment_id][table_id][variable_id] = {}
-        cmip6_data_regridded_alltime[experiment_id][table_id][variable_id] = {}
-        cmip6_data_regridded_alltime_ens[experiment_id][table_id][variable_id] = {}
-        
-        with open(f'/home/563/qg8515/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}.pkl', 'rb') as f:
-            cmip6_data[experiment_id][table_id][variable_id] = pickle.load(f)
-        
-        for source_id in cmip6_data[experiment_id][table_id][variable_id].keys():
-            # source_id ='AWI-CM-1-1-MR'
-            # source_id ='MPI-ESM-1-2-HAM'
-            print(f'#-------- {source_id}')
-            dset = cmip6_data[experiment_id][table_id][variable_id][source_id].copy()
-            # print((dset[variable_id].units))
-            
-            # ensure enough simulation length
-            if (experiment_id in ['piControl', 'abrupt-4xCO2']) & (len(dset.time) < 150 * 12):
-                print('Warning simulation length less than 150 yrs: ignored')
-                continue
-            elif (experiment_id in ['historical']) & (len(dset.time) < 165 * 12):
-                print('Warning simulation length less than 165 yrs: ignored')
-                continue
-            elif (experiment_id in ['amip']) & (len(dset.time) < 36 * 12):
-                print('Warning simulation length less than 36 yrs: ignored')
-                continue
-            elif (experiment_id in ['ssp585']) & (len(dset.time) < 85 * 12):
-                print('Warning simulation length less than 85 yrs: ignored')
-                continue
-            
-            # ensure the last month is Dec
-            if dset[variable_id].time[-1].dt.month != 12:
-                print('Warning last month is not December')
-                continue
-            
-            # ensure correct periods are selected
-            if experiment_id in ['piControl']:
-                dset = dset.sel(time=slice(dset.time[-150 * 12], dset.time[-1]))
-                if (len(dset.time)/12 != 150) | ((np.max(dset.time.dt.year) - np.min(dset.time.dt.year)) != 149):
-                    print(f'Warning differred time length: {len(dset.time)/12} {(np.max(dset.time.dt.year) - np.min(dset.time.dt.year)).values}')
-                    continue
-                dset = dset.assign_coords(time=pd.date_range(start='1850-01-01', periods=150 * 12, freq='1ME'))
-            elif experiment_id in ['abrupt-4xCO2']:
-                dset = dset.sel(time=slice(dset.time[0], dset.time[150 * 12-1]))
-                if (len(dset.time)/12 != 150) | ((np.max(dset.time.dt.year) - np.min(dset.time.dt.year)) != 149):
-                    print(f'Warning differred time length: {len(dset.time)/12} {(np.max(dset.time.dt.year) - np.min(dset.time.dt.year)).values}')
-                    continue
-                dset = dset.assign_coords(time=pd.date_range(start='1850-01-01', periods=150 * 12, freq='1ME'))
-            elif experiment_id in ['historical']:
-                dset = dset.sel(time=slice('1850', '2014'))
-                if len(dset.time)/12 != 165:
-                    print(f'Warning differred time length: {len(dset.time)/12}')
-                    continue
-                dset = dset.assign_coords(time=pd.date_range(start='1850-01-01', periods=165 * 12, freq='1ME'))
-            elif experiment_id in ['amip']:
-                dset = dset.sel(time=slice('1979', '2014'))
-                if len(dset.time)/12 != 36:
-                    print(f'Warning differred time length: {len(dset.time)/12}')
-                    continue
-                dset = dset.assign_coords(time=pd.date_range(start='1979-01-01', periods=36 * 12, freq='1ME'))
-            elif experiment_id in ['ssp585']:
-                dset = dset.sel(time=slice('2015', '2099'))
-                if len(dset.time)/12 != 85:
-                    print(f'Warning differred time length: {len(dset.time)/12}')
-                    continue
-                dset = dset.assign_coords(time=pd.date_range(start='2015-01-01', periods=85 * 12, freq='1ME'))
-            
-            # ensure correct units
-            if dset[variable_id].units != cmip6_units[variable_id]:
-                print(f'Warning inconsistent units: {dset[variable_id].units} rather than {cmip6_units[variable_id]}')
-                continue
-            
-            # change the units and sign convention
-            if variable_id in ['tas']:
-                # change from K to degC
-                dset[variable_id] = dset[variable_id] - zerok
-            elif variable_id in ['rsut', 'rlut', 'hfls', 'hfss', 'rlus', 'rlutcs', 'rsus', 'rsuscs', 'rsutcs']:
-                # change to era5 convention, downward positive
-                dset[variable_id] = dset[variable_id] * (-1)
-            elif variable_id in ['pr', 'evspsbl']:
-                # change from mm/s to mm/day
-                dset[variable_id] = dset[variable_id] * seconds_per_d
-            elif variable_id in ['psl']:
-                # change from mm/s to mm/day
-                dset[variable_id] = dset[variable_id] / 100
-            
-            dset = dset.compute()
-            # print('calculate mon_sea_ann')
-            # cmip6_data_alltime[experiment_id][table_id][variable_id][source_id] = mon_sea_ann(var_monthly=dset.pipe(rename_cmip6).pipe(broadcast_lonlat)[variable_id], lcopy = False, mm=True, sm=True, am=True)
-            
-            print('calculate regridded mon_sea_ann')
-            dsetr = cdo_regrid(dset)
-            cmip6_data_regridded_alltime[experiment_id][table_id][variable_id][source_id] = mon_sea_ann(var_monthly=dsetr.pipe(rename_cmip6).pipe(broadcast_lonlat)[variable_id], lcopy = False, mm=True, sm=True, am=True)
-            
-            del dset, dsetr
-            gc.collect()
-            print(process.memory_info().rss / 2**30)
-        
-        # ofile1=f'/home/563/qg8515/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}_alltime.pkl'
-        # if os.path.exists(ofile1): os.remove(ofile1)
-        # with open(ofile1, 'wb') as f:
-        #     pickle.dump(cmip6_data_alltime[experiment_id][table_id][variable_id], f)
-        
-        # ofile2=f'/home/563/qg8515/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}_regridded_alltime.pkl'
-        # if os.path.exists(ofile2): os.remove(ofile2)
-        # with open(ofile2, 'wb') as f:
-        #     pickle.dump(cmip6_data_regridded_alltime[experiment_id][table_id][variable_id], f)
-        
-        source_ids = list(cmip6_data_regridded_alltime[experiment_id][table_id][variable_id].keys())
-        source_da = xr.DataArray(source_ids, dims='source_id', coords={'source_id': source_ids})
-        
-        for ialltime in cmip6_data_regridded_alltime[experiment_id][table_id][variable_id][source_ids[0]].keys():
-            # ialltime = 'mon'
-            print(f'#-------- {ialltime}')
-            cmip6_data_regridded_alltime_ens[experiment_id][table_id][variable_id][ialltime] = xr.concat([cmip6_data_regridded_alltime[experiment_id][table_id][variable_id][source_id][ialltime] for source_id in source_ids], dim=source_da, coords='minimal', compat='override')
-        
-        ofile=f'/home/563/qg8515/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}_regridded_alltime_ens.pkl'
-        if os.path.exists(ofile): os.remove(ofile)
-        with open(ofile, 'wb') as f:
-            pickle.dump(cmip6_data_regridded_alltime_ens[experiment_id][table_id][variable_id], f)
-        
-        del cmip6_data[experiment_id][table_id][variable_id]
-        del cmip6_data_alltime[experiment_id][table_id][variable_id]
-        del cmip6_data_regridded_alltime[experiment_id][table_id][variable_id]
-        del cmip6_data_regridded_alltime_ens[experiment_id][table_id][variable_id]
+# setting
+min_length = {
+    'piControl': 150,
+    'abrupt-4xCO2': 150,
+    'historical': 165,
+    'esm-hist': 165,
+    'esm-piControl': 150,
+    'amip': 36,
+    'ssp585': 85,
+    'esm-ssp585': 85,
+    }
+years_yeare = {
+    'historical':   ['1850', '2014'],
+    'esm-hist':     ['1850', '2014'],
+    'amip':         ['1979', '2014'],
+    'ssp585':       ['2015', '2099'],
+    'esm-ssp585':   ['2015', '2099'],
+    }
+start_dates = {
+    'piControl':    '1850-01-01',
+    'abrupt-4xCO2': '1850-01-01',
+    'historical':   '1850-01-01',
+    'esm-hist':     '1850-01-01',
+    'esm-piControl':'1850-01-01',
+    'amip':         '1979-01-01',
+    'ssp585':       '2015-01-01',
+    'esm-ssp585':   '2015-01-01',
+    }
+
+for icmip in cmips:
+    # icmip = 'cmip6'
+    print(f'#-------------------------------- {icmip}')
+    for experiment_id in experiment_ids:
+        # experiment_id = 'piControl'
+        print(f'#---------------- {experiment_id}')
+        for table_id in table_ids:
+            # table_id = 'Amon'
+            print(f'#-------- {table_id}')
+            for variable_id in variable_ids:
+                # variable_id = 'tas'
+                print(f'#---- {variable_id}')
+                
+                ofile = f'data/sim/cmip/{icmip}/{experiment_id}/{table_id}_{variable_id}.pkl'
+                with open(ofile, 'rb') as f:
+                    ds = pickle.load(f)
+                
+                ds_alltime = {}
+                ds_regridded_alltime = {}
+                ds_regridded_alltime_ens = {}
+                
+                for source_id in ds.keys():
+                    # source_id = 'MPI-ESM-1-2-HAM'
+                    print(f'#-- {source_id}')
+                    
+                    dset = ds[source_id].copy()
+                    
+                    if (len(dset.time)/12) < min_length[experiment_id]:
+                        print(f'Warning simulation length {len(dset.time)/12} less than required {min_length[experiment_id]} years')
+                        continue
+                    
+                    if dset.time[-1].dt.month != 12:
+                        print('Warning last month is not December')
+                        continue
+                    
+                    if dset[variable_id].units != cmip6_units[variable_id]:
+                        print(f'Warning inconsistent units: {dset[variable_id].units} rather than {cmip6_units[variable_id]}')
+                        continue
+                    
+                    if experiment_id in ['piControl']:
+                        yeare = dset.time[-1].dt.year.values
+                        years = yeare - min_length[experiment_id] + 1
+                        years_yeare[experiment_id] = [f'{years:04d}', f'{yeare:04d}']
+                    elif experiment_id in ['abrupt-4xCO2']:
+                        years = dset.time[0].dt.year.values
+                        yeare = years + min_length[experiment_id] - 1
+                        years_yeare[experiment_id] = [f'{years:04d}', f'{yeare:04d}']
+                    
+                    dset = dset.sel(time=slice(years_yeare[experiment_id][0],
+                                               years_yeare[experiment_id][1]))
+                    
+                    if len(dset.time)/12 != min_length[experiment_id]:
+                        print(f'Warning differred length {len(dset.time)/12} vs. {min_length[experiment_id]}')
+                        continue
+                    
+                    dset = dset.assign_coords(time=pd.date_range(
+                        start=start_dates[experiment_id],
+                        periods=min_length[experiment_id] * 12,
+                        freq='1ME'))
+                    
+                    if variable_id in ['tas']:
+                        dset[variable_id] -= zerok
+                    elif variable_id in ['rsut', 'rlut', 'hfls', 'hfss', 'rlus', 'rlutcs', 'rsus', 'rsuscs', 'rsutcs']:
+                        dset[variable_id] *= (-1)
+                    elif variable_id in ['pr', 'evspsbl']:
+                        dset[variable_id] *= seconds_per_d
+                    elif variable_id in ['psl']:
+                        dset[variable_id] /= 100
+                    
+                    dset = dset.compute()
+                    dsetr = cdo_regrid(dset)
+                    
+                    ds_alltime[source_id] = mon_sea_ann(
+                        var_monthly=dset.pipe(rename_cmip6).pipe(broadcast_lonlat)[variable_id],
+                        lcopy = True, mm=True, sm=True, am=True)
+                    ds_regridded_alltime[source_id] = mon_sea_ann(
+                        var_monthly=dsetr.pipe(rename_cmip6).pipe(broadcast_lonlat)[variable_id],
+                        lcopy = True, mm=True, sm=True, am=True)
+                
+                source_ids = list(ds_regridded_alltime.keys())
+                source_da = xr.DataArray(source_ids, dims='source_id', coords={'source_id': source_ids})
+                
+                for ialltime in ds_regridded_alltime[source_ids[0]].keys():
+                    # ialltime = 'mon'
+                    print(f'#-------- {ialltime}')
+                    
+                    ds_regridded_alltime_ens[ialltime] = xr.concat([ds_regridded_alltime[source_id][ialltime] for source_id in source_ids], dim=source_da, coords='minimal', compat='override')
+                
+                ofile1 = f'data/sim/cmip/{icmip}/{experiment_id}/{table_id}_{variable_id}_alltime.pkl'
+                ofile2 = f'data/sim/cmip/{icmip}/{experiment_id}/{table_id}_{variable_id}_regridded_alltime.pkl'
+                ofile3 = f'data/sim/cmip/{icmip}/{experiment_id}/{table_id}_{variable_id}_regridded_alltime_ens.pkl'
+                if os.path.exists(ofile1): os.remove(ofile1)
+                if os.path.exists(ofile2): os.remove(ofile2)
+                if os.path.exists(ofile3): os.remove(ofile3)
+                with open(ofile1, 'wb') as f:
+                    pickle.dump(ds_alltime, f)
+                with open(ofile2, 'wb') as f:
+                    pickle.dump(ds_regridded_alltime, f)
+                with open(ofile3, 'wb') as f:
+                    pickle.dump(ds_regridded_alltime_ens, f)
 
 
 
 
 '''
-#-------------------------------- check
-experiment_id = 'amip' # 'historical', 'amip'
-table_id = 'Amon'
-variable_id = 'clt' # 'pr', 'clt'
-source_id = 'FGOALS-f3-L' # 'CIESM', 'FIO-ESM-2-0'
-
-with open(f'/home/563/qg8515/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}_regridded_alltime_ens.pkl', 'rb') as f:
-    cmip6_data_regridded_alltime_ens = pickle.load(f)
-with open(f'/home/563/qg8515/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}.pkl', 'rb') as f:
-    cmip6_data = pickle.load(f)
-cmip6_data[source_id]
-
-
-
-#-------------------------------- check
-cmip6_data = {}
-# cmip6_data_alltime = {}
-# cmip6_data_regridded_alltime = {}
-cmip6_data_regridded_alltime_ens = {}
-
-ith_source_id=-1
-
-for experiment_id in ['ssp585']:
-    # experiment_id = 'historical'
-    # ['piControl', 'abrupt-4xCO2', 'historical', 'amip', 'ssp585']
-    print(f'#-------------------------------- {experiment_id}')
-    cmip6_data[experiment_id] = {}
-    # cmip6_data_alltime[experiment_id] = {}
-    # cmip6_data_regridded_alltime[experiment_id] = {}
-    cmip6_data_regridded_alltime_ens[experiment_id] = {}
-    
-    for table_id, variable_id in zip(['Omon'], ['tos']):
-        # table_id = 'Amon'; variable_id = 'tas'
-        # ['Amon'], ['tas']
-        # ['Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Omon'], ['tas', 'rsut', 'rsdt', 'rlut', 'pr', 'tos']
-        print(f'#---------------- {table_id} {variable_id}')
-        cmip6_data[experiment_id][table_id]={}
-        # cmip6_data_alltime[experiment_id][table_id] = {}
-        # cmip6_data_regridded_alltime[experiment_id][table_id] = {}
-        cmip6_data_regridded_alltime_ens[experiment_id][table_id] = {}
-        
-        with open(f'/home/563/qg8515/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}.pkl', 'rb') as f:
-            cmip6_data[experiment_id][table_id][variable_id] = pickle.load(f)
-        # with open(f'/home/563/qg8515/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}_alltime.pkl', 'rb') as f:
-        #     cmip6_data_alltime[experiment_id][table_id][variable_id] = pickle.load(f)
-        # with open(f'/home/563/qg8515/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}_regridded_alltime.pkl', 'rb') as f:
-        #     cmip6_data_regridded_alltime[experiment_id][table_id][variable_id] = pickle.load(f)
-        with open(f'/home/563/qg8515/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}_regridded_alltime_ens.pkl', 'rb') as f:
-            cmip6_data_regridded_alltime_ens[experiment_id][table_id][variable_id] = pickle.load(f)
-        
-        # for ialltime in cmip6_data_regridded_alltime_ens[experiment_id][table_id][variable_id].keys():
-        #     print(cmip6_data_regridded_alltime_ens[experiment_id][table_id][variable_id][ialltime].shape)
-        
-        source_id = cmip6_data_regridded_alltime_ens[experiment_id][table_id][variable_id]['am']['source_id'].values.astype('object')[ith_source_id]
-        print(f'#-------- {source_id}')
-        
-        dset = cmip6_data[experiment_id][table_id][variable_id][source_id]
-        if experiment_id in ['piControl']:
-            dset = dset.sel(time=slice(dset.time[-150 * 12], dset.time[-1]))
-            dset = dset.assign_coords(time=pd.date_range(start='1850-01-01', periods=150 * 12, freq='1ME'))
-        elif experiment_id in ['abrupt-4xCO2']:
-            dset = dset.sel(time=slice(dset.time[0], dset.time[150 * 12-1]))
-            dset = dset.assign_coords(time=pd.date_range(start='1850-01-01', periods=150 * 12, freq='1ME'))
-        elif experiment_id in ['historical']:
-            dset = dset.sel(time=slice('1850', '2014'))
-            dset = dset.assign_coords(time=pd.date_range(start='1850-01-01', periods=165 * 12, freq='1ME'))
-        elif experiment_id in ['amip']:
-            dset = dset.sel(time=slice('1979', '2014'))
-            dset = dset.assign_coords(time=pd.date_range(start='1979-01-01', periods=36 * 12, freq='1ME'))
-        elif experiment_id in ['ssp585']:
-            dset = dset.sel(time=slice('2015', '2099'))
-            dset = dset.assign_coords(time=pd.date_range(start='2015-01-01', periods=85 * 12, freq='1ME'))
-        
-        if variable_id in ['tas']:
-            dset[variable_id] = dset[variable_id] - zerok
-        elif variable_id in ['rsut', 'rlut']:
-            dset[variable_id] = dset[variable_id] * (-1)
-        elif variable_id in ['pr']:
-            dset[variable_id] = dset[variable_id] * seconds_per_d
-        
-        dset = dset.compute()
-        dsetr = cdo_regrid(dset).pipe(rename_cmip6).pipe(broadcast_lonlat)[variable_id]
-        
-        dset2 = cmip6_data_regridded_alltime_ens[experiment_id][table_id][variable_id]['mon'].sel(source_id=source_id)
-        
-        print((dsetr.values[np.isfinite(dsetr.values)] == dset2.values[np.isfinite(dset2.values)]).all())
-        del cmip6_data_regridded_alltime_ens[experiment_id][table_id][variable_id]
-
-
 # https://github.com/jbusecke/xMIP/blob/main/docs/tutorial.ipynb
+#-------------------------------- check
+isource_id = -5
+cmips = ['cmip6']
+experiment_ids  = ['piControl', 'abrupt-4xCO2']
+table_ids       = ['Amon']
+variable_ids    = ['tas', 'rsut', 'rsdt', 'rlut']
 
+min_length = {
+    'piControl': 150,
+    'abrupt-4xCO2': 150,
+    'historical': 165,
+    'esm-hist': 165,
+    'esm-piControl': 150,
+    'amip': 36,
+    'ssp585': 85,
+    'esm-ssp585': 85,
+    }
+years_yeare = {
+    'historical':   ['1850', '2014'],
+    'esm-hist':     ['1850', '2014'],
+    'amip':         ['1979', '2014'],
+    'ssp585':       ['2015', '2099'],
+    'esm-ssp585':   ['2015', '2099'],
+    }
+start_dates = {
+    'piControl':    '1850-01-01',
+    'abrupt-4xCO2': '1850-01-01',
+    'historical':   '1850-01-01',
+    'esm-hist':     '1850-01-01',
+    'esm-piControl':'1850-01-01',
+    'amip':         '1979-01-01',
+    'ssp585':       '2015-01-01',
+    'esm-ssp585':   '2015-01-01',
+    }
 
+for icmip in cmips:
+    # icmip = 'cmip6'
+    print(f'#-------------------------------- {icmip}')
+    for experiment_id in experiment_ids:
+        # experiment_id = 'piControl'
+        print(f'#---------------- {experiment_id}')
+        for table_id in table_ids:
+            # table_id = 'Amon'
+            print(f'#-------- {table_id}')
+            for variable_id in variable_ids:
+                # variable_id = 'tas'
+                print(f'#---- {variable_id}')
+                
+                ofile = f'data/sim/cmip/{icmip}/{experiment_id}/{table_id}_{variable_id}.pkl'
+                ofile1 = f'data/sim/cmip/{icmip}/{experiment_id}/{table_id}_{variable_id}_alltime.pkl'
+                ofile2 = f'data/sim/cmip/{icmip}/{experiment_id}/{table_id}_{variable_id}_regridded_alltime.pkl'
+                ofile3 = f'data/sim/cmip/{icmip}/{experiment_id}/{table_id}_{variable_id}_regridded_alltime_ens.pkl'
+                with open(ofile, 'rb') as f:
+                    ds = pickle.load(f)
+                with open(ofile1, 'rb') as f:
+                    ds_alltime = pickle.load(f)
+                with open(ofile2, 'rb') as f:
+                    ds_regridded_alltime = pickle.load(f)
+                with open(ofile3, 'rb') as f:
+                    ds_regridded_alltime_ens = pickle.load(f)
+                
+                source_id = list(ds_alltime.keys())[isource_id]
+                dset = ds[source_id].copy()
+                
+                if experiment_id in ['piControl']:
+                    yeare = dset.time[-1].dt.year.values
+                    years = yeare - min_length[experiment_id] + 1
+                    years_yeare[experiment_id]=[f'{years:04d}', f'{yeare:04d}']
+                elif experiment_id in ['abrupt-4xCO2']:
+                    years = dset.time[0].dt.year.values
+                    yeare = years + min_length[experiment_id] - 1
+                    years_yeare[experiment_id]=[f'{years:04d}', f'{yeare:04d}']
+                
+                dset = dset.sel(time=slice(years_yeare[experiment_id][0],
+                                           years_yeare[experiment_id][1]))
+                dset = dset.assign_coords(time=pd.date_range(
+                    start=start_dates[experiment_id],
+                    periods=min_length[experiment_id] * 12,
+                    freq='1ME'))
+                
+                if variable_id in ['tas']:
+                    dset[variable_id] -= zerok
+                elif variable_id in ['rsut', 'rlut', 'hfls', 'hfss', 'rlus', 'rlutcs', 'rsus', 'rsuscs', 'rsutcs']:
+                    dset[variable_id] *= (-1)
+                elif variable_id in ['pr', 'evspsbl']:
+                    dset[variable_id] *= seconds_per_d
+                elif variable_id in ['psl']:
+                    dset[variable_id] /= 100
+                
+                dset = dset.compute()
+                dsetr = cdo_regrid(dset).pipe(rename_cmip6).pipe(broadcast_lonlat)[variable_id]
+                dset = dset.pipe(rename_cmip6).pipe(broadcast_lonlat)[variable_id]
+                
+                data10 = dset.values
+                data20 = dsetr.values
+                
+                data11 = ds_alltime[source_id]['mon'].values
+                data21 = ds_regridded_alltime[source_id]['mon'].values
+                data22 = ds_regridded_alltime_ens['mon'].sel(source_id=source_id).values
+                
+                print((data10[np.isfinite(data10)] == data11[np.isfinite(data11)]).all())
+                print((data20[np.isfinite(data20)] == data21[np.isfinite(data21)]).all())
+                print((data20[np.isfinite(data20)] == data22[np.isfinite(data22)]).all())
+                
+                del ds, ds_alltime, ds_regridded_alltime, ds_regridded_alltime_ens
 
-#---------------- check
-cmip6 = intake.open_catalog('/g/data/hh5/public/apps/nci-intake-catalogue/catalogue_new.yaml').esgf.cmip6
-data_catalogue = cmip6.search(experiment_id='historical', table_id='Omon', variable_id='tos', source_id='AWI-CM-1-1-MR').df
-if len(data_catalogue.member_id.unique()) > 1:
-    print(f'Choose member_id: {data_catalogue.member_id.unique()}')
-    member_id = sorted(data_catalogue.member_id.unique())[0]
-    data_catalogue=data_catalogue[data_catalogue.member_id==member_id]
-    print(f'{member_id} chosen')
-dset = xr.open_mfdataset(sorted(data_catalogue.path.values[0:2]), use_cftime=True, parallel=True, data_vars='minimal')
-print(dset)
-cdo_regrid(dset.sel(time=slice(dset.time[0], dset.time[1])))
 
 '''
 # endregion
 
 
 # region get global and zonal mean
+# Memory Used: 76.61GB; Walltime Used: 00:02:30
 
-cmip6_data_regridded_alltime_ens = {}
-cmip6_data_regridded_alltime_ens_gzm = {}
+# option
+cmips = ['cmip6']
+experiment_ids  = ['piControl', 'abrupt-4xCO2']
+table_ids       = ['Amon']
+variable_ids    = ['tas', 'rsut', 'rsdt', 'rlut']
 
-for experiment_id in ['piControl', 'historical', 'amip', 'ssp585']:
-    # experiment_id = 'piControl'
-    # ['abrupt-4xCO2', 'piControl', 'historical', 'amip', 'ssp585']
-    print(f'#-------------------------------- {experiment_id}')
-    cmip6_data_regridded_alltime_ens[experiment_id] = {}
-    cmip6_data_regridded_alltime_ens_gzm[experiment_id] = {}
-    
-    for table_id, variable_id in zip(['Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon'], ['clt', 'evspsbl', 'hfls', 'hfss', 'psl', 'rlds', 'rldscs', 'rlus', 'rlutcs', 'rsds', 'rsdscs', 'rsus', 'rsuscs', 'rsutcs']):
-        # table_id = 'Amon'; variable_id = 'tas'
-        # ['Amon'], ['tas']
-        # ['Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Omon'], ['tas', 'rsut', 'rsdt', 'rlut', 'pr', 'tos']
-        # ['Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Amon'], ['clt', 'evspsbl', 'hfls', 'hfss', 'psl', 'rlds', 'rldscs', 'rlus', 'rlutcs', 'rsds', 'rsdscs', 'rsus', 'rsuscs', 'rsutcs']
-        print(f'#---------------- {table_id} {variable_id}')
-        cmip6_data_regridded_alltime_ens[experiment_id][table_id] = {}
-        cmip6_data_regridded_alltime_ens_gzm[experiment_id][table_id] = {}
-        cmip6_data_regridded_alltime_ens_gzm[experiment_id][table_id][variable_id] = {}
+for icmip in cmips:
+    # icmip = 'cmip6'
+    print(f'#-------------------------------- {icmip}')
+    for experiment_id in experiment_ids:
+        # experiment_id = 'piControl'
+        print(f'#---------------- {experiment_id}')
+        for table_id in table_ids:
+            # table_id = 'Amon'
+            print(f'#-------- {table_id}')
+            for variable_id in variable_ids:
+                # variable_id = 'tas'
+                print(f'#---- {variable_id}')
+                
+                ofile3 = f'data/sim/cmip/{icmip}/{experiment_id}/{table_id}_{variable_id}_regridded_alltime_ens.pkl'
+                with open(ofile3, 'rb') as f:
+                    ds_regridded_alltime_ens = pickle.load(f)
+                
+                ds_regridded_alltime_ens_gzm = {}
+                
+                for ialltime in ds_regridded_alltime_ens.keys():
+                    # ialltime = 'mon'
+                    print(f'#-- {ialltime}')
+                    ds_regridded_alltime_ens_gzm[ialltime] = {}
+                    
+                    ds_regridded_alltime_ens_gzm[ialltime]['zm'] = ds_regridded_alltime_ens[ialltime].mean(dim='x', skipna=True).compute()
+                    ds_regridded_alltime_ens_gzm[ialltime]['gm'] = ds_regridded_alltime_ens[ialltime].weighted(np.cos(np.deg2rad(ds_regridded_alltime_ens[ialltime].lat))).mean(dim=['x', 'y'], skipna=True).compute()
+                
+                ofile4 = f'data/sim/cmip/{icmip}/{experiment_id}/{table_id}_{variable_id}_regridded_alltime_ens_gzm.pkl'
+                if os.path.exists(ofile4): os.remove(ofile4)
+                with open(ofile4, 'wb') as f:
+                    pickle.dump(ds_regridded_alltime_ens_gzm, f)
         
-        with open(f'/home/563/qg8515/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}_regridded_alltime_ens.pkl', 'rb') as f:
-            cmip6_data_regridded_alltime_ens[experiment_id][table_id][variable_id] = pickle.load(f)
-        
-        for ialltime in cmip6_data_regridded_alltime_ens[experiment_id][table_id][variable_id].keys():
-            # ialltime = 'ann'
-            print(f'#-------- {ialltime}')
-            cmip6_data_regridded_alltime_ens_gzm[experiment_id][table_id][variable_id][ialltime] = {}
-            
-            cmip6_data_regridded_alltime_ens_gzm[experiment_id][table_id][variable_id][ialltime]['zm'] = cmip6_data_regridded_alltime_ens[experiment_id][table_id][variable_id][ialltime].mean(dim='x', skipna=True).compute()
-            
-            cmip6_data_regridded_alltime_ens_gzm[experiment_id][table_id][variable_id][ialltime]['gm'] = cmip6_data_regridded_alltime_ens[experiment_id][table_id][variable_id][ialltime].weighted(np.cos(np.deg2rad(cmip6_data_regridded_alltime_ens[experiment_id][table_id][variable_id][ialltime].lat))).mean(dim=['x', 'y'], skipna=True).compute().astype(np.float32)
-        
-        ofile=f'/home/563/qg8515/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}_regridded_alltime_ens_gzm.pkl'
-        if os.path.exists(ofile): os.remove(ofile)
-        with open(ofile, 'wb') as f:
-            pickle.dump(cmip6_data_regridded_alltime_ens_gzm[experiment_id][table_id][variable_id], f)
-        
-        del cmip6_data_regridded_alltime_ens[experiment_id][table_id][variable_id]
-        del cmip6_data_regridded_alltime_ens_gzm[experiment_id][table_id][variable_id]
+        del ds_regridded_alltime_ens, ds_regridded_alltime_ens_gzm
 
 
 
 
 '''
-
 #-------------------------------- check
-cmip6_data_regridded_alltime_ens = {}
-cmip6_data_regridded_alltime_ens_gzm = {}
-
 ialltime = 'mon'
-ith_source_id = -1
+isource_id = -10
 itime = -1
 
-for experiment_id in ['piControl', 'historical', 'ssp585']:
-    # experiment_id = 'historical'
-    # ['piControl', 'abrupt-4xCO2', 'historical', 'amip', 'ssp585']
-    print(f'#-------------------------------- {experiment_id}')
-    cmip6_data_regridded_alltime_ens[experiment_id] = {}
-    cmip6_data_regridded_alltime_ens_gzm[experiment_id] = {}
-    
-    for table_id, variable_id in zip(['Amon'], ['tas']):
-        # table_id = 'Amon'; variable_id = 'tas'
-        # ['Amon'], ['tas']
-        # ['Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Omon'], ['tas', 'rsut', 'rsdt', 'rlut', 'pr', 'tos']
-        print(f'#---------------- {table_id} {variable_id}')
-        cmip6_data_regridded_alltime_ens[experiment_id][table_id] = {}
-        cmip6_data_regridded_alltime_ens_gzm[experiment_id][table_id] = {}
-        
-        with open(f'/home/563/qg8515/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}_regridded_alltime_ens.pkl', 'rb') as f:
-            cmip6_data_regridded_alltime_ens[experiment_id][table_id][variable_id] = pickle.load(f)
-        with open(f'/home/563/qg8515/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}_regridded_alltime_ens_gzm.pkl', 'rb') as f:
-            cmip6_data_regridded_alltime_ens_gzm[experiment_id][table_id][variable_id] = pickle.load(f)
-        
-        data11 = cmip6_data_regridded_alltime_ens[experiment_id][table_id][variable_id][ialltime].isel(source_id=ith_source_id, time=itime).mean(dim='x', skipna=True)
-        data21 = cmip6_data_regridded_alltime_ens[experiment_id][table_id][variable_id][ialltime].isel(source_id=ith_source_id, time=itime).weighted(np.cos(np.deg2rad(cmip6_data_regridded_alltime_ens[experiment_id][table_id][variable_id][ialltime].isel(source_id=ith_source_id, time=itime)['lat']))).mean(dim=['x', 'y'], skipna=True)
-        data12 = cmip6_data_regridded_alltime_ens_gzm[experiment_id][table_id][variable_id][ialltime]['zm'].isel(source_id=ith_source_id, time=itime)
-        data22 = cmip6_data_regridded_alltime_ens_gzm[experiment_id][table_id][variable_id][ialltime]['gm'].isel(source_id=ith_source_id, time=itime)
-        print((data11.values[np.isfinite(data11.values)] == data12.values[np.isfinite(data12.values)]).all())
-        print(np.max(np.abs(data21 - data22)).values < 1e-4)
+cmips = ['cmip6']
+experiment_ids  = ['piControl', 'abrupt-4xCO2']
+table_ids       = ['Amon']
+variable_ids    = ['tas', 'rsut', 'rsdt', 'rlut']
+
+for icmip in cmips:
+    # icmip = 'cmip6'
+    print(f'#-------------------------------- {icmip}')
+    for experiment_id in experiment_ids:
+        # experiment_id = 'piControl'
+        print(f'#---------------- {experiment_id}')
+        for table_id in table_ids:
+            # table_id = 'Amon'
+            print(f'#-------- {table_id}')
+            for variable_id in variable_ids:
+                # variable_id = 'tas'
+                print(f'#---- {variable_id}')
+                
+                ofile3 = f'data/sim/cmip/{icmip}/{experiment_id}/{table_id}_{variable_id}_regridded_alltime_ens.pkl'
+                ofile4 = f'data/sim/cmip/{icmip}/{experiment_id}/{table_id}_{variable_id}_regridded_alltime_ens_gzm.pkl'
+                with open(ofile3, 'rb') as f:
+                    ds_regridded_alltime_ens = pickle.load(f)
+                with open(ofile4, 'rb') as f:
+                    ds_regridded_alltime_ens_gzm = pickle.load(f)
+                
+                data11 = ds_regridded_alltime_ens[ialltime].isel(source_id=isource_id, time=itime).mean(dim='x', skipna=True)
+                data21 = ds_regridded_alltime_ens[ialltime].isel(source_id=isource_id, time=itime).weighted(np.cos(np.deg2rad(ds_regridded_alltime_ens[ialltime].isel(source_id=isource_id, time=itime)['lat']))).mean(dim=['x', 'y'], skipna=True)
+                data12 = ds_regridded_alltime_ens_gzm[ialltime]['zm'].isel(source_id=isource_id, time=itime)
+                data22 = ds_regridded_alltime_ens_gzm[ialltime]['gm'].isel(source_id=isource_id, time=itime)
+                print((data11.values[np.isfinite(data11.values)] == data12.values[np.isfinite(data12.values)]).all())
+                print((data21.values[np.isfinite(data21.values)] == data22.values[np.isfinite(data22.values)]).all())
+                print(np.max(np.abs(data21 - data22)).values < 1e-4)
+
 
 
 

@@ -4,7 +4,7 @@ for idx in $(seq 1 8); do
 #PBS -q normal
 #PBS -l walltime=5:00:00
 #PBS -l mem=192GB
-#PBS -l jobfs=100MB
+#PBS -l jobfs=10GB
 #PBS -l ncpus=1
 #PBS -j oe
 #PBS -l storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/py18+gdata/gx60+gdata/xp65+gdata/qx55+gdata/rv74+gdata/al33+gdata/rr3

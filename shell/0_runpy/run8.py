@@ -46,212 +46,87 @@ cmip_info['institution_id'].unique()
 # endregion
 
 
-# region get original data
+# region get global and zonal mean
 
 # option
-cmip_dir = {
-    # 'cmip5': ['cmip5_al33', 'cmip5_rr3'],
-    'cmip6': ['cmip6_fs38', 'cmip6_oi10'],}
+cmips = ['cmip6']
 experiment_ids  = ['abrupt-4xCO2']
-# 'piControl', 'abrupt-4xCO2', 'historical', 'esm-hist', 'esm-piControl', 'amip', 'ssp585', 'esm-ssp585'
 table_ids       = ['Amon']
 variable_ids    = ['rlut']
 
-for icmip in cmip_dir.keys():
+for icmip in cmips:
     # icmip = 'cmip6'
     print(f'#-------------------------------- {icmip}')
-    
-    with open(f'data/sim/cmip/{icmip}_source_ids_member_ids.json', 'r') as f:
-        source_ids_member_ids = json.load(f)
-    
     for experiment_id in experiment_ids:
         # experiment_id = 'piControl'
         print(f'#---------------- {experiment_id}')
-        
         for table_id in table_ids:
             # table_id = 'Amon'
             print(f'#-------- {table_id}')
-            
             for variable_id in variable_ids:
                 # variable_id = 'tas'
                 print(f'#---- {variable_id}')
                 
-                start_time = time.perf_counter()
-                ds = {}
-                for source_id, member_id in source_ids_member_ids.items():
-                    # source_id, member_id = next(iter(source_ids_member_ids.items()))
-                    print(f'#-- {source_id}  {member_id}')
-                    
-                    catalogue = pd.concat([intake.cat.access_nri[idir].search(
-                        experiment_id=experiment_id,
-                        table_id=table_id,
-                        variable_id=variable_id,
-                        source_id=source_id,
-                        member_id=member_id
-                        ).df for idir in cmip_dir[icmip]], ignore_index=True)
-                    
-                    if len(catalogue) == 0:
-                        print('Change to other member_id')
-                        catalogue = pd.concat(
-                            [intake.cat.access_nri[idir].search(
-                                experiment_id=experiment_id,
-                                table_id=table_id,
-                                variable_id=variable_id,
-                                source_id=source_id,
-                                ).df for idir in cmip_dir[icmip]],
-                            ignore_index=True)
-                        if len(catalogue) == 0:
-                            print('Warning no data found')
-                            continue
-                    
-                    if len(catalogue.version.unique()) > 1:
-                        print(f'Versions: {list(catalogue.version.unique())}')
-                        version = sorted(catalogue.version.unique())[-1]
-                        catalogue=catalogue[catalogue.version==version]
-                        print(f'{version} chosen')
-                    
-                    if len(catalogue.grid_label.unique()) > 1:
-                        print(f'grid_labels: {catalogue.grid_label.unique()}')
-                        grid_label = sorted(catalogue.grid_label.unique())[0]
-                        catalogue=catalogue[catalogue.grid_label==grid_label]
-                        print(f'{grid_label} chosen')
-                    
-                    if len(catalogue.member_id.unique()) > 1:
-                        print(f'member_ids: {catalogue.member_id.unique()}')
-                        member_id = sorted(catalogue.member_id.unique())[0]
-                        catalogue=catalogue[catalogue.member_id==member_id]
-                        print(f'{member_id} chosen')
-                    
-                    if len(catalogue.experiment_id.unique()) > 1:
-                        print(f'experiment_ids: {catalogue.experiment_id.unique()}')
-                        experiment_id = sorted(catalogue.experiment_id.unique())[-1]
-                        catalogue=catalogue[catalogue.experiment_id==experiment_id]
-                        print(f'{experiment_id} chosen')
-                    
-                    try:
-                        dset = xr.open_mfdataset(sorted(list(catalogue.path)), use_cftime=True, parallel=True, data_vars='minimal', compat='override', coords='minimal')
-                        
-                        if len(dset.time) < 120:
-                            print('Warning simulation shorter than 10 years')
-                            continue
-                        
-                        ds[source_id] = dset
-                    except FileNotFoundError:
-                        print('Warning no file found')
-                    except ValueError:
-                        print('Warning file opening error')
+                ofile3 = f'data/sim/cmip/{icmip}/{experiment_id}/{table_id}_{variable_id}_regridded_alltime_ens.pkl'
+                with open(ofile3, 'rb') as f:
+                    ds_regridded_alltime_ens = pickle.load(f)
                 
-                if len(ds) > 0:
-                    odir = f'data/sim/cmip/{icmip}/{experiment_id}/'
-                    os.makedirs(odir, exist_ok=True)
-                    ofile = f'{odir}/{table_id}_{variable_id}.pkl'
-                    if os.path.exists(ofile): os.remove(ofile)
-                    with open(ofile, 'wb') as f:
-                        pickle.dump(ds, f)
-                    del ds
+                ds_regridded_alltime_ens_gzm = {}
                 
-                end_time = time.perf_counter()
-                print(f"Execution time: {(end_time - start_time)/60:.1f} min")
+                for ialltime in ds_regridded_alltime_ens.keys():
+                    # ialltime = 'mon'
+                    print(f'#-- {ialltime}')
+                    ds_regridded_alltime_ens_gzm[ialltime] = {}
+                    
+                    ds_regridded_alltime_ens_gzm[ialltime]['zm'] = ds_regridded_alltime_ens[ialltime].mean(dim='x', skipna=True).compute()
+                    ds_regridded_alltime_ens_gzm[ialltime]['gm'] = ds_regridded_alltime_ens[ialltime].weighted(np.cos(np.deg2rad(ds_regridded_alltime_ens[ialltime].lat))).mean(dim=['x', 'y'], skipna=True).compute()
+                
+                ofile4 = f'data/sim/cmip/{icmip}/{experiment_id}/{table_id}_{variable_id}_regridded_alltime_ens_gzm.pkl'
+                if os.path.exists(ofile4): os.remove(ofile4)
+                with open(ofile4, 'wb') as f:
+                    pickle.dump(ds_regridded_alltime_ens_gzm, f)
+        
+        del ds_regridded_alltime_ens, ds_regridded_alltime_ens_gzm
 
 
 
 
 '''
-# check availabel data
-cmip6 = intake.open_catalog('/g/data/hh5/public/apps/nci-intake-catalogue/catalogue_new.yaml').esgf.cmip6
-with open('/home/563/qg8515/data/sim/cmip6/cmip6_ids.pkl', 'rb') as f:
-    cmip6_ids = pickle.load(f)
-
-data_catalogue = cmip6.search(experiment_id=['piControl', 'esm-piControl', 'abrupt-4xCO2', 'historical', 'esm-hist', 'amip', 'ssp585', 'esm-ssp585'], source_id=list(cmip6_ids.keys()), variable_id='rluscs').df
-cmip6.search(variable_id='rluscs').df
-
 
 #-------------------------------- check
-cmip6 = intake.open_catalog('/g/data/hh5/public/apps/nci-intake-catalogue/catalogue_new.yaml').esgf.cmip6
-with open('/home/563/qg8515/data/sim/cmip6/cmip6_ids.pkl', 'rb') as f:
-    cmip6_ids = pickle.load(f)
-cmip6_data = {}
+cmip6_data_regridded_alltime_ens = {}
+cmip6_data_regridded_alltime_ens_gzm = {}
 
-ith_source_id=-1
+ialltime = 'mon'
+ith_source_id = -1
+itime = -1
 
-for experiment_id in [['piControl', 'esm-piControl'], ['abrupt-4xCO2'], ['historical', 'esm-hist'], ['amip'], ['ssp585', 'esm-ssp585']]:
-    # experiment_id = ['piControl', 'esm-piControl']
-    # [['piControl', 'esm-piControl'], ['abrupt-4xCO2'], ['historical', 'esm-hist'], ['amip'], ['ssp585', 'esm-ssp585']]
+for experiment_id in ['piControl', 'historical', 'ssp585']:
+    # experiment_id = 'historical'
+    # ['piControl', 'abrupt-4xCO2', 'historical', 'amip', 'ssp585']
     print(f'#-------------------------------- {experiment_id}')
-    cmip6_data[experiment_id[0]] = {}
+    cmip6_data_regridded_alltime_ens[experiment_id] = {}
+    cmip6_data_regridded_alltime_ens_gzm[experiment_id] = {}
     
-    for table_id, variable_id in zip(['Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Omon'], ['tas', 'rsut', 'rsdt', 'rlut', 'pr', 'tos']):
+    for table_id, variable_id in zip(['Amon'], ['tas']):
         # table_id = 'Amon'; variable_id = 'tas'
         # ['Amon'], ['tas']
-        # ['Omon'], ['tos']
         # ['Amon', 'Amon', 'Amon', 'Amon', 'Amon', 'Omon'], ['tas', 'rsut', 'rsdt', 'rlut', 'pr', 'tos']
         print(f'#---------------- {table_id} {variable_id}')
-        cmip6_data[experiment_id[0]][table_id]={}
+        cmip6_data_regridded_alltime_ens[experiment_id][table_id] = {}
+        cmip6_data_regridded_alltime_ens_gzm[experiment_id][table_id] = {}
         
-        with open(f'/home/563/qg8515/data/sim/cmip6/{experiment_id[0]}_{table_id}_{variable_id}.pkl', 'rb') as f:
-            cmip6_data[experiment_id[0]][table_id][variable_id] = pickle.load(f)
+        with open(f'/home/563/qg8515/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}_regridded_alltime_ens.pkl', 'rb') as f:
+            cmip6_data_regridded_alltime_ens[experiment_id][table_id][variable_id] = pickle.load(f)
+        with open(f'/home/563/qg8515/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}_regridded_alltime_ens_gzm.pkl', 'rb') as f:
+            cmip6_data_regridded_alltime_ens_gzm[experiment_id][table_id][variable_id] = pickle.load(f)
         
-        for source_id in cmip6_data[experiment_id[0]][table_id][variable_id].keys():
-            print(f'#-------- {source_id}')
-            print(cmip6_data[experiment_id[0]][table_id][variable_id][source_id][variable_id].shape)
-        
-        source_id = list(cmip6_data[experiment_id[0]][table_id][variable_id].keys())[ith_source_id]
-        
-        data_catalogue = cmip6.search(experiment_id=experiment_id, table_id=table_id, variable_id=variable_id, source_id=source_id, member_id=cmip6_ids[source_id]).df
-        if len(data_catalogue) == 0:
-            print('Change to other member_ids')
-            data_catalogue = cmip6.search(experiment_id=experiment_id, table_id=table_id, variable_id=variable_id, source_id=source_id).df
-        
-        # choose the latest version
-        if len(data_catalogue.version.unique()) > 1:
-            print(f'Choose version: {data_catalogue.version.unique()}')
-            version = sorted(data_catalogue.version.unique(), reverse=True)[0]
-            data_catalogue=data_catalogue[data_catalogue.version==version]
-            print(f'{version} chosen')
-        
-        # choose grid_label
-        if len(data_catalogue.grid_label.unique()) > 1:
-            print(f'Choose grid_label: {data_catalogue.grid_label.unique()}')
-            grid_label = sorted(data_catalogue.grid_label.unique())[0]
-            data_catalogue=data_catalogue[data_catalogue.grid_label==grid_label]
-            print(f'{grid_label} chosen')
-        
-        # choose member_id
-        if len(data_catalogue.member_id.unique()) > 1:
-            print(f'Choose member_id: {data_catalogue.member_id.unique()}')
-            member_id = sorted(data_catalogue.member_id.unique())[0]
-            data_catalogue=data_catalogue[data_catalogue.member_id==member_id]
-            print(f'{member_id} chosen')
-        
-        # choose experiment_id
-        if len(data_catalogue.experiment_id.unique()) > 1:
-            print(f'Choose experiment_id: {data_catalogue.experiment_id.unique()}')
-            exp_id = sorted(data_catalogue.experiment_id.unique(), reverse=True)[0]
-            data_catalogue=data_catalogue[data_catalogue.experiment_id==exp_id]
-            print(f'{exp_id} chosen')
-        
-        dset = xr.open_mfdataset(sorted(data_catalogue.path.values), use_cftime=True, parallel=True)
-        
-        print(dset[variable_id].shape)
-        print(cmip6_data[experiment_id[0]][table_id][variable_id][source_id][variable_id].shape)
-        
-        del dset, cmip6_data[experiment_id[0]][table_id][variable_id]
-
-
-
-# check
-experiment_id = ['ssp585', 'esm-ssp585']
-table_id = 'Amon'; variable_id = 'rsdt'; source_id = 'CIESM'
-# table_id = 'Omon'; variable_id = 'tos'; source_id = 'GISS-E2-1-H'
-
-cmip6_data = {}
-cmip6_data[experiment_id[0]] = {}
-cmip6_data[experiment_id[0]][table_id]={}
-with open(f'data/sim/cmip6/{experiment_id[0]}_{table_id}_{variable_id}.pkl', 'rb') as f:
-    cmip6_data[experiment_id[0]][table_id][variable_id] = pickle.load(f)
-
-
-cmip6_data[experiment_id[0]][table_id][variable_id][source_id]
+        data11 = cmip6_data_regridded_alltime_ens[experiment_id][table_id][variable_id][ialltime].isel(source_id=ith_source_id, time=itime).mean(dim='x', skipna=True)
+        data21 = cmip6_data_regridded_alltime_ens[experiment_id][table_id][variable_id][ialltime].isel(source_id=ith_source_id, time=itime).weighted(np.cos(np.deg2rad(cmip6_data_regridded_alltime_ens[experiment_id][table_id][variable_id][ialltime].isel(source_id=ith_source_id, time=itime)['lat']))).mean(dim=['x', 'y'], skipna=True)
+        data12 = cmip6_data_regridded_alltime_ens_gzm[experiment_id][table_id][variable_id][ialltime]['zm'].isel(source_id=ith_source_id, time=itime)
+        data22 = cmip6_data_regridded_alltime_ens_gzm[experiment_id][table_id][variable_id][ialltime]['gm'].isel(source_id=ith_source_id, time=itime)
+        print((data11.values[np.isfinite(data11.values)] == data12.values[np.isfinite(data12.values)]).all())
+        print(np.max(np.abs(data21 - data22)).values < 1e-4)
 
 
 
