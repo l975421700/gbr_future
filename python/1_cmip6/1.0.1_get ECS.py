@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -l walltime=4:00:00,ncpus=1,mem=192GB,jobfs=192GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38
+# qsub -I -q normal -P v46 -l walltime=4:00:00,ncpus=1,mem=192GB,jobfs=10GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/py18+gdata/gx60+gdata/xp65+gdata/qx55+gdata/rv74+gdata/al33+gdata/rr3
 
 
 # region import packages
@@ -21,6 +21,7 @@ from metpy.calc import pressure_to_height_std, geopotential_to_height
 from metpy.units import units
 import metpy.calc as mpcalc
 import pickle
+import json
 
 # plot
 import matplotlib as mpl
@@ -63,12 +64,10 @@ from mapplot import (
     )
 
 from namelist import (
-    month,
     monthini,
     seasons,
     seconds_per_d,
     zerok,
-    panel_labels,
     )
 
 from component_plot import (
@@ -87,84 +86,76 @@ from calculations import (
 # endregion
 
 
-# region import data
+# region get ECS
 
-
-cmip6_data_regridded_alltime_ens_gzm = {}
-for experiment_id in ['piControl', 'abrupt-4xCO2']:
-    print(f'#-------------------------------- {experiment_id}')
-    cmip6_data_regridded_alltime_ens_gzm[experiment_id] = {}
-    for table_id, variable_id in zip(['Amon', 'Amon', 'Amon', 'Amon'], ['tas', 'rsut', 'rsdt', 'rlut']):
-        print(f'#---------------- {table_id} {variable_id}')
-        if not table_id in cmip6_data_regridded_alltime_ens_gzm[experiment_id].keys():
-            cmip6_data_regridded_alltime_ens_gzm[experiment_id][table_id] = {}
-        
-        with open(f'/home/563/qg8515/scratch/data/sim/cmip6/{experiment_id}_{table_id}_{variable_id}_regridded_alltime_ens_gzm.pkl', 'rb') as f:
-            cmip6_data_regridded_alltime_ens_gzm[experiment_id][table_id][variable_id] = pickle.load(f)
-
-with open('/home/563/qg8515/scratch/data/sim/cmip6/cmip6_ids.pkl', 'rb') as f:
-    cmip6_ids = pickle.load(f)
-source_ids = list(cmip6_ids.keys())
-for experiment_id in ['piControl', 'abrupt-4xCO2']:
-    for table_id, variable_id in zip(['Amon', 'Amon', 'Amon', 'Amon'], ['tas', 'rsut', 'rsdt', 'rlut']):
-        source_ids = sorted(set(source_ids) & set(list(cmip6_data_regridded_alltime_ens_gzm[experiment_id][table_id][variable_id]['ann']['gm']['source_id'].values.astype('object'))))
-        # print(len(source_ids))
-
-
-'''
-
-for experiment_id in ['piControl', 'abrupt-4xCO2']:
-    print(f'#-------------------------------- {experiment_id}')
-    for table_id, variable_id in zip(['Amon', 'Amon', 'Amon', 'Amon'], ['tas', 'rsut', 'rsdt', 'rlut']):
-        print(f'#---------------- {table_id} {variable_id}')
-        for ialltime in cmip6_data_regridded_alltime_ens_gzm[experiment_id][table_id][variable_id].keys():
-            print(f'#-------- {ialltime}')
-            print(cmip6_data_regridded_alltime_ens_gzm[experiment_id][table_id][variable_id][ialltime]['zm'].shape)
-            print(cmip6_data_regridded_alltime_ens_gzm[experiment_id][table_id][variable_id][ialltime]['gm'].shape)
-
-
-for experiment_id in ['piControl', 'abrupt-4xCO2']:
-    print(f'#-------------------------------- {experiment_id}')
-    for table_id, variable_id in zip(['Amon', 'Amon', 'Amon', 'Amon'], ['tas', 'rsut', 'rsdt', 'rlut']):
-        print(f'#---------------- {table_id} {variable_id}')
-        for source_id in cmip6_data_regridded_alltime[experiment_id][table_id][variable_id].keys():
-            print(f'#-------- {source_id}')
-            print(cmip6_data_regridded_alltime[experiment_id][table_id][variable_id][source_id]['am'].shape)
-
-'''
-# endregion
-
-
-# region calculate ECS
-
-expts = ['piControl', 'abrupt-4xCO2']
-expt_da = xr.DataArray(expts, dims='experiment_id', coords={'experiment_id': expts})
-
-dataset = xr.Dataset(data_vars={
-    variable_id: xr.concat([
-        cmip6_data_regridded_alltime_ens_gzm[experiment_id]['Amon'][variable_id]['ann']['gm'].sel(source_id = source_ids)
-        for experiment_id in ['piControl', 'abrupt-4xCO2']], dim=expt_da, coords='minimal', compat='override')
-    for variable_id in ['tas', 'rsut', 'rsdt', 'rlut']
-})
-
-
-dataset['imbalance'] = dataset['rsdt'] + dataset['rsut'] + dataset['rlut']
-ds_mean = dataset[['tas', 'imbalance']].sel(experiment_id='piControl').mean(dim='time')
-ds_anom = dataset[['tas', 'imbalance']] - ds_mean
-
-ds_abrupt = ds_anom.sel(experiment_id='abrupt-4xCO2').reset_coords(drop=True)
+cmips = ['cmip6']
+experiment_ids  = ['piControl', 'abrupt-4xCO2']
+table_ids       = ['Amon']
+variable_ids    = ['tas', 'rsut', 'rsdt', 'rlut']
 
 def calc_ecs(tas, imb):
     a, b = np.polyfit(tas, imb, 1)
     ecs = -0.5 * (b/a)
     return xr.DataArray(ecs)
 
-ds_abrupt['ecs'] = xr.apply_ufunc(calc_ecs, ds_abrupt.tas, ds_abrupt.imbalance, vectorize=True, input_core_dims=[['time'], ['time']])
+ds = {}
+for icmip in cmips:
+    # icmip = 'cmip6'
+    print(f'#-------------------------------- {icmip}')
+    ds[icmip] = {}
+    for experiment_id in experiment_ids:
+        # experiment_id = 'piControl'
+        print(f'#---------------- {experiment_id}')
+        ds[icmip][experiment_id] = {}
+        for table_id in table_ids:
+            # table_id = 'Amon'
+            print(f'#-------- {table_id}')
+            ds[icmip][experiment_id][table_id] = {}
+            for variable_id in variable_ids:
+                # variable_id = 'tas'
+                print(f'#---- {variable_id}')
+                
+                ofile4 = f'data/sim/cmip/{icmip}/{experiment_id}/{table_id}_{variable_id}_regridded_alltime_ens_gzm.pkl'
+                with open(ofile4, 'rb') as f:
+                    ds[icmip][experiment_id][table_id][variable_id] = pickle.load(f)
+    
+    source_ids = sorted(set.intersection(
+        *(set(ds[icmip][e][t][v]['am']['gm'].source_id.values.astype('object'))
+          for e in experiment_ids for t in table_ids for v in variable_ids)))
+    experiment_da = xr.DataArray(experiment_ids, dims='experiment_id', coords={'experiment_id': experiment_ids})
+    
+    ds_combined = xr.Dataset(data_vars={
+        variable_id: xr.concat(
+            [ds[icmip][experiment_id]['Amon'][variable_id]['ann']['gm'].sel(source_id = source_ids)
+             for experiment_id in experiment_ids],
+            dim=experiment_da, coords='minimal', compat='override')
+        for variable_id in variable_ids
+        })
+    ds_combined['imbalance'] = ds_combined[['rsdt','rsut','rlut']].to_array().sum('variable')
+    
+    ds_anom = ds_combined[['tas', 'imbalance']].sel(experiment_id='abrupt-4xCO2') - ds_combined[['tas', 'imbalance']].sel(experiment_id='piControl').mean(dim='time')
+    
+    ecs = xr.apply_ufunc(calc_ecs, ds_anom.tas, ds_anom.imbalance, vectorize=True, input_core_dims=[['time'], ['time']]).rename('ecs')
+    ecs = ecs.sortby(ecs).reset_coords(drop=True).to_dataframe(name='ecs').reset_index()
+    
+    ofile = f'data/sim/cmip/{icmip}/ecs.pkl'
+    if os.path.exists(ofile): os.remove(ofile)
+    with open(ofile, 'wb') as f: pickle.dump(ecs, f)
 
-stats.describe(ds_abrupt['ecs'])
+
 
 
 '''
+with open(f'data/sim/cmip/{icmip}/ecs.pkl', 'rb') as f: ecs = pickle.load(f)
+
 https://projectpythia.org/cmip6-cookbook/notebooks/example-workflows/ecs-cmip6.html
+
+    ds_mean = ds_combined[['tas', 'imbalance']].sel(experiment_id='piControl').mean(dim='time')
+    ds_anom = ds_combined[['tas', 'imbalance']] - ds_mean
+    ds_abrupt = ds_anom.sel(experiment_id='abrupt-4xCO2')
+
+# stats.describe(ecs)
+# DescribeResult(nobs=np.int64(46), minmax=(np.float64(1.8383265574525445), np.float64(5.650972913287361)), mean=np.float64(3.7781882806651326), variance=np.float64(1.252691070483524), skewness=np.float64(0.12394400829147324), kurtosis=np.float64(-1.2515608765999118))
 '''
 # endregion
+

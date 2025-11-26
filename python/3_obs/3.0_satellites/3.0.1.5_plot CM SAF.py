@@ -89,7 +89,7 @@ years = '2016'
 yeare = '2023'
 vars = {'clwvi': 'lwp_allsky', 'clivi': 'iwp_allsky',
         'rlut': 'LW_flux', 'rsut': 'SW_flux', 'CDNC': 'cdnc_liq'}
-plt_regions = ['c2_domain'] # ['global', 'c2_domain', 'h9_domain']
+plt_regions = ['global'] # ['global', 'c2_domain', 'h9_domain']
 
 min_lon, max_lon, min_lat, max_lat = [110.58, 157.34, -43.69, -7.01]
 
@@ -120,8 +120,10 @@ for ivar in ['CDNC']:
         extend='max'
     elif ivar=='CDNC':
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
-            cm_min=30, cm_max=130, cm_interval1=10, cm_interval2=10, cmap='pink',)
-        extend='both'
+            # cm_min=30, cm_max=130, cm_interval1=10, cm_interval2=10,
+            cm_min=0, cm_max=400, cm_interval1=20, cm_interval2=40,
+            cmap='pink',)
+        extend='max'
     elif ivar in ['prw']:
         pltlevel, pltticks, pltnorm, pltcmp = plt_mesh_pars(
             cm_min=0, cm_max=60, cm_interval1=3, cm_interval2=6, cmap='viridis_r',)

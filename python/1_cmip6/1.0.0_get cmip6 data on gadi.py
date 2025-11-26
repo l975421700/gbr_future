@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -P v46 -l walltime=4:00:00,ncpus=1,mem=192GB,jobfs=10GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/py18+gdata/gx60+gdata/xp65+gdata/qx55+gdata/rv74+gdata/al33+gdata/rr3
+# qsub -I -q normal -P v46 -l walltime=4:00:00,ncpus=1,mem=20GB,jobfs=10GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/py18+gdata/gx60+gdata/xp65+gdata/qx55+gdata/rv74+gdata/al33+gdata/rr3+gdata/hr22+scratch/gx60+scratch/gb02+gdata/gb02
 
 
 # region import packages
@@ -42,10 +42,6 @@ from xmip.preprocessing import rename_cmip6, broadcast_lonlat, correct_lon, prom
 from namelist import cmip6_units, zerok, seconds_per_d
 
 
-'''
-cmip_info['experiment_id'].unique()
-cmip_info['institution_id'].unique()
-'''
 # endregion
 
 
@@ -63,6 +59,7 @@ for icmip in cmip_dir.keys():
     source_ids_member_ids = {}
     for idir in cmip_dir[icmip]:
         # idir = 'cmip6_oi10'
+        # idir = 'cmip5_al33'
         print(f'#---------------- {idir}')
         
         source_ids = sorted(list(intake.cat.access_nri[idir].search(
@@ -96,6 +93,7 @@ for icmip in cmip_dir.keys():
 '''
 # python2_
 # https://access-nri-intake-catalog.readthedocs.io/en/latest/usage/quickstart.html#
+# https://research.csiro.au/access/wiki/access-model-output-archive-p73-wiki/
 # print(sorted(intake.cat.access_nri.keys()))
 
 #-------------------------------- check
@@ -688,9 +686,73 @@ for icmip in cmips:
 
 
 
+#-------------------------------- check 2
+cmips = ['cmip6']
+experiment_ids  = ['piControl', 'abrupt-4xCO2']
+table_ids       = ['Amon']
+variable_ids    = ['tas', 'rsut', 'rsdt', 'rlut']
+
+for icmip in cmips:
+    # icmip = 'cmip6'
+    print(f'#-------------------------------- {icmip}')
+    for experiment_id in experiment_ids:
+        # experiment_id = 'piControl'
+        print(f'#---------------- {experiment_id}')
+        for table_id in table_ids:
+            # table_id = 'Amon'
+            print(f'#-------- {table_id}')
+            for variable_id in variable_ids:
+                # variable_id = 'tas'
+                print(f'#---- {variable_id}')
+                
+                ofile4 = f'data/sim/cmip/{icmip}/{experiment_id}/{table_id}_{variable_id}_regridded_alltime_ens_gzm.pkl'
+                with open(ofile4, 'rb') as f:
+                    ds_regridded_alltime_ens_gzm = pickle.load(f)
+                
+                # print(ds_regridded_alltime_ens_gzm['am']['gm'].values.flatten())
+                print(np.min(ds_regridded_alltime_ens_gzm['am']['gm'].values))
+                print(np.max(ds_regridded_alltime_ens_gzm['am']['gm'].values))
+
+
+
+
 '''
 # endregion
 
 
 
 
+# region check available datasets
+
+cmip_dir = {
+    # 'cmip5': ['cmip5_al33', 'cmip5_rr3'],
+    'cmip6': ['cmip6_fs38', 'cmip6_oi10'],}
+icmip = 'cmip6'
+with open(f'data/sim/cmip/{icmip}_source_ids_member_ids.json', 'r') as f:
+    source_ids_member_ids = json.load(f)
+
+source_ids = list(source_ids_member_ids.keys())
+
+catalogue = pd.concat([intake.cat.access_nri[idir].search(
+    # experiment_id=experiment_id,
+    # table_id=table_id,
+    # variable_id=variable_id,
+    # source_id=source_ids,
+    # member_id=member_id,
+    project_id='CFMIP'
+    ).df for idir in cmip_dir[icmip]], ignore_index=True)
+
+print('\n'.join(sorted(catalogue.experiment_id.unique())))
+print('\n'.join(sorted(catalogue.table_id.unique())))
+print('\n'.join(sorted(catalogue.variable_id.unique())))
+print(catalogue.columns)
+
+for icolumn in catalogue.columns:
+    print(f'#-------------------------------- {icolumn}')
+    print(catalogue[icolumn][:5])
+    if len(catalogue[icolumn].unique()) < 100:
+        print('\n'.join(sorted(catalogue[icolumn].unique())))
+
+
+
+# endregion
