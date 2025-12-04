@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -P v46 -l walltime=4:00:00,ncpus=1,mem=20GB,jobfs=10GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/py18+gdata/gx60+gdata/xp65+gdata/qx55+gdata/rv74+gdata/al33+gdata/rr3+gdata/hr22+scratch/gx60+scratch/gb02+gdata/gb02
+# qsub -I -q copyq -P v46 -l walltime=4:00:00,ncpus=1,mem=20GB,jobfs=10GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/py18+gdata/gx60+gdata/xp65+gdata/qx55+gdata/rv74+gdata/al33+gdata/rr3+gdata/hr22+scratch/gx60+scratch/gb02+gdata/gb02
 
 
 # region import packages
@@ -89,7 +89,6 @@ for icmip in cmip_dir.keys():
 
 
 
-
 '''
 # python2_
 # https://access-nri-intake-catalog.readthedocs.io/en/latest/usage/quickstart.html#
@@ -117,6 +116,20 @@ for icmip in cmip_dir.keys():
             experiment_id=['piControl', 'amip', 'abrupt-4xCO2', 'historical', 'ssp585', 'esm-piControl', 'esm-hist', 'esm-ssp585']
             ).df.experiment_id.nunique() for idir in cmip_dir[icmip]])
         print(f'{source_id}  {member_id} {Nexp}')
+
+
+#-------------------------------- check
+cmip_info = pd.read_csv('https://storage.googleapis.com/cmip6/cmip6-zarr-consolidated-stores.csv')
+esm_datastore = intake.open_esm_datastore("https://storage.googleapis.com/cmip6/pangeo-cmip6.json")
+
+source_ids = sorted(list(esm_datastore.search(
+    experiment_id=['piControl', 'abrupt-4xCO2'],
+    table_id='Amon',
+    variable_id=['tas', 'rsut', 'rsdt', 'rlut'],
+    require_all_on=['source_id']
+    # **{'experiment_id': exp_id, 'table_id': table_id, 'variable_id': var_id, 'member_id': ['r1i1p1f1', 'r1i1p1f2', 'r1i1p2f1', 'r2i1p1f1', 'r1i1p1f3',],}
+    ).df.source_id.unique()))
+print(f'No. of source_ids: {len(source_ids)}') # 45
 
 
 '''
@@ -754,5 +767,7 @@ for icolumn in catalogue.columns:
         print('\n'.join(sorted(catalogue[icolumn].unique())))
 
 
+esm_datastore = intake.open_esm_datastore("https://storage.googleapis.com/cmip6/pangeo-cmip6.json")
+print('\n'.join(sorted(esm_datastore.search(activity_id='CFMIP').df.variable_id.unique())))
 
 # endregion

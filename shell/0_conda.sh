@@ -45,6 +45,8 @@ mamba install regionmask -y
 mamba install rioxarray -y
 mamba install libgdal-hdf5 -y
 mamba install -c accessnri access-nri-intake -y
+mamba install requests -y
+mamba install aiohttp -y
 mamba clean -a -y -y -y -y -y
 
 #-------------------------------- Other packages
