@@ -312,30 +312,30 @@ ax.text(CS_A2[0]-1, CS_A2[1]-1, 'A2', ha='right', va='top')
 # ax.text(CS_A4[0]+1, CS_A4[1]-1, 'A4', ha='left', va='top')
 
 
-# plot SA large domain
-exp_out = xr.open_dataset('scratch/cylc-run/u-dr091/share/cycle/20200602T0000Z/Australia/d1p1kmsa/RAL3P2/um/umnsaa_pa000.nc')
-min_lon1, max_lon1, min_lat1, max_lat1 = [
-    exp_out['grid_longitude_t'][0].values,
-    exp_out['grid_longitude_t'][-1].values,
-    exp_out['grid_latitude_t'][0].values,
-    exp_out['grid_latitude_t'][-1].values,
-]
-rec_m = ax.add_patch(Rectangle(
-    (min_lon1, min_lat1), max_lon1-min_lon1, max_lat1-min_lat1,
-    ec = 'tab:blue', color = 'None', lw = 1))
+# # plot SA large domain
+# exp_out = xr.open_dataset('scratch/cylc-run/u-dr091/share/cycle/20200602T0000Z/Australia/d1p1kmsa/RAL3P2/um/umnsaa_pa000.nc')
+# min_lon1, max_lon1, min_lat1, max_lat1 = [
+#     exp_out['grid_longitude_t'][0].values,
+#     exp_out['grid_longitude_t'][-1].values,
+#     exp_out['grid_latitude_t'][0].values,
+#     exp_out['grid_latitude_t'][-1].values,
+# ]
+# rec_m = ax.add_patch(Rectangle(
+#     (min_lon1, min_lat1), max_lon1-min_lon1, max_lat1-min_lat1,
+#     ec = 'tab:blue', color = 'None', lw = 1))
 
 
-# plot SA small domain
-exp_out = xr.open_dataset('scratch/cylc-run/u-ds732/share/cycle/20200602T0000Z/Australia/d1p1km/RAL3P2/um/umnsaa_pa000.nc')
-min_lon1, max_lon1, min_lat1, max_lat1 = [
-    exp_out['grid_longitude_t'][0].values,
-    exp_out['grid_longitude_t'][-1].values,
-    exp_out['grid_latitude_t'][0].values,
-    exp_out['grid_latitude_t'][-1].values,
-]
-rec_m = ax.add_patch(Rectangle(
-    (min_lon1, min_lat1), max_lon1-min_lon1, max_lat1-min_lat1,
-    ec = 'tab:blue', color = 'None', lw = 1, ls='--'))
+# # plot SA small domain
+# exp_out = xr.open_dataset('scratch/cylc-run/u-ds732/share/cycle/20200602T0000Z/Australia/d1p1km/RAL3P2/um/umnsaa_pa000.nc')
+# min_lon1, max_lon1, min_lat1, max_lat1 = [
+#     exp_out['grid_longitude_t'][0].values,
+#     exp_out['grid_longitude_t'][-1].values,
+#     exp_out['grid_latitude_t'][0].values,
+#     exp_out['grid_latitude_t'][-1].values,
+# ]
+# rec_m = ax.add_patch(Rectangle(
+#     (min_lon1, min_lat1), max_lon1-min_lon1, max_lat1-min_lat1,
+#     ec = 'tab:blue', color = 'None', lw = 1, ls='--'))
 
 
 # plot NE large domain
@@ -380,7 +380,7 @@ cbar = fig.colorbar(
     pad=0.11, fraction=0.07,)
 cbar.ax.set_xlabel(cbar_label)
 fig.subplots_adjust(left=0.12, right=0.94, bottom=0.12, top=0.995)
-fig.savefig(opng)
+fig.savefig(opng, dpi=2400, transparent=True)
 
 
 
