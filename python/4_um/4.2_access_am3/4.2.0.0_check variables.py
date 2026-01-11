@@ -1,6 +1,6 @@
 
 
-# qsub -I -q copyq -P v46 -l walltime=1:00:00,ncpus=1,mem=20GB,jobfs=10GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/py18+gdata/gx60+gdata/xp65+gdata/qx55+gdata/rv74+gdata/al33+gdata/rr3+gdata/hr22+scratch/gx60+scratch/gb02+gdata/gb02
+# qsub -I -q normal -P v46 -l walltime=3:00:00,ncpus=1,mem=48GB,jobfs=10GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/py18+gdata/gx60+gdata/xp65+gdata/qx55+gdata/rv74+gdata/al33+gdata/rr3+gdata/hr22+scratch/gx60+scratch/gb02+gdata/gb02
 
 
 # region import packages
@@ -105,7 +105,8 @@ from um_postprocess import (
     stash2var, stash2var_gal, stash2var_ral,
     var2stash, var2stash_gal, var2stash_ral,
     suite_res, suite_label,
-    interp_to_pressure_levels)
+    interp_to_pressure_levels,
+    amstash2var, amvar2stash, preprocess_amoutput)
 
 from metplot import si2reflectance, si2radiance, get_modis_latlonrgbs, get_modis_latlonvar, get_modis_latlonvars, get_cross_section
 
@@ -113,6 +114,52 @@ from metplot import si2reflectance, si2radiance, get_modis_latlonrgbs, get_modis
 
 
 # region check ACCESS-AM3 output
+
+iexp = 'access-am3-configs'
+streams = ['a', 'b', 'c']
+stream_time = {'a': 'monthly', 'b': 'hourly', 'c': 'daily'}
+
+for istream in streams: #['b']: #
+    # istream = 'a'
+    print(f'#-------------------------------- {istream} {stream_time[istream]}')
+    
+    fl = sorted(glob.glob(f'scratch/cylc-run/{iexp}/share/data/History_Data/netCDF/am3a.p{istream}*.nc'))
+    
+    # ds = xr.open_dataset(fl[0]).pipe(preprocess_amoutput)
+    ds = xr.open_mfdataset(fl[:12], preprocess=preprocess_amoutput,
+                           parallel=True)
+    print(ds)
+    print(ds.data_vars)
+    
+    
+    for ivar in ds.data_vars:
+        # ivar = list(ds.data_vars)[0]
+        # if ivar.startswith('fld_'):
+        #     print(f"    '{ivar}': '', #'{ds[ivar].attrs['long_name']}',")
+        if ivar in amstash2var.keys():
+            print(f'#---------------- {ivar}:    {amstash2var[ivar]:<18}  {ds[ivar].attrs['long_name']}')
+            if f'STASH_m01{ivar[4:]}' in stash2var_gal:
+                print(stash2var_gal[f'STASH_m01{ivar[4:]}'])
+        elif ivar.startswith('fld_'):
+            print(f'#---------------- {ivar}: {ds[ivar].attrs['long_name']}')
+            print(ds[ivar])
+        # else:
+        #     print(f'#---------------- {ivar}')
+
+
+
+
+
+
+
+
+
+
+
+# endregion
+
+
+# region check ACCESS-AM3 variables
 
 ofile = 'scratch/cylc-run/access3-configs/share/data/History_Data/netCDF/confia.pc19820101.nc'
 

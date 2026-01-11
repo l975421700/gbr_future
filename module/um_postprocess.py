@@ -1,5 +1,224 @@
 
 
+# region amstash2var, amvar2stash, preprocess_amoutput
+
+amstash2var = {
+    # monthly
+    'fld_s00i002': 'ua', #'U COMPNT OF WIND AFTER TIMESTEP',
+    'fld_s00i003': 'va', #'V COMPNT OF WIND AFTER TIMESTEP',
+    'fld_s00i004': 'theta', #'THETA AFTER TIMESTEP',
+    'fld_s00i010': 'hus', #'SPECIFIC HUMIDITY AFTER TIMESTEP',
+    'fld_s00i012': 'qcf', #'QCF AFTER TIMESTEP',
+    'fld_s00i031': 'seaice', #'FRAC OF SEA ICE IN SEA AFTER TSTEP',
+    'fld_s00i150': 'wa', #'W COMPNT OF WIND AFTER TIMESTEP',
+    'fld_s00i254': 'qcl', #'QCL AFTER TIMESTEP',
+    'fld_s00i272': 'qr', #'RAIN AFTER TIMESTEP',
+    'fld_s00i408': 'pa', #'PRESSURE AT THETA LEVELS AFTER TS',
+    'fld_s00i507': 'sst', #'OPEN SEA SURFACE TEMP AFTER TIMESTEP',
+    'fld_s01i217': 'rsu', #'UPWARD SW FLUX ON LEVELS',
+    'fld_s01i218': 'rsd', #'DOWNWARD SW FLUX ON LEVELS',
+    'fld_s01i219': 'rsucs', #'CLEAR-SKY UPWARD SW FLUX ON LEVELS',
+    'fld_s01i220': 'rsdcs', #'CLEAR-SKY DOWNWARD SW FLUX ON LEVELS',
+    'fld_s01i237': 'rsn_trop', #'NET DOWNWARD SW FLUX AT THE TROP.',
+    'fld_s01i238': 'rsu_trop', #'UPWARD SW FLUX AT THE TROPOPAUSE',
+    'fld_s02i217': 'rlu', #'UPWARD LW FLUX ON LEVELS',
+    'fld_s02i218': 'rld', #'DOWNWARD LW FLUX ON LEVELS',
+    'fld_s02i219': 'rlucs', #'CLEAR-SKY UPWARD LW FLUX ON LEVELS',
+    'fld_s02i220': 'rldcs', #'CLEAR-SKY DOWNWARD LW FLUX ON LEVELS',
+    'fld_s02i237': 'rln_trop', #'NET DOWNWARD LW FLUX AT THE TROP.',
+    'fld_s02i238': 'rld_trop', #'DOWNWARD LW FLUX AT THE TROPOPAUSE',
+    'fld_s02i261': 'TCF', #'TOTAL CLOUD AMOUNT ON LEVELS',
+    'fld_s02i261_0': 'TCF_hourly', #'TOTAL CLOUD AMOUNT ON LEVELS',
+    'fld_s02i325': 'cosp_mask_cf', #'COSP: MASK FOR CALIPSO CF ON 40 LVLS',
+    'fld_s02i327': 'cosp_mask359', #'COSP: MASK FOR 2.359',
+    'fld_s02i335': 'cosp_isccp_Tb', #'COSP: ISCCP ALL-SKY 10.5 MICRON Tb',
+    'fld_s02i336': 'cosp_isccp_Tbcs', #'COSP: ISCCP CLEAR-SKY 10.5 MICRON Tb',
+    'fld_s02i337': 'cosp_isccp_ctp_tau', #'COSP: ISCCP CTP-TAU HISTOGRAM',
+    'fld_s02i359': 'cosp_cc_cf', #'COSP: CALIPSO/CLOUDSAT CLOUD 40 LEV',
+    'fld_s02i359_0': 'cosp_cc_cf_hourly', #'COSP: CALIPSO/CLOUDSAT CLOUD 40 LEV',
+    'fld_s02i371': 'cosp_c_ca', #'COSP: CALIPSO CLOUD AREA 40 CSAT LVS',
+    'fld_s02i374': 'cosp_c_c', #'COSP: CALIPSO-ONLY 3D CLOUD 40 LVLS',
+    'fld_s02i473': 'cosp_c_cfl', #'COSP: CALIPSO CF 40 LVLS (LIQ)',
+    'fld_s02i474': 'cosp_c_cfi', #'COSP: CALIPSO CF 40 LVLS (ICE)',
+    'fld_s02i475': 'cosp_c_cfu', #'COSP: CALIPSO CF 40 LVLS (UNDET)',
+    'fld_s03i261': 'GPP', #'GROSS PRIMARY PRODUCTIVITY KG C/M2/S',
+    'fld_s03i662': 'PNPP', #'POTENTIAL NET PRIM PRODUC KG C/M2/S',
+    'fld_s04i224': 'clslw', #'supercooled_liquid_water_content',
+    'fld_s04i259': 'rain_evap', #'rate_of_loss_of_rain_mass_due_to_evaporation',
+    'fld_s05i250': 'updraught_mf', #'UPDRAUGHT MASS FLUX (Pa/s)',
+    'fld_s05i251': 'downdraught_mf', #'DOWNDRAUGHT MASS FLUX (PA/S)',
+    'fld_s05i320': 'deepc_mf', #'MASS FLUX DEEP CONVECTION',
+    'fld_s05i321': 'congestusc_mf', #'MASS FLUX CONGESTUS CONVECTION',
+    'fld_s05i322': 'shallowc_mf', #'MASS FLUX SHALLOW CONVECTION',
+    'fld_s05i323': 'midc_mf', #'MASS FLUX MID-LEVEL CONVECTION',
+    'fld_s16i004': 'ta', #'TEMPERATURE ON THETA LEVELS',
+    'fld_s16i201': 'zg', #'GEOPOTENTIAL HEIGHT ON THETA LEVELS',
+    'fld_s16i206': 'qc', #'CLOUD WATER CONTENT (qc)',
+    'fld_s16i206_0': 'qc_hourly', #'CLOUD WATER CONTENT (qc)',
+    'fld_s16i207': 'qt', #'TOTAL SPECIFIC HUMIDITY (qT)',
+    'fld_s20i033': 'zg_freeze', #'FREEZING LEVEL GEOPOTENTIAL HEIGHT',
+    'fld_s20i034': 'p_freeze', #'FREEZING LEVEL PRESSURE',
+    'fld_s20i084': 'p_trop', #'TROPOPAUSE PRESSURE',
+    'fld_s20i085': 't_trop', #'TROPOPAUSE TEMPERATURE',
+    'fld_s20i086': 'h_trop', #'TROPOPAUSE HEIGHT',
+    'fld_s30i008': 'wap', #'OMEGA ON THETA LEVELS (C GRID)',
+    'fld_s30i008_0': 'wap_hourly', #'OMEGA ON THETA LEVELS (C GRID)',
+    'fld_s30i113': 'hur', #'RH on model levels at end timestep',
+    'fld_s30i113_0': 'hur_hourly', #'RH on model levels at end timestep',
+    'fld_s30i315': 'meridional_hf', #'MERIDIONAL HEAT FLUX',
+    'fld_s30i316': 'meridional_mf', #'MERIDIONAL MOMENTUM FLUX',
+    'fld_s34i071': 'DMS', #'DMS MASS MIXING RATIO AFTER TIMESTEP',
+    
+    # hourly
+    'fld_s00i024': 'ts', #'SURFACE TEMPERATURE AFTER TIMESTEP',
+    'fld_s00i025': 'blh', #'BOUNDARY LAYER DEPTH AFTER TIMESTEP',
+    'fld_s00i238': 'rlds', #'SURFACE DOWNWARD LW RADIATION   W/M2',
+    'fld_s00i239': 'rlu_t_s', #'TOA - SURF UPWARD LW RADIATION  W/M2',
+    'fld_s00i409': 'ps', #'SURFACE PRESSURE AFTER TIMESTEP',
+    'fld_s01i202': 'rsns', #'NET DOWN SURFACE SW FLUX: CORRECTED',
+    'fld_s01i205': 'rsut', #'OUTGOING SW RAD FLUX (TOA):CORRECTED',
+    'fld_s01i207': 'rsdt', #'INCOMING SW RAD FLUX (TOA): ALL TSS',
+    'fld_s01i209': 'rsutcs', #'CLEAR-SKY (II) UPWARD SW FLUX (TOA)',
+    'fld_s01i210': 'rsdscs', #'CLEAR-SKY (II) DOWN SURFACE SW FLUX',
+    'fld_s01i211': 'rsuscs', #'CLEAR-SKY (II) UP SURFACE SW FLUX',
+    'fld_s01i215': 'rss_dir', #'DIRECT SURFACE SW FLUX : CORRECTED',
+    'fld_s01i216': 'rss_dif', #'DIFFUSE SURFACE SW FLUX : CORRECTED',
+    'fld_s01i235': 'rsds', #'TOTAL DOWNWARD SURFACE SW FLUX',
+    'fld_s02i201': 'rlns', #'NET DOWN SURFACE LW RAD FLUX',
+    'fld_s02i205': 'rlut', #'OUTGOING LW RAD FLUX (TOA)',
+    'fld_s02i206': 'rlutcs', #'CLEAR-SKY (II) UPWARD LW FLUX (TOA)',
+    # 'fld_s02i207': 'rlds', #'DOWNWARD LW RAD FLUX: SURFACE',
+    'fld_s02i208': 'rldscs', #'CLEAR-SKY (II) DOWN SURFACE LW FLUX',
+    'fld_s02i321': 'cosp_mask_cll', #'COSP: MASK FOR CALIPSO LOW-LEVEL CF',
+    'fld_s02i322': 'cosp_mask_clm', #'COSP: MASK FOR CALIPSO MID-LEVEL CF',
+    'fld_s02i323': 'cosp_mask_clh', #'COSP: MASK FOR CALIPSO HIGH-LEVEL CF',
+    'fld_s02i324': 'cosp_mask_clt', #'COSP: MASK FOR CALIPSO TOTAL CF',
+    'fld_s02i330': 'cosp_isccp_weight', #'COSP: ISCCP/MISR/MODIS CLOUD WEIGHTS',
+    'fld_s02i331': 'cosp_isccp_albedo', #'COSP: ISCCP WEIGHTED CLOUD ALBEDO',
+    'fld_s02i332': 'cosp_isccp_tau', #'COSP: ISCCP WEIGHTED CLOUD TAU',
+    'fld_s02i333': 'cosp_isccp_ctp', #'COSP: ISCCP WEIGHTED CLOUD TOP PRES.',
+    'fld_s02i334': 'cosp_isccp_tcc', #'COSP: ISCCP TOTAL CLOUD AREA',
+    'fld_s02i344': 'cosp_c_lcc', #'COSP: CALIPSO LOW-LEVEL CLOUD',
+    'fld_s02i345': 'cosp_c_mcc', #'COSP: CALIPSO MID-LEVEL CLOUD',
+    'fld_s02i346': 'cosp_c_hcc', #'COSP: CALIPSO HIGH-LEVEL CLOUD',
+    'fld_s02i347': 'cosp_c_tcc', #'COSP: CALIPSO TOTAL CLOUD FRACTION',
+    'fld_s03i209': 'uas', #'10 METRE WIND U-COMP',
+    'fld_s03i210': 'vas', #'10 METRE WIND V-COMP',
+    'fld_s03i217': 'hfss', #'SURFACE SENSIBLE HEAT FLUX     W/M2',
+    'fld_s03i230': 'sfcWind', #'10 METRE WIND SPEED ON C GRID',
+    'fld_s03i234': 'hfls', #'SURFACE LATENT HEAT FLUX        W/M2',
+    'fld_s03i236': 'tas', #'TEMPERATURE AT 1.5M',
+    'fld_s03i237': 'huss', #'SPECIFIC HUMIDITY  AT 1.5M',
+    'fld_s03i245': 'hurs', #'RELATIVE HUMIDITY AT 1.5M',
+    'fld_s03i248': 'fog2m', #'FOG FRACTION AT 1.5 M',
+    'fld_s03i250': 'das', #'DEWPOINT AT 1.5M (K)',
+    'fld_s03i255': 'qt2m', #'QT AT 1.5M',
+    'fld_s03i258': 'hfms', #'SURFACE SNOWMELT HEAT FLUX      W/M2',
+    'fld_s03i356': 'mlh', #'HEIGHT OF SURFACE MIXED LAYR TOP (M)',
+    'fld_s03i362': 'mlentrain', #'ENTRAINMENT RATE FOR SURFACE ML',
+    'fld_s03i363': 'blentrain', #'ENTRAINMENT RATE FOR BOUNDARY LAYER',
+    'fld_s03i463': 'wind_gust', #'WIND GUST',
+    'fld_s04i203': 'lsrf', #'LARGE SCALE RAINFALL RATE    KG/M2/S',
+    'fld_s04i204': 'lssf', #'LARGE SCALE SNOWFALL RATE    KG/M2/S',
+    'fld_s05i205': 'crf', #'CONVECTIVE RAINFALL RATE     KG/M2/S',
+    'fld_s05i206': 'csf', #'CONVECTIVE SNOWFALL RATE     KG/M2/S',
+    'fld_s05i214': 'rain', #'TOTAL RAINFALL RATE: LS+CONV KG/M2/S',
+    'fld_s05i215': 'snow', #'TOTAL SNOWFALL RATE: LS+CONV KG/M2/S',
+    'fld_s05i216': 'pr', #'TOTAL PRECIPITATION RATE     KG/M2/S',
+    'fld_s05i277': 'deep_pr', #'deep convective precipitation rate',
+    'fld_s09i202': 'clvl', #'VERY LOW CLOUD AMOUNT',
+    'fld_s09i203': 'cll', #'LOW CLOUD AMOUNT',
+    'fld_s09i204': 'clm', #'MEDIUM CLOUD AMOUNT',
+    'fld_s09i205': 'clh', #'HIGH CLOUD AMOUNT',
+    'fld_s09i216': 'clt', #'cloud_area_fraction_assuming_random_overlap',
+    'fld_s16i222': 'psl', #'PRESSURE AT MEAN SEA LEVEL',
+    'fld_s20i114': 'CAPE', #'UNKNOWN VARIABLE',
+    'fld_s20i115': 'CIN', #'UNKNOWN VARIABLE',
+    'fld_s30i403': 'dmvi', #'TOTAL COLUMN DRY MASS  RHO GRID',
+    'fld_s30i404': 'wmvi', #'TOTAL COLUMN WET MASS  RHO GRID',
+    'fld_s30i405': 'clwvi', #'TOTAL COLUMN QCL  RHO GRID',
+    'fld_s30i406': 'clivi', #'TOTAL COLUMN QCF  RHO GRID',
+    'fld_s30i461': 'prw', #'TOTAL COLUMN Q (WATER VAPOUR PATH)',
+    
+    # daily
+    'fld_s04i210': 'ncloud', #'cloud_drop_number_concentration_where_cloud_is_present',
+}
+amvar2stash = {amstash2var[ikey]: ikey  for ikey in amstash2var.keys()}
+
+def preprocess_amoutput(ds_in):
+    
+    if 'model_rho_level_number' in ds_in.dims:
+        ds_in = ds_in.rename({'model_rho_level_number': 'rho85'})
+    if 'model_theta_level_number' in ds_in.dims:
+        ds_in = ds_in.rename({'model_theta_level_number': 'theta85'})
+    if 'dim0' in ds_in.dims:
+        ds_in = ds_in.rename({'dim0': 'hour'})
+    
+    ds_in = ds_in.reset_coords(drop=True)
+    ds_in = ds_in.drop_vars([ivar for ivar in ds_in.data_vars if not ivar.startswith('fld_')])
+    
+    for ivar in ds_in.data_vars:
+        # ivar = 'fld_s00i025'
+        if ivar in amstash2var.keys():
+            if ('hour' in ds_in[ivar].dims) & (not 'time' in ds_in[ivar].dims):
+                ds_in[ivar] = ds_in[ivar].expand_dims(time=ds_in.time)
+            if 'time_0' in ds_in[ivar].dims:
+                ds_in[ivar] = ds_in[ivar].assign_coords(time=('time_0', ds_in.time.values)).swap_dims({'time_0': 'time'})
+            ds_in = ds_in.rename({ivar: amstash2var[ivar]})
+        else:
+            # print(f'!!!! Warning: {ivar} not in amstash2var')
+            ds_in = ds_in.drop_vars([ivar])
+    
+    if 'time_0' in ds_in.dims:
+        ds_in = ds_in.drop_dims('time_0')
+    
+    return(ds_in)
+
+amvargroups = {
+    'a': [  # monthly
+        'ua', 'va', 'theta', 'hus', 'qcf', 'seaice', 'wa', 'qcl', 'qr', 'pa',
+        'sst', 'rsu', 'rsd', 'rsucs', 'rsdcs', 'rsn_trop', 'rsu_trop',
+        'rlu', 'rld', 'rlucs', 'rldcs', 'rln_trop', 'rld_trop',
+        'TCF', 'TCF_hourly',
+        'cosp_mask_cf', 'cosp_mask359', 'cosp_isccp_Tb', 'cosp_isccp_Tbcs',
+        'cosp_isccp_ctp_tau', 'cosp_cc_cf', 'cosp_cc_cf_hourly',
+        'cosp_c_ca', 'cosp_c_c', 'cosp_c_cfl', 'cosp_c_cfi', 'cosp_c_cfu',
+        'GPP', 'PNPP', 'clslw', 'rain_evap',
+        'updraught_mf', 'downdraught_mf', 'deepc_mf', 'congestusc_mf',
+        'shallowc_mf', 'midc_mf',
+        'ta', 'zg', 'qc', 'qc_hourly', 'qt',
+        'zg_freeze', 'p_freeze', 'p_trop', 't_trop', 'h_trop',
+        'wap', 'wap_hourly', 'hur', 'hur_hourly',
+        'meridional_hf', 'meridional_mf',
+        'DMS'
+    ],
+    
+    'b': [  # hourly
+        'ts', 'blh', 'rlds', 'rlu_t_s', 'ps',
+        'rsns', 'rsut', 'rsdt', 'rsutcs', 'rsdscs', 'rsuscs',
+        'rss_dir', 'rss_dif', 'rsds',
+        'rlns', 'rlut', 'rlutcs', 'rldscs',
+        'cosp_mask_cll', 'cosp_mask_clm', 'cosp_mask_clh', 'cosp_mask_clt',
+        'cosp_isccp_weight', 'cosp_isccp_albedo', 'cosp_isccp_tau',
+        'cosp_isccp_ctp', 'cosp_isccp_tcc',
+        'cosp_c_lcc', 'cosp_c_mcc', 'cosp_c_hcc', 'cosp_c_tcc',
+        'uas', 'vas', 'hfss', 'sfcWind', 'hfls',
+        'tas', 'huss', 'hurs', 'fog2m', 'das', 'qt2m',
+        'hfms', 'mlh', 'mlentrain', 'blentrain', 'wind_gust',
+        'lsrf', 'lssf', 'crf', 'csf', 'rain', 'snow', 'pr', 'deep_pr',
+        'clvl', 'cll', 'clm', 'clh', 'clt',
+        'psl', 'CAPE', 'CIN',
+        'dmvi', 'wmvi', 'clwvi', 'clivi', 'prw'
+    ],
+
+    'c': [  # daily
+        'ncloud'
+    ]
+}
+
+# endregion
+
+
 # region preprocess_umoutput
 
 
