@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -P v46 -l walltime=3:00:00,ncpus=1,mem=48GB,jobfs=10GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/py18+gdata/gx60+gdata/xp65+gdata/qx55+gdata/rv74+gdata/al33+gdata/rr3+gdata/hr22+scratch/gx60+scratch/gb02+gdata/gb02
+# qsub -I -q copyq -P v46 -l walltime=6:00:00,ncpus=1,mem=48GB,jobfs=10GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/py18+gdata/gx60+gdata/xp65+gdata/qx55+gdata/rv74+gdata/al33+gdata/rr3+gdata/hr22+scratch/gx60+scratch/gb02+gdata/gb02
 
 
 # region import packages
@@ -94,6 +94,8 @@ from calculations import (
     time_weighted_mean,
     coslat_weighted_mean,
     coslat_weighted_rmsd,
+    global_land_ocean_rmsd,
+    global_land_ocean_mean,
     mon_sea_ann,
     regrid,
     cdo_regrid,)
@@ -107,7 +109,7 @@ from um_postprocess import (
     var2stash, var2stash_gal, var2stash_ral,
     suite_res, suite_label,
     interp_to_pressure_levels,
-    amstash2var, amvar2stash, preprocess_amoutput, amvargroups)
+    amstash2var, amvar2stash, preprocess_amoutput, amvargroups, am3_label)
 
 # endregion
 
@@ -137,6 +139,11 @@ extend2 = 'both'
 for ivar in vars:
     # ivar = 'sst'
     print(f'#-------------------------------- {ivar}')
+    
+    if ivar in ['sst']:
+        iregion = 'ocean'
+    else:
+        iregion = 'global'
     
     ds_data = {'ann': {}, 'am': {}}
     for ids in ds_names:
@@ -219,7 +226,7 @@ for ivar in vars:
                 plt_org[ids] = ds_data['am'][ids]
                 plt_ann[ids] = ds_data['ann'][ids]
             
-            plt_mean[ids] = coslat_weighted_mean(plt_org[ids])
+            plt_mean[ids] = global_land_ocean_mean(plt_org[ids], iregion)
         
         plt_diff = {}
         plt_rmsd = {}
@@ -227,8 +234,8 @@ for ivar in vars:
         for ids in ds_names[1:]:
             print(f'get diff: {ids} - {ds_names[0]}')
             plt_diff[ids] = regrid(plt_org[ids], plt_org[ds_names[0]]) - plt_org[ds_names[0]]
-            plt_rmsd[ids] = coslat_weighted_rmsd(plt_diff[ids])
-            plt_md[ids] = coslat_weighted_mean(plt_diff[ids])
+            plt_rmsd[ids] = global_land_ocean_rmsd(plt_diff[ids], iregion)
+            plt_md[ids] = global_land_ocean_mean(plt_diff[ids], iregion)
             
             if ivar not in ['pr']:
                 ttest_fdr_res = ttest_fdr_control(
@@ -244,31 +251,43 @@ for ivar in vars:
                 # plt_region = 'global'
                 fig, axs = plt.subplots(
                     nrow, ncol,
-                    figsize=np.array([8.8*ncol, 4.6*nrow + 2]) / 2.54,
+                    figsize=np.array([8.8*ncol, 4.4*nrow+2.4]) / 2.54,
                     subplot_kw={'projection': ccrs.Mollweide(central_longitude=180)},
                     gridspec_kw={'hspace': 0.01, 'wspace': 0.01},)
-                fm_bottom = 1.6 / (4.6*nrow+2)
+                fm_bottom = 1.8 / (4.4*nrow+2.4)
                 for irow in range(nrow):
                     for jcol in range(ncol):
                         if ncol == 1:
                             axs = globe_plot(ax_org=axs)
+                            if iregion=='ocean':
+                                axs.add_feature(cfeature.LAND, color='white', zorder=2, edgecolor=None,lw=0)
+                            elif iregion=='land':
+                                axs.add_feature(cfeature.OCEAN, color='white', zorder=2, edgecolor=None,lw=0)
                         elif nrow == 1:
                             axs[jcol] = globe_plot(ax_org=axs[jcol])
+                            if iregion=='ocean':
+                                axs[jcol].add_feature(cfeature.LAND, color='white', zorder=2, edgecolor=None,lw=0)
+                            elif iregion=='land':
+                                axs[jcol].add_feature(cfeature.OCEAN, color='white', zorder=2, edgecolor=None,lw=0)
                         else:
                             axs[irow, jcol] = globe_plot(ax_org=axs[irow, jcol])
+                            if iregion=='ocean':
+                                axs[irow, jcol].add_feature(cfeature.LAND, color='white', zorder=2, edgecolor=None,lw=0)
+                            elif iregion=='land':
+                                axs[irow, jcol].add_feature(cfeature.OCEAN, color='white', zorder=2, edgecolor=None,lw=0)
             
             if ivar in ['pr']:
                 digit = 2
             else:
                 digit = 1
             
-            plt_colnames = [f'{ds_names[0]}']
+            plt_colnames = [f'{am3_label[ds_names[0]]}']
             plt_text = [f'Mean: {str(np.round(plt_mean[ds_names[0]], digit))}']
             if plt_mode in ['original']:
-                plt_colnames += [f'{ids}' for ids in ds_names[1:]]
+                plt_colnames += [f'{am3_label[ids]}' for ids in ds_names[1:]]
                 plt_text += [f'{str(np.round(plt_mean[ids], digit))}' for ids in ds_names[1:]]
             elif plt_mode in ['difference']:
-                plt_colnames += [f'{ids} - {ds_names[0]}' for ids in ds_names[1:]]
+                plt_colnames += [f'{am3_label[ids]} - {am3_label[ds_names[0]]}' for ids in ds_names[1:]]
                 plt_text += [f'RMSD: {str(np.round(plt_rmsd[ds_names[1]], digit))}, MD: {str(np.round(plt_md[ds_names[1]], digit))}']
                 plt_text += [f'{str(np.round(plt_rmsd[ids], digit))}, {str(np.round(plt_md[ids], digit))}' for ids in ds_names[2:]]
             
@@ -276,7 +295,7 @@ for ivar in vars:
                 if ncol == 1:
                     cbar_label1 = f'{plt_colnames[0]} {cbar_label1}'
                     axs.text(
-                        0, 0, plt_text[jcol], ha='left', va='bottom',
+                        0, 0, plt_text[jcol], ha='left', va='top',
                         transform=axs.transAxes, size=8)
                 else:
                     for jcol in range(ncol):
@@ -285,7 +304,7 @@ for ivar in vars:
                             f'({string.ascii_lowercase[jcol]}) {plt_colnames[jcol]}',
                             ha='left',va='bottom',transform=axs[jcol].transAxes)
                         axs[jcol].text(
-                            0, 0, plt_text[jcol], ha='left', va='bottom',
+                            0, 0, plt_text[jcol], ha='left', va='top',
                             transform=axs[jcol].transAxes,)
             else:
                 for irow in range(nrow):
@@ -297,7 +316,7 @@ for ivar in vars:
                             transform=axs[irow, jcol].transAxes)
                         axs[irow, jcol].text(
                             0, 0, plt_text[irow * ncol + jcol],
-                            ha='left', va='bottom',
+                            ha='left', va='top',
                             transform=axs[irow, jcol].transAxes)
             
             if nrow == 1:
@@ -355,7 +374,7 @@ for ivar in vars:
                         plt_mesh1,#cm.ScalarMappable(norm=pltnorm1, cmap=pltcmp1),#
                         format=remove_trailing_zero_pos,
                         orientation="horizontal", ticks=pltticks1, extend=extend1,
-                        cax=fig.add_axes([0.26, fm_bottom*0.8, 0.48, fm_bottom / 6]))
+                        cax=fig.add_axes([0.26, fm_bottom*0.7, 0.48, fm_bottom / 6]))
                     cbar1.ax.set_xlabel(cbar_label1)
             elif plt_mode in ['difference']:
                 if nrow == 1:
@@ -380,13 +399,13 @@ for ivar in vars:
                     plt_mesh1,#cm.ScalarMappable(norm=pltnorm1, cmap=pltcmp1),#
                     format=remove_trailing_zero_pos,
                     orientation="horizontal", ticks=pltticks1, extend=extend1,
-                    cax=fig.add_axes([0.01, fm_bottom*0.8, 0.48, fm_bottom / 6]))
+                    cax=fig.add_axes([0.01, fm_bottom*0.7, 0.48, fm_bottom / 6]))
                 cbar1.ax.set_xlabel(cbar_label1)
                 cbar2 = fig.colorbar(
                     plt_mesh2,#cm.ScalarMappable(norm=pltnorm2, cmap=pltcmp2),#
                     format=remove_trailing_zero_pos,
                     orientation="horizontal", ticks=pltticks2, extend=extend2,
-                    cax=fig.add_axes([0.51, fm_bottom*0.8, 0.48, fm_bottom / 6]))
+                    cax=fig.add_axes([0.51, fm_bottom*0.7, 0.48, fm_bottom / 6]))
                 cbar2.ax.set_xlabel(cbar_label2)
             
             opng = f'figures/4_um/4.2_access_am3/4.2.0_sim_obs/4.2.0.0 {ivar} {', '.join(ds_names)} {plt_region} {plt_mode} {years}-{yeare}.png'

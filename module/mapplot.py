@@ -48,15 +48,15 @@ def globe_plot(
         coastline = cfeature.NaturalEarthFeature(
             'physical', 'coastline', '10m', edgecolor=atlas_color,
             facecolor='none', lw=lw)
-        ax.add_feature(coastline, zorder=2)
+        ax.add_feature(coastline, zorder=3)
         borders = cfeature.NaturalEarthFeature(
             'cultural', 'admin_0_boundary_lines_land', '10m',
             edgecolor=atlas_color, facecolor='none', lw=lw)
-        ax.add_feature(borders, zorder=2)
+        ax.add_feature(borders, zorder=3)
     
     if add_grid:
         gl = ax.gridlines(
-            crs=ccrs.PlateCarree(), linewidth=lw * 0.75, zorder=2,
+            crs=ccrs.PlateCarree(), linewidth=lw * 0.75, zorder=3,
             color=grid_color, linestyle='--')
         gl.xlocator = mticker.FixedLocator(ticklabel[0])
         gl.ylocator = mticker.FixedLocator(ticklabel[2])

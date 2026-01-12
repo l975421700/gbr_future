@@ -14,6 +14,37 @@ def land_ocean_mean(da):
     
     return(mask, landmean, oceanmean)
 
+
+def global_land_ocean_mean(da, iregion):
+    import regionmask
+    land = regionmask.defined_regions.natural_earth_v5_0_0.land_10
+    mask = land.mask(da)
+    
+    if iregion == 'global':
+        regionmean = coslat_weighted_mean(da)
+    elif iregion == 'ocean':
+        regionmean = coslat_weighted_mean(da.where(np.isnan(mask)))
+    elif iregion == 'land':
+        regionmean = coslat_weighted_mean(da.where(~np.isnan(mask)))
+    
+    return(regionmean)
+
+
+def global_land_ocean_rmsd(da, iregion):
+    import regionmask
+    land = regionmask.defined_regions.natural_earth_v5_0_0.land_10
+    mask = land.mask(da)
+    
+    if iregion == 'global':
+        regionrmsd = coslat_weighted_rmsd(da)
+    elif iregion == 'ocean':
+        regionrmsd = coslat_weighted_rmsd(da.where(np.isnan(mask)))
+    elif iregion == 'land':
+        regionrmsd = coslat_weighted_rmsd(da.where(~np.isnan(mask)))
+    
+    return(regionrmsd)
+
+
 '''
 #-------- check
 import regionmask
@@ -332,6 +363,7 @@ def get_EIS(tas, ps, ta700, hurs, zg700, topo):
 
 
 def get_EIS_simplified(LCL, LTS, tas, ta700, zg700, topo):
+    from typhon.physics import moist_lapse_rate
     # tas/ta700 in K, ps in Pa, hurs dimensionless, zg700 in m
     
     # LCL = get_LCL(ps, tas, hurs)

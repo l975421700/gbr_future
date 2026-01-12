@@ -467,6 +467,11 @@ suite_label = {
     'u-dt042': r'$CN500$',
 }
 
+am3_label = {
+    'access-am3-configs': r'$control$',
+    'am3-plus4k': r'$SST{+}4K$',
+}
+
 # endregion
 
 
