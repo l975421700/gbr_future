@@ -470,6 +470,14 @@ suite_label = {
 am3_label = {
     'access-am3-configs': r'$control$',
     'am3-plus4k': r'$SST{+}4K$',
+    
+    # obs
+    'CERES': 'CERES',
+    'ERA5': 'ERA5',
+    'CM SAF': 'CM SAF',
+    'Himawari': 'Himawari',
+    'IMERG': 'IMERG',
+    'OAFlux': 'OAFlux',
 }
 
 # endregion

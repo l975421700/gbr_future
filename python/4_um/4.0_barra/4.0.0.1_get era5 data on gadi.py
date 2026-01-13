@@ -45,28 +45,29 @@ from namelist import cmip6_units, zerok, seconds_per_d, cmip6_era5_var
 # region get era5 sl mon data
 # Memory Used: 14.87GB, Walltime Used: 00:15:42
 
-for var in ['cll_rol']:
+for var in ['tcw', 'tcwv', 'tcsw', 'tcrw', 'tcslw', 'msnlwrf', 'msnswrf', 'msdwlwrf', 'msdwswrf', 'msdwlwrfcs', 'msdwswrfcs', 'msnlwrfcs', 'msnswrfcs', 'cbh', 'mslhf', 'msshf', '10si', 'deg0l', '10u', '10v', '100u', '100v']:
     # var = 'tp'
-    # 'tp', 'e', 'cp', 'lsp', 'pev', 'msl', 'sst', '2t', '2d', 'skt', 'hcc', 'mcc', 'lcc', 'tcc', 'z', 'mper', 'tciw', 'tclw', 'mtdwswrf', 'mtnlwrf', 'mtnswrf', 'mtnlwrfcs', 'mtnswrfcs', 'ECTEI', 'cll_mol'
+    # 'tp', 'e', 'cp', 'lsp', 'pev', 'msl', 'sst', '2t', '2d', 'skt', 'hcc', 'mcc', 'lcc', 'tcc', 'z', 'mper', 'tciw', 'tclw', 'mtdwswrf', 'mtnlwrf', 'mtnswrf', 'mtnlwrfcs', 'mtnswrfcs', 'tcw', 'tcwv', 'tcsw', 'tcrw', 'tcslw', 'msnlwrf', 'msnswrf', 'msdwlwrf', 'msdwswrf', 'msdwlwrfcs', 'msdwswrfcs', 'msnlwrfcs', 'msnswrfcs', 'cbh', 'mslhf', 'msshf', '10si', 'deg0l', '10u', '10v', '100u', '100v'
+    # 'ECTEI', 'cll_mol'
     print(var)
     
-    # fl = sorted([
-    #     file for iyear in np.arange(2016, 2024, 1)
-    #     for file in glob.glob(f'/g/data/rt52/era5/single-levels/monthly-averaged/{var}/{iyear}/*.nc')])
-    # if var == '2t': var='t2m'
-    # if var == '10si': var='si10'
-    # if var == '2d': var='d2m'
-    # if var == '10u': var='u10'
-    # if var == '10v': var='v10'
-    # if var == '100u': var='u100'
-    # if var == '100v': var='v100'
-    # era5_sl_mon = xr.open_mfdataset(fl, parallel=True).rename({'latitude': 'lat', 'longitude': 'lon'})[var]
+    fl = sorted([
+        file for iyear in np.arange(1979, 2025, 1)
+        for file in glob.glob(f'/g/data/rt52/era5/single-levels/monthly-averaged/{var}/{iyear}/*.nc')])
+    if var == '2t': var='t2m'
+    if var == '10si': var='si10'
+    if var == '2d': var='d2m'
+    if var == '10u': var='u10'
+    if var == '10v': var='v10'
+    if var == '100u': var='u100'
+    if var == '100v': var='v100'
+    era5_sl_mon = xr.open_mfdataset(fl, parallel=True).rename({'latitude': 'lat', 'longitude': 'lon'})[var]
     
     # fl = sorted(glob.glob(f'data/sim/era5/hourly/{var}/{var}_monthly_*.nc'))
     # era5_sl_mon = xr.open_mfdataset(fl)[var].sel(time=slice('2016', '2023'))
     
-    fl = sorted(glob.glob(f'data/sim/era5/{var}/{var}_??????.nc'))
-    era5_sl_mon = xr.open_mfdataset(fl).rename({'latitude': 'lat', 'longitude': 'lon'})[var].sel(time=slice('2016', '2023'))
+    # fl = sorted(glob.glob(f'data/sim/era5/{var}/{var}_??????.nc'))
+    # era5_sl_mon = xr.open_mfdataset(fl).rename({'latitude': 'lat', 'longitude': 'lon'})[var].sel(time=slice('2016', '2023'))
     
     if var in ['tp', 'e', 'cp', 'lsp', 'pev']:
         era5_sl_mon = era5_sl_mon * 1000
@@ -270,7 +271,7 @@ for var in ['pv', 'q', 'r', 't', 'u', 'v', 'w', 'z']:
 
 
 era5_sl_mon_alltime = {}
-for var1, var2, var3 in zip(['mtnlwrfcl', 'mtnswrfcl', 'mtuwswrfcl'], ['mtnlwrf', 'mtnswrf', 'mtuwswrf'], ['mtnlwrfcs', 'mtnswrfcs', 'mtuwswrfcs']):
+for var1, var2, var3 in zip(['msuwlwrf'], ['msnlwrf'], ['msdwlwrf']):
     # ['mtnlwrfcl', 'mtnswrfcl', 'mtuwswrfcl'], ['mtnlwrf', 'mtnswrf', 'mtuwswrf'], ['mtnlwrfcs', 'mtnswrfcs', 'mtuwswrfcs']
     # ['mtuwswrfcs'], ['mtnswrfcs'], ['mtdwswrf']
     # ['mtuwswrf'], ['mtnswrf'], ['mtdwswrf']
