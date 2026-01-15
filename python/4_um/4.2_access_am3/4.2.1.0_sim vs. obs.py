@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -P v46 -l walltime=4:00:00,ncpus=1,mem=48GB,jobfs=10GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/py18+gdata/gx60+gdata/xp65+gdata/qx55+gdata/rv74+gdata/al33+gdata/rr3+gdata/hr22+scratch/gx60+scratch/gb02+gdata/gb02
+# qsub -I -q normal -P v46 -l walltime=4:00:00,ncpus=1,mem=48GB,jobfs=100MB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/py18+gdata/gx60+gdata/xp65+gdata/qx55+gdata/rv74+gdata/al33+gdata/rr3+gdata/hr22+scratch/gx60+scratch/gb02+gdata/gb02
 
 
 # region import packages
@@ -118,7 +118,16 @@ from um_postprocess import (
 
 # options
 years = '1983'; yeare = '1987'
-vars = ['rsut'] # 'sst', 'rsut', 'rlut', 'pr'
+vars = [
+    'rsut'
+    
+    # # monthly
+    # 'seaice', # 'sst'
+    # 'rsn_trop', 'rsu_trop', 'rln_trop', 'rld_trop', 'cosp_isccp_Tb', 'cosp_isccp_Tbcs' 'GPP', 'PNPP', 'updraught_mf', 'downdraught_mf', 'deepc_mf', 'congestusc_mf', 'shallowc_mf', 'midc_mf', 'zg_freeze', 'p_freeze', 'p_trop', 't_trop', 'h_trop',
+    # # hourly
+    # 'ts', 'blh', 'rlds', 'ps', 'rsns', 'rsdt', 'rsutcs', 'rsdscs', 'rsuscs', 'rsds', 'rlns', 'rlutcs', 'rldscs', 'uas', 'vas', 'sfcWind', 'tas', 'huss', 'hurs', 'fog2m', 'das', 'qt2m', 'hfms', 'clvl', 'psl', 'prw' # 'rlut', 'rsut', 'hfss', 'hfls', 'pr', 'clh', 'clm', 'cll', 'clt', 'clwvi', 'clivi',
+    # 'rlu_t_s', 'rss_dir', 'rss_dif', 'cosp_isccp_albedo', 'cosp_isccp_tau', 'cosp_isccp_ctp', 'cosp_isccp_tcc', 'cosp_c_lcc', 'cosp_c_mcc', 'cosp_c_hcc', 'cosp_c_tcc', 'mlh', 'mlentrain', 'blentrain', 'wind_gust', 'lsrf', 'lssf', 'crf', 'csf', 'rain', 'snow', 'deep_pr', 'clvl', 'CAPE', 'CIN', 'dmvi', 'wmvi',
+    ]
 ds_names = ['ERA5', 'access-am3-configs', 'am3-plus4k']
 plt_regions = ['global']
 plt_modes = ['original', 'difference']
@@ -171,7 +180,10 @@ for ivar in vars:
                 elif ivar in ['cll', 'clm', 'clh', 'clt']:
                     ds *= 100
                 
-                ds_data['ann'][ids] = ds.resample({'time': '1YE'}).map(time_weighted_mean).compute()
+                if istream in ['a']:
+                    ds_data['ann'][ids] = ds.resample({'time': '1YE'}).map(time_weighted_mean).compute()
+                elif istream in ['b']:
+                    ds_data['ann'][ids] = ds.resample({'time': '1YE'}).mean().compute()
         elif ids == 'ERA5':
             # ids = 'ERA5'
             with open(f'data/sim/era5/mon/era5_sl_mon_alltime_{cmip6_era5_var[ivar]}.pkl', 'rb') as f:
@@ -372,12 +384,9 @@ for ivar in vars:
             
             if ivar not in ['pr']:
                 ttest_fdr_res = ttest_fdr_control(
-                    # xe.Regridder(plt_ann[ids], plt_ann[ds_names[0]], 'bilinear')(plt_ann[ids]),
-                    # regrid(plt_ann[ids], plt_ann[ds_names[0]]),
                     regridder[f'{ids} - {ds_names[0]}'](plt_ann[ids]),
                     plt_ann[ds_names[0]])
-                # plt_diff[ids] = plt_diff[ids].where(ttest_fdr_res, np.nan)
-                plt_diff[ids][:] = np.ma.array(plt_diff[ids], mask=~ttest_fdr_res)
+                plt_diff[ids] = plt_diff[ids].where(ttest_fdr_res, np.nan)
         
         for plt_mode in plt_modes:
             print(f'#-------- {plt_mode}')
@@ -386,10 +395,10 @@ for ivar in vars:
                 # plt_region = 'global'
                 fig, axs = plt.subplots(
                     nrow, ncol,
-                    figsize=np.array([8.8*ncol, 4.4*nrow+2.4]) / 2.54,
-                    subplot_kw={'projection': ccrs.Mollweide(central_longitude=180)},
+                    figsize=np.array([6.6*ncol, 3.3*nrow+2.8]) / 2.54,
+                    subplot_kw={'projection': ccrs.PlateCarree(central_longitude=180)},
                     gridspec_kw={'hspace': 0.01, 'wspace': 0.01},)
-                fm_bottom = 1.8 / (4.4*nrow+2.4)
+                fm_bottom = 2.2 / (3.3*nrow+2.8)
                 for irow in range(nrow):
                     for jcol in range(ncol):
                         if ncol == 1:
@@ -430,27 +439,27 @@ for ivar in vars:
                 if ncol == 1:
                     cbar_label1 = f'{plt_colnames[0]} {cbar_label1}'
                     axs.text(
-                        0, 0, plt_text[jcol], ha='left', va='top',
+                        0, -0.02, plt_text[jcol], ha='left', va='top',
                         transform=axs.transAxes, size=8)
                 else:
                     for jcol in range(ncol):
                         axs[jcol].text(
-                            0, 1,
+                            0, 1.02,
                             f'({string.ascii_lowercase[jcol]}) {plt_colnames[jcol]}',
                             ha='left',va='bottom',transform=axs[jcol].transAxes)
                         axs[jcol].text(
-                            0, 0, plt_text[jcol], ha='left', va='top',
+                            0, -0.02, plt_text[jcol], ha='left', va='top',
                             transform=axs[jcol].transAxes,)
             else:
                 for irow in range(nrow):
                     for jcol in range(ncol):
                         axs[irow, jcol].text(
-                            0, 1,
+                            0, 1.02,
                             f'({string.ascii_lowercase[irow * ncol + jcol]}) {plt_colnames[irow * ncol + jcol]}',
                             ha='left',va='bottom',
                             transform=axs[irow, jcol].transAxes)
                         axs[irow, jcol].text(
-                            0, 0, plt_text[irow * ncol + jcol],
+                            0, -0.02, plt_text[irow * ncol + jcol],
                             ha='left', va='top',
                             transform=axs[irow, jcol].transAxes)
             
@@ -509,7 +518,7 @@ for ivar in vars:
                         plt_mesh1,#cm.ScalarMappable(norm=pltnorm1, cmap=pltcmp1),#
                         format=remove_trailing_zero_pos,
                         orientation="horizontal", ticks=pltticks1, extend=extend1,
-                        cax=fig.add_axes([0.26, fm_bottom*0.7, 0.48, fm_bottom / 6]))
+                        cax=fig.add_axes([0.26, fm_bottom*0.6, 0.48, fm_bottom / 6]))
                     cbar1.ax.set_xlabel(cbar_label1)
             elif plt_mode in ['difference']:
                 if nrow == 1:
@@ -534,17 +543,17 @@ for ivar in vars:
                     plt_mesh1,#cm.ScalarMappable(norm=pltnorm1, cmap=pltcmp1),#
                     format=remove_trailing_zero_pos,
                     orientation="horizontal", ticks=pltticks1, extend=extend1,
-                    cax=fig.add_axes([0.01, fm_bottom*0.7, 0.48, fm_bottom / 6]))
+                    cax=fig.add_axes([0.01, fm_bottom*0.6, 0.48, fm_bottom / 6]))
                 cbar1.ax.set_xlabel(cbar_label1)
                 cbar2 = fig.colorbar(
                     plt_mesh2,#cm.ScalarMappable(norm=pltnorm2, cmap=pltcmp2),#
                     format=remove_trailing_zero_pos,
                     orientation="horizontal", ticks=pltticks2, extend=extend2,
-                    cax=fig.add_axes([0.51, fm_bottom*0.7, 0.48, fm_bottom / 6]))
+                    cax=fig.add_axes([0.51, fm_bottom*0.6, 0.48, fm_bottom / 6]))
                 cbar2.ax.set_xlabel(cbar_label2)
             
             opng = f'figures/4_um/4.2_access_am3/4.2.0_sim_obs/4.2.0.0 {ivar} {', '.join(ds_names)} {plt_region} {plt_mode} {years}-{yeare}.png'
-            fig.subplots_adjust(left=0.005, right=0.995, bottom=fm_bottom, top=0.96)
+            fig.subplots_adjust(left=0.005, right=0.995, bottom=fm_bottom, top=0.94)
             fig.savefig(opng, dpi=600)
 
 
