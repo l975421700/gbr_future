@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -P v46 -l walltime=1:00:00,ncpus=1,mem=96GB,jobfs=100MB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/gx60+gdata/py18
+# qsub -I -q normal -P v46 -l walltime=4:00:00,ncpus=1,mem=48GB,jobfs=100MB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/py18+gdata/gx60+gdata/xp65+gdata/qx55+gdata/rv74+gdata/al33+gdata/rr3+gdata/hr22+scratch/gx60+scratch/gb02+gdata/gb02
 
 
 # region import packages
@@ -37,7 +37,7 @@ from calculations import (
     get_EIS, get_EIS_simplified,
     )
 
-from namelist import cmip6_units, zerok, seconds_per_d, cmip6_era5_var
+from namelist import cmip6_units, zerok, seconds_per_d, cmip6_era5_var, era5_varlabels
 
 # endregion
 
@@ -45,11 +45,11 @@ from namelist import cmip6_units, zerok, seconds_per_d, cmip6_era5_var
 # region get era5 sl mon data
 # Memory Used: 14.87GB, Walltime Used: 00:15:42
 
-for var in ['tcw', 'tcwv', 'tcsw', 'tcrw', 'tcslw', 'msnlwrf', 'msnswrf', 'msdwlwrf', 'msdwswrf', 'msdwlwrfcs', 'msdwswrfcs', 'msnlwrfcs', 'msnswrfcs', 'cbh', 'mslhf', 'msshf', '10si', 'deg0l', '10u', '10v', '100u', '100v']:
-    # var = 'tp'
-    # 'tp', 'e', 'cp', 'lsp', 'pev', 'msl', 'sst', '2t', '2d', 'skt', 'hcc', 'mcc', 'lcc', 'tcc', 'z', 'mper', 'tciw', 'tclw', 'mtdwswrf', 'mtnlwrf', 'mtnswrf', 'mtnlwrfcs', 'mtnswrfcs', 'tcw', 'tcwv', 'tcsw', 'tcrw', 'tcslw', 'msnlwrf', 'msnswrf', 'msdwlwrf', 'msdwswrf', 'msdwlwrfcs', 'msdwswrfcs', 'msnlwrfcs', 'msnswrfcs', 'cbh', 'mslhf', 'msshf', '10si', 'deg0l', '10u', '10v', '100u', '100v'
+for var in ['sp']:
+    # var = 'viiwd'
+    # '100u', '100v', '10si', '10u', '10v', '2d', '2t', 'blh', 'cape', 'cbh', 'ci', 'cin', 'cp', 'csf', 'deg0l', 'e', 'hcc', 'i10fg', 'lcc', 'lsf', 'lsp', 'mcc', 'msdrswrf', 'msdrswrfcs', 'msdwlwrf', 'msdwlwrfcs', 'msdwswrf', 'msdwswrfcs', 'msdwuvrf', 'msl', 'mslhf', 'msnlwrf', 'msnlwrfcs', 'msnswrf', 'msnswrfcs', 'msshf', 'mtdwswrf', 'mtnlwrf', 'mtnlwrfcs', 'mtnswrf', 'mtnswrfcs', 'mvimd', 'pev', 'sf', 'skt', 'sp', 'sst', 'tcc', 'tciw', 'tclw', 'tco3', 'tcrw', 'tcslw', 'tcsw', 'tcw', 'tcwv', 'tp', 'viiwd', 'viiwe', 'viiwn', 'vike', 'viked', 'vikee', 'viken', 'vilwd', 'vilwe', 'vilwn', 'vima', 'vimad', 'vimae', 'viman', 'vimd', 'viozd', 'vioze', 'viozn', 'vipie', 'vipile', 'vithe', 'vithed', 'vithee', 'vithen', 'vitoe', 'vitoed', 'vitoee', 'vitoen', 'viwvd', 'viwve', 'viwvn', 'z', 'zust'
     # 'ECTEI', 'cll_mol'
-    print(var)
+    print(f'#-------------------------------- {var}')
     
     fl = sorted([
         file for iyear in np.arange(1979, 2025, 1)
@@ -61,7 +61,12 @@ for var in ['tcw', 'tcwv', 'tcsw', 'tcrw', 'tcslw', 'msnlwrf', 'msnswrf', 'msdwl
     if var == '10v': var='v10'
     if var == '100u': var='u100'
     if var == '100v': var='v100'
-    era5_sl_mon = xr.open_mfdataset(fl, parallel=True).rename({'latitude': 'lat', 'longitude': 'lon'})[var]
+    if var == 'ci': var='siconc'
+    if not var.startswith('vi'):
+        era5_sl_mon = xr.open_mfdataset(fl, parallel=True).rename({'latitude': 'lat', 'longitude': 'lon'})[var]
+    elif var.startswith('vi'):
+        era5_sl_mon = xr.open_mfdataset(fl, parallel=True).rename({'latitude': 'lat', 'longitude': 'lon'})
+        era5_sl_mon = era5_sl_mon[list(era5_sl_mon.data_vars)[0]].rename(var)
     
     # fl = sorted(glob.glob(f'data/sim/era5/hourly/{var}/{var}_monthly_*.nc'))
     # era5_sl_mon = xr.open_mfdataset(fl)[var].sel(time=slice('2016', '2023'))
@@ -69,21 +74,21 @@ for var in ['tcw', 'tcwv', 'tcsw', 'tcrw', 'tcslw', 'msnlwrf', 'msnswrf', 'msdwl
     # fl = sorted(glob.glob(f'data/sim/era5/{var}/{var}_??????.nc'))
     # era5_sl_mon = xr.open_mfdataset(fl).rename({'latitude': 'lat', 'longitude': 'lon'})[var].sel(time=slice('2016', '2023'))
     
-    if var in ['tp', 'e', 'cp', 'lsp', 'pev']:
-        era5_sl_mon = era5_sl_mon * 1000
-    elif var in ['msl']:
-        era5_sl_mon = era5_sl_mon / 100
+    if var in ['tp', 'e', 'cp', 'lsp', 'pev', 'csf', 'lsf', 'sf']:
+        era5_sl_mon *= 1000
+    elif var in ['msl', 'sp']:
+        era5_sl_mon /= 100
     elif var in ['sst', 't2m', 'd2m', 'skt']:
-        era5_sl_mon = era5_sl_mon - zerok
-    elif var in ['hcc', 'mcc', 'lcc', 'tcc', 'cll_mol', 'cll_rol']:
-        era5_sl_mon = era5_sl_mon * 100
+        era5_sl_mon -= zerok
+    elif var in ['hcc', 'mcc', 'lcc', 'tcc', 'cll_mol', 'cll_rol', 'siconc']:
+        era5_sl_mon *= 100
     elif var in ['z']:
-        era5_sl_mon = era5_sl_mon / 9.80665
+        era5_sl_mon /= 9.80665
     elif var in ['mper']:
-        era5_sl_mon = era5_sl_mon * seconds_per_d
+        era5_sl_mon *= seconds_per_d
     
     if var in ['e', 'pev', 'mper']:
-        era5_sl_mon = era5_sl_mon * (-1)
+        era5_sl_mon *= (-1)
     
     era5_sl_mon_alltime = mon_sea_ann(
         var_monthly=era5_sl_mon, lcopy=False, mm=True, sm=True, am=True,)
@@ -99,99 +104,84 @@ for var in ['tcw', 'tcwv', 'tcsw', 'tcrw', 'tcslw', 'msnlwrf', 'msnswrf', 'msdwl
 
 
 '''
-#-------------------------------- check
-era5_sl_mon_alltime = {}
-for var in ['tciw', 'tclw', 'tcw', 'tcwv', 'tcsw', 'tcrw', 'tcslw']:
-    print(f'#---------------- {var}')
-    with open(f'data/sim/era5/mon/era5_sl_mon_alltime_{var}.pkl', 'rb') as f:
-        era5_sl_mon_alltime[var] = pickle.load(f)
-
-for var in ['tciw', 'tclw', 'tcw', 'tcwv', 'tcsw', 'tcrw', 'tcslw']:
-    print(f'#---------------- {var}')
-    print(era5_sl_mon_alltime[var]['am'].weighted(np.cos(np.deg2rad(era5_sl_mon_alltime[var]['am'].lat))).mean().values)
-
-# tcw = tciw + tclw + tcwv + tcsw + tcrw
-
-
-
-
-
-#-------------------------------- check
-
-itime=-1
-era5_sl_mon_alltime = {}
-for var in ['ECTEI']:
-    # var = 'msnlwrf'
-    # 'tp', 'msl', 'sst', 'hcc', 'mcc', 'lcc', 'tcc', '2t', 'msnlwrf', 'msnswrf', 'mtdwswrf', 'mtnlwrf', 'mtnswrf', 'msdwlwrf', 'msdwswrf', 'msdwlwrfcs', 'msdwswrfcs', 'msnlwrfcs', 'msnswrfcs', 'mtnlwrfcs', 'mtnswrfcs', 'cbh', 'tciw', 'tclw', 'e', 'z', 'mslhf', 'msshf', 'tcw', 'tcwv', 'tcsw', 'tcrw', 'tcslw', '10si', '2d', 'cp', 'lsp', 'deg0l', 'mper', 'pev', 'skt', '10u', '10v', '100u', '100v'
-    print(f'#---------------- {var}')
-    
-    # fl = sorted([
-    #     file for iyear in np.arange(2016, 2024, 1)
-    #     for file in glob.glob(f'/g/data/rt52/era5/single-levels/monthly-averaged/{var}/{iyear}/*.nc')])
-    # if var == '2t': var='t2m'
-    # if var == '10si': var='si10'
-    # if var == '2d': var='d2m'
-    # if var == '10u': var='u10'
-    # if var == '10v': var='v10'
-    # if var == '100u': var='u100'
-    # if var == '100v': var='v100'
-    # ds = xr.open_dataset(fl[itime]).rename({'latitude': 'lat', 'longitude': 'lon'})[var].squeeze()
-    
-    fl = sorted(glob.glob(f'data/sim/era5/hourly/{var}/{var}_monthly_*.nc'))[:96]
-    ds = xr.open_dataset(fl[itime])[var].squeeze()
-    
-    if var in ['tp', 'e', 'cp', 'lsp', 'pev']:
-        ds = ds * 1000
-    elif var in ['msl']:
-        ds = ds / 100
-    elif var in ['sst', 't2m', 'd2m', 'skt']:
-        ds = ds - zerok
-    elif var in ['hcc', 'mcc', 'lcc', 'tcc']:
-        ds = ds * 100
-    elif var in ['z']:
-        ds = ds / 9.80665
-    elif var in ['mper']:
-        ds = ds * seconds_per_d
-    ds = ds.astype(np.float32)
-    
-    with open(f'data/sim/era5/mon/era5_sl_mon_alltime_{var}.pkl', 'rb') as f:
-        era5_sl_mon_alltime[var] = pickle.load(f)
-    
-    ds2 = era5_sl_mon_alltime[var]['mon'].isel(time=itime)
-    ds2 = ds2.astype(np.float32)
-    print((ds.values[np.isfinite(ds.values)] == ds2.values[np.isfinite(ds2.values)]).all())
-    del era5_sl_mon_alltime[var]
-
-
-
-
 # https://confluence.ecmwf.int/display/CKB/ERA5%3A+data+documentation
 
-Mean surface latent heat flux: slhf
-Mean surface net long-wave radiation flux: msnlwrf
-Mean surface net short-wave radiation flux: msnswrf
-Mean surface sensible heat flux: sshf
-Mean surface downward long-wave radiation flux: msdwlwrf
-Mean surface downward short-wave radiation flux: msdwswrf
-Mean surface downward long-wave radiation flux, clear sky: msdwlwrfcs
-Mean surface downward short-wave radiation flux, clear sky: msdwswrfcs
-Mean surface net long-wave radiation flux, clear sky: msnlwrfcs
-Mean surface net short-wave radiation flux, clear sky: msnswrfcs
 
-Mean top downward short-wave radiation flux: mtdwswrf
-Mean top net long-wave radiation flux: mtnlwrf
-Mean top net short-wave radiation flux: mtnswrf
-Mean top net long-wave radiation flux, clear sky: mtnlwrfcs
-Mean top net short-wave radiation flux, clear sky: mtnswrfcs
+#-------------------------------- check
 
-Cloud base height: cbh
-Total column cloud ice water: tciw
-Total column cloud liquid water: tclw
-tcw
-tcwv
+itime=-10
+for var in ['sp']:
+    # var = 'msnlwrf'
+    print(f'#-------------------------------- {var}')
+    
+    fl = sorted([
+        file for iyear in np.arange(1979, 2025, 1)
+        for file in glob.glob(f'/g/data/rt52/era5/single-levels/monthly-averaged/{var}/{iyear}/*.nc')])
+    if var == '2t': var='t2m'
+    if var == '10si': var='si10'
+    if var == '2d': var='d2m'
+    if var == '10u': var='u10'
+    if var == '10v': var='v10'
+    if var == '100u': var='u100'
+    if var == '100v': var='v100'
+    if var == 'ci': var='siconc'
+    if not var.startswith('vi'):
+        ds = xr.open_dataset(fl[itime]).rename({'latitude': 'lat', 'longitude': 'lon'})[var].squeeze()
+    elif var.startswith('vi'):
+        ds = xr.open_dataset(fl[itime]).rename({'latitude': 'lat', 'longitude': 'lon'}).squeeze()
+        ds = ds[list(ds.data_vars)[0]].rename(var)
+    
+    # fl = sorted(glob.glob(f'data/sim/era5/hourly/{var}/{var}_monthly_*.nc'))
+    # ds = xr.open_dataset(fl[itime])[var].squeeze()
+    
+    if var in ['tp', 'e', 'cp', 'lsp', 'pev', 'csf', 'lsf', 'sf']:
+        ds *= 1000
+    elif var in ['msl', 'sp']:
+        ds /= 100
+    elif var in ['sst', 't2m', 'd2m', 'skt']:
+        ds -= zerok
+    elif var in ['hcc', 'mcc', 'lcc', 'tcc', 'cll_mol', 'cll_rol', 'siconc']:
+        ds *= 100
+    elif var in ['z']:
+        ds /= 9.80665
+    elif var in ['mper']:
+        ds *= seconds_per_d
+    ds = ds.astype(np.float32)
+    
+    if var in ['e', 'pev', 'mper']:
+        ds *= (-1)
+    
+    with open(f'data/sim/era5/mon/era5_sl_mon_alltime_{var}.pkl', 'rb') as f:
+        era5_sl_mon_alltime = pickle.load(f)
+    
+    ds2 = era5_sl_mon_alltime['mon'].isel(time=itime)
+    ds2 = ds2.astype(np.float32)
+    print((ds.values[np.isfinite(ds.values)] == ds2.values[np.isfinite(ds2.values)]).all())
+    del era5_sl_mon_alltime
 
-Evaporation: e
-Geopotential: z
+
+#-------------------------------- check
+folder = '/g/data/rt52/era5/single-levels/monthly-averaged'
+for var in ['cape', 'cin', 'csf', 'i10fg', 'lsf', 'msdrswrf', 'msdrswrfcs', 'msdwuvrf', 'mvimd', 'sf', 'sp', 'tco3', 'viiwd', 'viiwe', 'viiwn', 'vike', 'viked', 'vikee', 'viken', 'vilwd', 'vilwe', 'vilwn', 'vima', 'vimae', 'vimad', 'viman', 'vimd', 'viozd', 'vioze', 'viozn', 'vipie', 'vipile', 'vithe', 'vithed', 'vithee', 'vithen', 'vitoe', 'vitoed', 'vitoee', 'vitoen', 'viwvd', 'viwve', 'viwvn', 'zust']:
+    # sorted(os.listdir(folder))
+    # var = '100u'
+    print(f'#-------------------------------- {var}')
+    ds = xr.open_dataset(sorted(glob.glob(f'{folder}/{var}/1979/*.nc'))[0])
+    print(ds[list(ds.data_vars)[0]].attrs)
+    print(era5_varlabels[var])
+    # print(ds[list(ds.data_vars)[0]].attrs['units'])
+    # if var != list(ds.data_vars)[0]: print(list(ds.data_vars)[0])
+    # print(ds[list(ds.data_vars)[0]])
+
+
+#-------------------------------- check
+era5_sl_mon_alltime = {}
+for var in ['tciw', 'tclw', 'tcw', 'tcwv', 'tcsw', 'tcrw', 'tcslw']:
+    print(f'#---------------- {var}')
+    with open(f'data/sim/era5/mon/era5_sl_mon_alltime_{var}.pkl', 'rb') as f:
+        era5_sl_mon_alltime[var] = pickle.load(f)
+    print(era5_sl_mon_alltime[var]['am'].weighted(np.cos(np.deg2rad(era5_sl_mon_alltime[var]['am'].lat))).mean().values)
+# tcw = tciw + tclw + tcwv + tcsw + tcrw
 
 
 '''
