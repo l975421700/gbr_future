@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -P v46 -l walltime=4:00:00,ncpus=1,mem=48GB,jobfs=100MB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/py18+gdata/gx60+gdata/xp65+gdata/qx55+gdata/rv74+gdata/al33+gdata/rr3+gdata/hr22+scratch/gx60+scratch/gb02+gdata/gb02
+# qsub -I -q normal -P v46 -l walltime=6:00:00,ncpus=1,mem=192GB,jobfs=100MB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/py18+gdata/gx60+gdata/xp65+gdata/qx55+gdata/rv74+gdata/al33+gdata/rr3+gdata/hr22+scratch/gx60+scratch/gb02+gdata/gb02
 
 
 # region import packages
@@ -189,24 +189,27 @@ for var in ['tciw', 'tclw', 'tcw', 'tcwv', 'tcsw', 'tcrw', 'tcslw']:
 
 
 # region get era5 pl mon data
+# Memory Used: 142.13GB, Walltime Used: 00:53:00
 
-for var in ['q', 't', 'z']:
+for var in ['cc', 'ciwc', 'clwc', 'crwc', 'cswc', 'pv', 'q', 'r', 't', 'u', 'v', 'w', 'z']:
     # var = 'pv'
     print(var)
     
     fl = sorted([
-        file for iyear in np.arange(1979, 2024, 1)
+        file for iyear in np.arange(1979, 2025, 1)
         for file in glob.glob(f'/g/data/rt52/era5/pressure-levels/monthly-averaged/{var}/{iyear}/*.nc')])
     # print(xr.open_dataset(fl[0])[var].units)
     
     era5_pl_mon = xr.open_mfdataset(fl, parallel=True).rename({'latitude': 'lat', 'longitude': 'lon'})[var]
     
     if var in ['q']:
-        era5_pl_mon = era5_pl_mon * 1000
+        era5_pl_mon *= 1000
     elif var in ['t']:
-        era5_pl_mon = era5_pl_mon - zerok
+        era5_pl_mon -= zerok
     elif var in ['z']:
-        era5_pl_mon = era5_pl_mon / 9.80665
+        era5_pl_mon /= 9.80665
+    elif var in ['cc']:
+        era5_pl_mon *= 100
     
     era5_pl_mon_alltime = mon_sea_ann(
         var_monthly=era5_pl_mon, lcopy=False, mm=True, sm=True, am=True,)
@@ -223,14 +226,14 @@ for var in ['q', 't', 'z']:
 
 '''
 #-------------------------------- check
-itime = -1
+itime = -10
 era5_pl_mon_alltime = {}
-for var in ['pv', 'q', 'r', 't', 'u', 'v', 'w', 'z']:
+for var in ['cc', 'ciwc', 'clwc', 'crwc', 'cswc', 'pv', 'q', 'r', 't', 'u', 'v', 'w', 'z']:
     # var = 'pv'
     print(f'#-------------------------------- {var}')
     
     fl = sorted([
-        file for iyear in np.arange(1979, 2024, 1)
+        file for iyear in np.arange(1979, 2025, 1)
         for file in glob.glob(f'/g/data/rt52/era5/pressure-levels/monthly-averaged/{var}/{iyear}/*.nc')])
     
     ds = xr.open_dataset(fl[itime]).rename({'latitude': 'lat', 'longitude': 'lon'})[var].squeeze()
@@ -240,6 +243,8 @@ for var in ['pv', 'q', 'r', 't', 'u', 'v', 'w', 'z']:
         ds = ds - zerok
     elif var in ['z']:
         ds = ds / 9.80665
+    elif var in ['cc']:
+        ds *= 100
     ds = ds.astype(np.float32)
     
     with open(f'data/sim/era5/mon/era5_pl_mon_alltime_{var}.pkl', 'rb') as f:
@@ -261,7 +266,10 @@ for var in ['pv', 'q', 'r', 't', 'u', 'v', 'w', 'z']:
 
 
 era5_sl_mon_alltime = {}
-for var1, var2, var3 in zip(['msuwlwrf'], ['msnlwrf'], ['msdwlwrf']):
+for var1, var2, var3 in zip(
+    ['msuwlwrf',  'msuwswrf',  'msuwlwrfcs',  'msuwswrfcs',  'msnlwrfcl', 'msnswrfcl', 'msdwlwrfcl', 'msdwswrfcl', 'msuwlwrfcl', 'msuwswrfcl',  'mtuwswrf',  'mtuwswrfcs',  'mtnlwrfcl', 'mtnswrfcl', 'mtuwswrfcl'],
+    ['msnlwrf',  'msnswrf',  'msnlwrfcs',  'msnswrfcs',  'msnlwrf', 'msnswrf', 'msdwlwrf', 'msdwswrf', 'msuwlwrf', 'msuwswrf',  'mtnswrf',  'mtnswrfcs',  'mtnlwrf', 'mtnswrf', 'mtuwswrf'],
+    ['msdwlwrf',  'msdwswrf',  'msdwlwrfcs',  'msdwswrfcs',  'msnlwrfcs', 'msnswrfcs', 'msdwlwrfcs', 'msdwswrfcs', 'msuwlwrfcs', 'msuwswrfcs',  'mtdwswrf',  'mtdwswrf',  'mtnlwrfcs', 'mtnswrfcs', 'mtuwswrfcs']):
     # ['mtnlwrfcl', 'mtnswrfcl', 'mtuwswrfcl'], ['mtnlwrf', 'mtnswrf', 'mtuwswrf'], ['mtnlwrfcs', 'mtnswrfcs', 'mtuwswrfcs']
     # ['mtuwswrfcs'], ['mtnswrfcs'], ['mtdwswrf']
     # ['mtuwswrf'], ['mtnswrf'], ['mtdwswrf']
@@ -283,9 +291,11 @@ for var1, var2, var3 in zip(['msuwlwrf'], ['msnlwrf'], ['msdwlwrf']):
         era5_sl_mon = (era5_sl_mon_alltime[var2]['mon'] - era5_sl_mon_alltime[var3]['mon']).rename(var1)
     
     era5_sl_mon_alltime[var1] = mon_sea_ann(
-        var_monthly=era5_sl_mon, lcopy=False, mm=True, sm=True, am=True)
+        var_monthly=era5_sl_mon, lcopy=True, mm=True, sm=True, am=True)
     
-    with open(f'data/sim/era5/mon/era5_sl_mon_alltime_{var1}.pkl', 'wb') as f:
+    ofile = f'data/sim/era5/mon/era5_sl_mon_alltime_{var1}.pkl'
+    if os.path.exists(ofile): os.remove(ofile)
+    with open(ofile, 'wb') as f:
         pickle.dump(era5_sl_mon_alltime[var1], f)
     
     del era5_sl_mon_alltime[var2], era5_sl_mon_alltime[var3], era5_sl_mon_alltime[var1], era5_sl_mon
@@ -296,7 +306,7 @@ for var1, var2, var3 in zip(['msuwlwrf'], ['msnlwrf'], ['msdwlwrf']):
 
 '''
 #-------------------------------- check
-itime=-1
+itime=-10
 era5_sl_mon_alltime = {}
 for var1, var2, var3 in zip(
     ['msuwlwrf',  'msuwswrf',  'msuwlwrfcs',  'msuwswrfcs',  'msnlwrfcl', 'msnswrfcl', 'msdwlwrfcl', 'msdwswrfcl', 'msuwlwrfcl', 'msuwswrfcl',  'mtuwswrf',  'mtuwswrfcs',  'mtnlwrfcl', 'mtnswrfcl', 'mtuwswrfcl'],
@@ -337,9 +347,10 @@ with open(f'data/sim/era5/mon/era5_sl_mon_alltime_mtuwswrf.pkl', 'rb') as f:
 
 # region derive era5 sl mon data 2
 
-for var1, vars in zip(['toa_albedo', 'toa_albedocs', 'toa_albedocl'], [['mtuwswrf', 'mtdwswrf'], ['mtuwswrfcs', 'mtdwswrf'], ['mtuwswrfcl', 'mtdwswrf']]):
+for var1, vars in zip(['msnrf'], [['msdwlwrf', 'msdwswrf', 'msuwlwrf', 'msuwswrf', 'mslhf', 'msshf']]):
     # var1='toa_albedo'; vars=['mtuwswrf', 'mtdwswrf']
     # ['msnrf'], [['msdwlwrf', 'msdwswrf', 'msuwlwrf', 'msuwswrf', 'mslhf', 'msshf']]
+    # ['toa_albedo', 'toa_albedocs', 'toa_albedocl'], [['mtuwswrf', 'mtdwswrf'], ['mtuwswrfcs', 'mtdwswrf'], ['mtuwswrfcl', 'mtdwswrf']]
     print(f'#-------------------------------- Derive {var1} from {vars}')
     
     era5_sl_mon_alltime = {}
@@ -396,7 +407,7 @@ for var2 in ['msnrf', 'msdwlwrf', 'msdwswrf', 'msuwlwrf', 'msuwswrf', 'mslhf', '
     with open(f'data/sim/era5/mon/era5_sl_mon_alltime_{var2}.pkl','rb') as f:
         era5_sl_mon_alltime[var2] = pickle.load(f)
 
-itime=-1
+itime=-10
 data1 = era5_sl_mon_alltime['msnrf']['mon'][itime].values
 data2 = sum(era5_sl_mon_alltime[var]['mon'][itime] for var in ['msdwlwrf', 'msdwswrf', 'msuwlwrf', 'msuwswrf', 'mslhf', 'msshf']).values.astype('float32')
 print((data1 == data2).all())
