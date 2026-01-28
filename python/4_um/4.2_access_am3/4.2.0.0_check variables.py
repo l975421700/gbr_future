@@ -119,7 +119,7 @@ iexp = 'am3-climaerosol'
 streams = ['a', 'b', 'c']
 stream_time = {'a': 'monthly', 'b': 'hourly', 'c': 'daily'}
 
-for istream in ['c']: # streams
+for istream in ['a']: # streams
     # istream = 'a'
     print(f'#-------------------------------- {istream} {stream_time[istream]}')
     

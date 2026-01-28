@@ -2,7 +2,7 @@
 
 import glob
 import os
-qjobo_fl = sorted(glob.glob('scratch/run/qjob*'))
+qjobo_fl = sorted(glob.glob('/home/563/qg8515/scratch/run/qjob*'))
 for ifile in qjobo_fl:
     with open(ifile, 'r') as file:
         content = file.read()

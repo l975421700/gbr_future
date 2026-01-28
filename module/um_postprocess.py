@@ -470,6 +470,8 @@ suite_label = {
 am3_label = {
     'access-am3-configs': r'$control$',
     'am3-plus4k': r'$SST{+}4K$',
+    'am3-climaerosol': r'$climaero$',
+    'am3-climaerop4k': r'$climaero{+}4K$',
     
     # obs
     'CERES': 'CERES',
@@ -485,7 +487,7 @@ am3_label = {
 
 # region interp_to_pressure_levels
 
-def interp_to_pressure_levels(var, pressure, plevs_hpa):
+def interp_to_pressure_levels(var, pressure, plevs_hpa, theta='theta80'):
     import numpy as np
     import xarray as xr
     
@@ -503,7 +505,7 @@ def interp_to_pressure_levels(var, pressure, plevs_hpa):
         xr.DataArray(plevs_hpa, dims=['pressure']),
         pressure,
         var,
-        input_core_dims=[['pressure'], ['theta80'], ['theta80']],
+        input_core_dims=[['pressure'], [theta], [theta]],
         output_core_dims=[['pressure']],
         vectorize=True,
         dask='parallelized',
