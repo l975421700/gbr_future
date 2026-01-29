@@ -14,19 +14,21 @@ from scipy import stats
 import pandas as pd
 from metpy.interpolate import cross_section
 from statsmodels.stats import multitest
-from metpy.calc import pressure_to_height_std, geopotential_to_height, potential_temperature, equivalent_potential_temperature, specific_humidity_from_mixing_ratio, wind_components, relative_humidity_from_specific_humidity, dewpoint_from_specific_humidity
+from metpy.calc import pressure_to_height_std, geopotential_to_height
 from metpy.units import units
 import metpy.calc as mpcalc
 import pickle
-from datetime import datetime
-from skimage.measure import block_reduce
-from netCDF4 import Dataset
 import xesmf as xe
-import healpy as hp
+import calendar
+import glob
+from metpy.calc import specific_humidity_from_dewpoint, relative_humidity_from_dewpoint, vertical_velocity_pressure, mixing_ratio_from_specific_humidity
+from xmip.preprocessing import replace_x_y_nominal_lat_lon
+import rioxarray as rxr
 
 # plot
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 from matplotlib.colors import BoundaryNorm
 import cartopy.crs as ccrs
 from matplotlib import cm
@@ -42,9 +44,7 @@ import geopandas as gpd
 import matplotlib.patches as mpatches
 from matplotlib.lines import Line2D
 import cartopy.feature as cfeature
-from PIL import Image
-from matplotlib.colors import ListedColormap
-import matplotlib.ticker as ticker
+from matplotlib.patches import Rectangle
 
 # management
 import os
@@ -56,11 +56,6 @@ process = psutil.Process()
 import string
 import warnings
 warnings.filterwarnings('ignore')
-import glob
-import argparse
-import calendar
-from pathlib import Path
-import time
 
 # self defined
 from mapplot import (
@@ -75,7 +70,6 @@ from mapplot import (
 
 from namelist import (
     month_jan,
-    month_num,
     monthini,
     seasons,
     seconds_per_d,
@@ -92,11 +86,14 @@ from component_plot import (
     cplot_lon180,
     cplot_lon180_ctr,
     plt_mesh_pars,
-    get_nn_lon_lat_index,
 )
 
 from calculations import (
     time_weighted_mean,
+    coslat_weighted_mean,
+    coslat_weighted_rmsd,
+    global_land_ocean_rmsd,
+    global_land_ocean_mean,
     mon_sea_ann,
     regrid,
     cdo_regrid,)
@@ -109,451 +106,770 @@ from um_postprocess import (
     stash2var, stash2var_gal, stash2var_ral,
     var2stash, var2stash_gal, var2stash_ral,
     suite_res, suite_label,
-    interp_to_pressure_levels)
+    interp_to_pressure_levels,
+    amstash2var, amvar2stash, preprocess_amoutput, amvargroups, am3_label)
 
 # endregion
 
 
-# region plot mean vertical profiles
+# region plot obs and sim am sl
+# Memory Used: 38.13GB, Walltime Used: 00:50:53 for 4 ds
+# Memory Used: 42.17GB, Walltime Used: 00:59:30 for 3 ds
 
 # options
-colvars = ['hus', 'hur', 'ta', 'theta', 'theta_e', 'ua', 'va']
-dss = [('Radiosonde',''),('u-ds714',1),('u-ds717',1),('u-ds722',1),('u-ds726',1)]
-# [('Radiosonde',''), ('ERA5',''), ('BARRA-R2',''), ('BARRA-C2','')]
-# [('Radiosonde',''),('BARRA-C2',''),('BARPA-C',''),('u-ds714',1),('u-ds717',1),('u-ds722',1),('u-ds726',1)]
-# [('Radiosonde',''),('u-ds714',1),('u-ds717',1),('u-ds722',1),('u-ds726',1)],
+years = '1983'; yeare = '1987'
+vars = [
+    'seaice', 'sst', 'ts', 'blh', 'rlds'
+    
+    # # monthly
+    # 'seaice', 'sst'
+    # 'rsn_trop', 'rsu_trop', 'rln_trop', 'rld_trop', 'cosp_isccp_Tb', 'cosp_isccp_Tbcs', 'GPP', 'PNPP', 'zg_freeze', 'p_freeze', 'p_trop', 't_trop', 'h_trop',
+    
+    # # hourly
+    # 'ts', 'blh', 'rlds', 'ps', 'rsns', 'rsdt', 'rsutcs', 'rsdscs', 'rsuscs', 'rsds', 'rlns', 'rlutcs', 'rldscs', 'uas', 'vas', 'sfcWind', 'tas', 'das', 'psl', 'prw', 'rlut', 'rsut', 'hfss', 'hfls', 'pr', 'clh', 'clm', 'cll', 'clt', 'clwvi', 'clivi'
+    # 'rlu_t_s', 'rss_dir', 'rss_dif', 'cosp_isccp_albedo', 'cosp_isccp_tau', 'cosp_isccp_ctp', 'cosp_isccp_tcc', 'cosp_c_lcc', 'cosp_c_mcc', 'cosp_c_hcc', 'cosp_c_tcc', 'mlh', 'mlentrain', 'blentrain', 'wind_gust', 'lsrf', 'lssf', 'crf', 'csf', 'rain', 'snow', 'deep_pr', 'clvl', 'CAPE', 'CIN', 'dmvi', 'wmvi', 'fog2m', 'qt2m', 'hfms', 'huss', 'hurs'
+    ]
+ds_names = ['ERA5', 'access-am3-configs', 'am3-plus4k', 'am3-climaerosol', 'am3-climaerop4k']
+plt_regions = ['global']
+plt_modes = ['original', 'difference']
+nrow = 1 # 2 #
+ncol = len(ds_names) # 3 #
+if ncol==2:
+    mpl.rc('font', family='Times New Roman', size=10)
+elif ncol==3:
+    mpl.rc('font', family='Times New Roman', size=12)
+elif ncol==4:
+    mpl.rc('font', family='Times New Roman', size=14)
 
 # settings
-year, month = 2020, 6
-starttime = datetime(year, month, 2)
-endtime = datetime(year, month, 30, 23, 59)
-ptop = 200
-plevs_hpa = np.arange(1000, ptop-1e-4, -25)
-target_pressures = np.arange(1000, ptop-1e-4, -1)
-station = 'Willis Island'
-stationNumber = '94299'
-slat = -16.288
-slon = 149.965
+min_lonh9, max_lonh9, min_lath9, max_lath9 = [80, 200, -60, 60]
+cm_saf_varnames = {'rlut': 'LW_flux', 'rsut': 'SW_flux', 'CDNC': 'cdnc_liq',
+                   'clwvi': 'lwp_allsky', 'clivi': 'iwp_allsky',}
+cltypes = {
+    'hcc': ['Cirrus', 'Cirrostratus', 'Deep convection'],
+    'mcc': ['Altocumulus', 'Altostratus', 'Nimbostratus'],
+    'lcc': ['Cumulus', 'Stratocumulus', 'Stratus'],
+    'tcc': ['Cirrus', 'Cirrostratus', 'Deep convection', 'Altocumulus', 'Altostratus', 'Nimbostratus', 'Cumulus', 'Stratocumulus', 'Stratus']}
+extend2 = 'both'
+# regridder = {}
 
-nrow = 1
-ncol = len(colvars)
-pwidth  = 4.4
-pheight = 5.5
-fm_left = 2.5/(pwidth*ncol)
-fm_right = 0.99
-fm_bottom = 4/(pheight*nrow+4)
-fm_top = 0.96
-
-if len(colvars) <= 3:
-    mpl.rc('font', family='Times New Roman', size=10)
-elif len(colvars) == 4:
-    mpl.rc('font', family='Times New Roman', size=12)
-elif len(colvars) == 5:
-    mpl.rc('font', family='Times New Roman', size=14)
-elif len(colvars) == 6:
-    mpl.rc('font', family='Times New Roman', size=16)
-elif len(colvars) >= 7:
-    mpl.rc('font', family='Times New Roman', size=18)
-
-def std_func(ds_in, var):
-    ds = ds_in.drop_vars('crs', errors='ignore')
-    if 'pressure' in ds.coords:
-        ds = ds.expand_dims(dim='pressure', axis=1)
-    elif 'pressure' in ds:
-        ds = ds.expand_dims(dim={'pressure': [ds['pressure'].values]}, axis=1)
-    varname=[varname for varname in ds.data_vars if varname.startswith(var)][0]
-    ds = ds.rename({varname: var})
-    return(ds)
-
-ofile_ds = f'data/sim/um/combined/{', '.join(x for x in colvars)} wi {', '.join(x[0] for x in dss)}.pkl'
-if os.path.exists(ofile_ds):
-  with open(ofile_ds, 'rb') as f:
-    ds = pickle.load(f)
-else:
-  ds = {}
-  for ids in dss:
-    print(f'#---------------- Get {ids}')
-    if ids[0] == 'Radiosonde':
-        # ids = ('Radiosonde', '')
-        
-        fl = sorted(glob.glob(f'data/obs/radiosonde/Wyoming/{stationNumber}/{year}{month:02d}*.csv'))
-        for idx, ifile in enumerate(fl):
-            # idx=-1; ifile = fl[-1]
-            # print(f'#---------------- {idx} {ifile}')
-            
-            df = pd.read_csv(ifile,skipfooter=1,engine='python').rename(columns={'pressure_hPa': 'pressure', 'geopotential height_m': 'height', 'temperature_C': 'ta', 'dew point temperature_C': 'dewpoint', 'ice point temperature_C': 'icepoint', 'relative humidity_%': 'hur', 'mixing ratio_g/kg': 'mixr', 'wind direction_degree': 'direction', 'wind speed_m/s': 'speed'})
-            df['theta'] = potential_temperature(
-                df.pressure.values * units.hPa,
-                df.ta.values * units.degC).to('degC').magnitude
-            df['theta_e'] = equivalent_potential_temperature(
-                df.pressure.values * units.hPa,
-                df.ta.values * units.degC,
-                df.dewpoint.values * units.degC).to('degC').magnitude
-            df['hus'] = specific_humidity_from_mixing_ratio(
-                df.mixr.values * units('g/kg')).magnitude
-            ua, va = wind_components(
-                df.speed.values * units('m/s'),
-                df.direction.values * units.deg)
-            df['ua'], df['va'] = ua.magnitude, va.magnitude
-            
-            day = int(ifile.split('/')[-1].split('-')[0][6:8])
-            hour = int(ifile.split('/')[-1].split('-')[0][8:10])
-            date = datetime(year, month, day, hour)
-            
-            xdf = xr.Dataset(
-                {var: (['time', 'pressure'], np.zeros((1, len(target_pressures))))
-                 for var in colvars},
-                coords={'time': [date], 'pressure': target_pressures})
-            for var in colvars:
-                xdf[var][:] = np.interp(np.log(target_pressures),
-                                        np.log(df['pressure'].values[::-1]),
-                                        df[var].values[::-1])
-            
-            if idx==0:
-                ds[ids[0]] = xdf.copy()
-            else:
-                ds[ids[0]] = xr.concat([ds[ids[0]], xdf], dim='time')
-    elif ids[0] == 'ERA5':
-        # ids = ('ERA5', '')
-        for var2 in ['hus', 'ta', 'hur', 'theta', 'theta_e', 'ua', 'va']:
-            var1 = cmip6_era5_var[var2]
-            # var2='hus'; var1='q'
-            print(f'#-------- {var2}')
-            
-            ifile = f'/g/data/rt52/era5/pressure-levels/reanalysis/{var1}/{year}/{var1}_era5_oper_pl_{year}{month:02d}01-{year}{month:02d}{calendar.monthrange(year, month)[1]}.nc'
-            if os.path.exists(ifile):
-                era5_ds = xr.open_dataset(ifile)[var1].rename({'level': 'pressure'}).sel(pressure=slice(ptop, 1000), time=slice(starttime, endtime)).sel(longitude=slon, latitude=slat, method='nearest').compute()
-            elif var2 == 'theta':
-                era5_ds = potential_temperature(
-                    ds[ids[0]]['ta'].pressure * units.hPa,
-                    ds[ids[0]]['ta'] * units.degC).metpy.dequantify().compute()
-            elif var2 == 'theta_e':
-                dewpoint = dewpoint_from_specific_humidity(
-                    ds[ids[0]]['hus'].pressure * units.hPa,
-                    ds[ids[0]]['hus'] * units('g/kg')).compute()
-                era5_ds = equivalent_potential_temperature(
-                    ds[ids[0]]['ta'].pressure * units.hPa,
-                    ds[ids[0]]['ta'] * units.degC,
-                    dewpoint).metpy.dequantify().compute()
-            else:
-                print(f'Warning: {var2} not found')
-            
-            if var1 in ['t', 'theta', 'theta_e']:
-                era5_ds -= zerok
-            elif var1 in ['q', 'ciwc', 'clwc', 'crwc', 'cswc']:
-                era5_ds *= 1000
-            elif var1 in ['z', ]:
-                era5_ds /= 9.80665
-            
-            if not ids[0] in ds.keys():
-                ds[ids[0]] = era5_ds.rename(var2).compute().copy()
-            else:
-                ds[ids[0]] = xr.merge([ds[ids[0]], era5_ds.rename(var2).compute().copy()])
-    elif ids[0] == 'BARRA-R2':
-        # ids = ('BARRA-R2', '')
-        for var2 in ['hus', 'ta', 'hur', 'theta', 'theta_e', 'ua', 'va']:
-            # var2='hur'
-            print(f'#-------- {var2}')
-            
-            fl = sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUS-11/BOM/ERA5/historical/hres/BARRA-R2/v1/1hr/{var2}[0-9]*[!m]/latest/*{year}{month:02d}.nc'))
-            if len(fl) > 0:
-                r2_ds = xr.open_mfdataset(fl, parallel=True, preprocess=lambda ds: std_func(ds, var=var2))[var2].sel(pressure=slice(ptop, 1000), time=slice(starttime, endtime)).sel(lon=slon, lat=slat, method='nearest').compute()
-            elif var2 == 'hur':
-                r2_ds = (relative_humidity_from_specific_humidity(
-                    ds[ids[0]]['ta'].pressure * units.hPa,
-                    ds[ids[0]]['ta'] * units.degC,
-                    ds[ids[0]]['hus'] / 1000 * units('kg/kg')).metpy.dequantify() * 100).compute()
-            elif var2 == 'theta':
-                r2_ds = potential_temperature(
-                    ds[ids[0]]['ta'].pressure * units.hPa,
-                    ds[ids[0]]['ta'] * units.degC).metpy.dequantify().compute()
-            elif var2 == 'theta_e':
-                dewpoint = dewpoint_from_specific_humidity(
-                    ds[ids[0]]['hus'].pressure * units.hPa,
-                    ds[ids[0]]['hus'] * units('g/kg')).compute()
-                r2_ds = equivalent_potential_temperature(
-                    ds[ids[0]]['ta'].pressure * units.hPa,
-                    ds[ids[0]]['ta'] * units.degC,
-                    dewpoint).metpy.dequantify().compute()
-            else:
-                print(f'Warning: {var2} not found')
-            
-            if var2 in ['hus']:
-                r2_ds *= 1000
-            elif var2 in ['ta', 'theta', 'theta_e']:
-                r2_ds -= zerok
-            
-            if not ids[0] in ds.keys():
-                ds[ids[0]] = r2_ds.rename(var2).compute().copy()
-            else:
-                ds[ids[0]] = xr.merge([ds[ids[0]], r2_ds.rename(var2).compute().copy()])
-    elif ids[0] == 'BARRA-C2':
-        # ids = ('BARRA-C2', '')
-        for var2 in ['hus', 'ta', 'hur', 'theta', 'theta_e', 'ua', 'va']:
-            # var2='hus'
-            print(f'#-------- {var2}')
-            
-            fl = sorted(glob.glob(f'/g/data/ob53/BARRA2/output/reanalysis/AUST-04/BOM/ERA5/historical/hres/BARRA-C2/v1/1hr/{var2}[0-9]*[!m]/latest/*{year}{month:02d}.nc'))
-            if len(fl) > 0:
-                c2_ds = xr.open_mfdataset(fl, parallel=True, preprocess=lambda ds: std_func(ds, var=var2))[var2].sel(pressure=slice(ptop, 1000), time=slice(starttime, endtime)).sel(lon=slon, lat=slat, method='nearest').compute()
-            elif var2 == 'hur':
-                c2_ds = (relative_humidity_from_specific_humidity(
-                    ds[ids[0]]['ta'].pressure * units.hPa,
-                    ds[ids[0]]['ta'] * units.degC,
-                    ds[ids[0]]['hus'] / 1000 * units('kg/kg')).metpy.dequantify() * 100).compute()
-            elif var2 == 'theta':
-                c2_ds = potential_temperature(
-                    ds[ids[0]]['ta'].pressure * units.hPa,
-                    ds[ids[0]]['ta'] * units.degC).metpy.dequantify().compute()
-            elif var2 == 'theta_e':
-                dewpoint = dewpoint_from_specific_humidity(
-                    ds[ids[0]]['hus'].pressure * units.hPa,
-                    ds[ids[0]]['hus'] * units('g/kg')).compute()
-                c2_ds = equivalent_potential_temperature(
-                    ds[ids[0]]['ta'].pressure * units.hPa,
-                    ds[ids[0]]['ta'] * units.degC,
-                    dewpoint).metpy.dequantify().compute()
-            else:
-                print(f'Warning: {var2} not found')
-            
-            if var2 in ['hus']:
-                c2_ds *= 1000
-            elif var2 in ['ta', 'theta', 'theta_e']:
-                c2_ds -= zerok
-            
-            if not ids[0] in ds.keys():
-                ds[ids[0]] = c2_ds.rename(var2).compute().copy()
-            else:
-                ds[ids[0]] = xr.merge([ds[ids[0]], c2_ds.rename(var2).compute().copy()])
-    elif ids[0] == 'BARPA-C':
-        # ids = ('BARPA-C', '')
-        for var2 in ['hus', 'ta', 'hur', 'theta', 'theta_e', 'ua', 'va']:
-            # var2='hus'
-            print(f'#-------- {var2}')
-            
-            fl = sorted(glob.glob(f'/g/data/py18/BARPA/output/CMIP6/DD/AUST-04/BOM/ERA5/evaluation/r1i1p1f1/BARPA-C/v1-r1/3hr/{var2}[0-9]*[!m]/latest/*{year}{month:02d}.nc'))
-            if len(fl) > 0:
-                pc_ds = xr.open_mfdataset(fl, parallel=True, preprocess=lambda ds: std_func(ds, var=var2))[var2].sel(pressure=slice(ptop, 1000), time=slice(starttime, endtime)).sel(lon=slon, lat=slat, method='nearest').compute()
-            elif var2 == 'hur':
-                pc_ds = (relative_humidity_from_specific_humidity(
-                    ds[ids[0]]['ta'].pressure * units.hPa,
-                    ds[ids[0]]['ta'] * units.degC,
-                    ds[ids[0]]['hus'] / 1000 * units('kg/kg')).metpy.dequantify() * 100).compute()
-            elif var2 == 'theta':
-                pc_ds = potential_temperature(
-                    ds[ids[0]]['ta'].pressure * units.hPa,
-                    ds[ids[0]]['ta'] * units.degC).metpy.dequantify().compute()
-            elif var2 == 'theta_e':
-                dewpoint = dewpoint_from_specific_humidity(
-                    ds[ids[0]]['hus'].pressure * units.hPa,
-                    ds[ids[0]]['hus'] * units('g/kg')).compute()
-                pc_ds = equivalent_potential_temperature(
-                    ds[ids[0]]['ta'].pressure * units.hPa,
-                    ds[ids[0]]['ta'] * units.degC,
-                    dewpoint).metpy.dequantify().compute()
-            else:
-                print(f'Warning: {var2} not found')
-            
-            if var2 in ['hus']:
-                pc_ds *= 1000
-            elif var2 in ['ta', 'theta', 'theta_e']:
-                pc_ds -= zerok
-            
-            if not ids[0] in ds.keys():
-                ds[ids[0]] = pc_ds.rename(var2).compute().copy()
-            else:
-                ds[ids[0]] = xr.merge([ds[ids[0]], pc_ds.rename(var2).compute().copy()])
-    elif ids[0] in suite_res.keys():
-        # ids = ('u-ds714', 1)
-        # ids = ('u-ds722',1)
-        isuite = ids[0]
-        ires = suite_res[isuite][ids[1]]
-        ilabel = f'{suite_label[isuite]}'
-        
-        fl = sorted(glob.glob(f'scratch/cylc-run/{isuite}/share/cycle/{year}{month:02d}??T0000Z/Australia/{ires}/*/um/umnsaa_pa000.nc'))
-        ram3_ds = xr.open_mfdataset(fl, parallel=True, preprocess=lambda ds_in: ds_in.pipe(preprocess_umoutput).sel(lon=slon, lat=slat, grid_longitude_cu=slon, grid_latitude_cv=slat, method='nearest')).sel(time=slice(starttime, endtime))
-        ram3_pa = ram3_ds[var2stash_ral['pa']].compute()
-        
-        for var2 in ['hus', 'ta', 'hur', 'theta', 'theta_e', 'ua', 'va']:
-            # var2='ua'
-            print(f'#-------- {var2}')
-            
-            if var2 in ['ua', 'va']:
-                ram3_data = ram3_ds[var2stash_ral[var2]].rename({'rho80': 'theta80'}).compute()
-                ram3_data = ram3_data.assign_coords(theta80=ram3_pa['theta80'])
-                ram3_output = interp_to_pressure_levels(ram3_data, ram3_pa/100, plevs_hpa)
-            elif var2 in var2stash_ral.keys():
-                ram3_data = ram3_ds[var2stash_ral[var2]].compute()
-                ram3_output = interp_to_pressure_levels(ram3_data, ram3_pa/100, plevs_hpa)
-            elif var2 == 'hur':
-                ram3_output = (relative_humidity_from_specific_humidity(
-                    ds[ilabel]['ta'].pressure * units.hPa,
-                    ds[ilabel]['ta'] * units.degC,
-                    ds[ilabel]['hus'] / 1000 * units('kg/kg')).metpy.dequantify() * 100).compute()
-            elif var2 == 'theta_e':
-                dewpoint = dewpoint_from_specific_humidity(
-                    ds[ilabel]['hus'].pressure * units.hPa,
-                    ds[ilabel]['hus'] * units('g/kg')).compute()
-                ram3_output = equivalent_potential_temperature(
-                    ds[ilabel]['ta'].pressure * units.hPa,
-                    ds[ilabel]['ta'] * units.degC,
-                    dewpoint).metpy.dequantify().compute()
-            else:
-                print(f'Warning: {var2} not found')
-        
-            if var2 in ['hus', 'qcf', 'qcl', 'qr', 'qs', 'qc', 'qt', 'clslw', 'qg']:
-                ram3_output *= 1000
-            elif var2 in ['ta', 'theta', 'theta_e']:
-                ram3_output -= zerok
-            elif var2 in ['ACF', 'BCF', 'TCF']:
-                ram3_output *= 100
-            
-            if not ilabel in ds.keys():
-                ds[ilabel] = ram3_output.rename(var2).compute().copy()
-            else:
-                ds[ilabel] = xr.merge([ds[ilabel], ram3_output.rename(var2).compute().copy()])
-  
-  with open(ofile_ds, 'wb') as f:
-    pickle.dump(ds, f)
-
-ds['Radiosonde'] = ds['Radiosonde'].sel(time=slice(starttime, endtime)).sortby('pressure')
-for ids in ds.keys():
-    # print(ids)
-    ds[ids] = ds[ids].sel(pressure=slice(ptop, 1000))
-
-opng=f"figures/4_um/4.0_barra/4.0.6_site_analysis/4.0.6.2 {', '.join(sorted(colvars))} in {', '.join(ids[0] for ids in dss)} at {station} {ptop} {year}-{month:02d}.png"
-
-fig, axs = plt.subplots(
-    nrow, ncol, sharey=True,
-    figsize=np.array([pwidth*ncol,pheight*nrow+4])/2.54,
-    gridspec_kw={'hspace': 0.01, 'wspace': 0.15})
-
-for jcol, var2 in enumerate(colvars):
-    print(f'#-------- {jcol} {var2}')
+for ivar in vars:
+    # ivar = 'vas'
+    print(f'#-------------------------------- {ivar}')
     
-    for ids in ds.keys():
-        print(f'#---- {ids}')
+    if ivar in ['sst', 'seaice']:
+        iregion = 'ocean'
+    elif ivar in ['GPP', 'PNPP']:
+        iregion = 'land'
+    else:
+        iregion = 'global'
+    
+    if ivar in ['pr', 'lsrf', 'lssf', 'crf', 'csf', 'rain', 'snow', 'deep_pr', 'mlentrain', 'blentrain', 'cosp_isccp_albedo', 'cosp_isccp_ctp']:
+        digit = 2
+    elif ivar in ['GPP', 'PNPP']:
+        digit = 3
+    else:
+        digit = 1
+    
+    ds_data = {'ann': {}, 'am': {}}
+    for ids in ds_names:
+        print(f'Get {ids}')
         
-        if ids == 'Radiosonde':
-            axs[jcol].plot(
-                ds[ids][var2].mean(dim='time'), ds[ids][var2].pressure,
-                '.-', lw=0.75, markersize=1, c=ds_color[ids], label=ids)
-        elif not 'Radiosonde' in ds.keys():
-            axs[jcol].plot(
-                ds[ids][var2].mean(dim='time'), ds[ids][var2].pressure,
-                '.-', lw=0.75, markersize=4, c=ds_color[ids], label=ids)
-        else:
-            axs[jcol].plot(
-                ds[ids][var2].sel(time=ds['Radiosonde'][var2].time, method='nearest').mean(dim='time'),
-                ds[ids][var2].pressure,
-                '.-', lw=0.75, markersize=4, c=ds_color[ids], label=ids)
-    
-    axs[jcol].invert_yaxis()
-    axs[jcol].set_ylim(1000, ptop)
-    axs[jcol].yaxis.set_minor_locator(AutoMinorLocator(2))
-    
-    axs[jcol].text(
-        0.5, -0.35,
-        f'({string.ascii_lowercase[jcol]}) {era5_varlabels[cmip6_era5_var[var2]]}',
-        ha='center', va='bottom', transform=axs[jcol].transAxes)
-    axs[jcol].xaxis.set_minor_locator(AutoMinorLocator(2))
-    axs[jcol].grid(True, which='both', lw=0.5, c='gray', alpha=0.5, ls='--')
-
-axs[0].set_ylabel(r'Pressure [$hPa$]')
-
-plt.legend(ncol=ncol, frameon=False, loc='center', handlelength=0.8,
-           handletextpad=0.5, columnspacing=1,
-           bbox_to_anchor=(0.5, 0.04), bbox_transform=fig.transFigure)
-
-fig.text(0.5, fm_bottom-0.28, f'{calendar.month_name[month]} {year} at {station}', va='center', ha='center')
-fig.subplots_adjust(fm_left, fm_bottom, fm_right, fm_top)
-fig.savefig(opng)
-
-
-
-'''
-if 'UM' in dss:
-    izlev=9
-    hk_um_z10_3H = xr.open_zarr(f'/g/data/qx55/uk_node/glm.n2560_RAL3p3/data.healpix.PT3H.z{izlev}.zarr')
+        if ids in ['access-am3-configs', 'am3-plus4k', 'am3-climaerosol', 'am3-climaerop4k']:
+            # ids = 'access-am3-configs'
+            istream = next((k for k, v in amvargroups.items() if ivar in v), None)
+            if not istream is None:
+                fl = sorted(glob.glob(f'cylc-run/{ids}/share/data/History_Data/netCDF/*a.p{istream}*.nc'))
+                ds = xr.open_mfdataset(fl, preprocess=preprocess_amoutput, parallel=True)
+                ds = ds[ivar].sel(time=slice(years, yeare))
+                
+                if 'lon_u' in ds.dims:
+                    ds = ds.rename({'lon_u': 'lon'})
+                if 'lat_v' in ds.dims:
+                    ds = ds.rename({'lat_v': 'lat'})
+                
+                if ivar in ['pr', 'evspsbl', 'evspsblpot', 'GPP', 'PNPP', 'lsrf', 'lssf', 'crf', 'csf', 'rain', 'snow', 'deep_pr']:
+                    ds *= seconds_per_d
+                elif ivar in ['tas', 'ts', 'sst', 'das']:
+                    ds -= zerok
+                elif ivar in ['rlus', 'rluscs', 'rlut', 'rlutcs', 'rsus', 'rsuscs', 'rsut', 'rsutcs', 'hfls', 'hfss', 'rsu_trop', 'rlu_t_s']:
+                    ds *= (-1)
+                elif ivar in ['psl', 'p_freeze', 'p_trop', 'ps', 'cosp_isccp_ctp']:
+                    ds /= 100
+                elif ivar in ['huss', 'clwvi', 'clivi', 'cwp', 'qt2m']:
+                    ds *= 1000
+                elif ivar in ['cll', 'clm', 'clh', 'clt', 'seaice', 'cosp_isccp_tcc', 'cosp_c_lcc', 'cosp_c_mcc', 'cosp_c_hcc', 'cosp_c_tcc', 'fog2m', 'clvl']:
+                    ds *= 100
+                elif ivar in ['h_trop']:
+                    ds /= 1000
+                
+                if istream in ['a']:
+                    ds_data['ann'][ids] = ds.resample({'time': '1YE'}).map(time_weighted_mean).compute()
+                elif istream in ['b']:
+                    ds_data['ann'][ids] = ds.resample({'time': '1YE'}).mean().compute()
+        elif ids == 'ERA5':
+            # ids = 'ERA5'
+            with open(f'data/sim/era5/mon/era5_sl_mon_alltime_{cmip6_era5_var[ivar]}.pkl', 'rb') as f:
+                era5_sl_mon_alltime = pickle.load(f)
+            ds_data['ann'][ids] = era5_sl_mon_alltime['ann'].sel(time=slice(years, yeare))
+            if ivar in ['clwvi', 'clivi']:
+                ds_data['ann'][ids] *= 1000
         
-        print('get UM')
-        if 'UM' in dss:
-            ds['UM'][var2] = hk_um_z10_3H[var2].sel(cell=hp.ang2pix(2**izlev, slon, slat, nest=True, lonlat=True), method='nearest').sel(pressure=slice(ptop, 1000), time=slice(f'{year}-{month}', f'{year}-{month}')).compute()
-            if var2 in ['hus']:
-                ds['UM'][var2] *= 1000
-            elif var2 in ['ta']:
-                ds['UM'][var2] -= zerok
-
-
-#-------------------------------- check
-izlev = 9
-print(hp.ang2pix(2**izlev, slon, slat, nest=True, lonlat=True))
-theta = np.radians(90.0 - slat)
-phi = np.radians(slon)
-print(hp.ang2pix(2**izlev, theta, phi, nest=True))
-
-print(get_nn_lon_lat_index(2**izlev, [slon], [slat]).values)
-
-
-#-------------------------------- check
-
-opng=f'figures/test.png'
-minmaxlim = {'hus': [0, 20],    'hur':   [0, 100],
-             'ta':  [5, 30],    'theta': [20, 60],  'theta_e': [30, 80],
-             'ua':  [-20, 20],  'va':    [-20, 20]}
-
-nrow = 1
-ncol = len(colvars)
-pwidth  = 3
-pheight = 6.6
-fm_left = 1.5/(pwidth*ncol+4)
-fm_right = 1-2.5/(pwidth*ncol+4)
-fm_bottom = 1.2/(pheight*nrow+2.4)
-fm_top = 1 - 1.2/(pheight*nrow+2.4)
-
-year, month, day, hour = 2020, 6, 2, 11
-date = datetime(year, month, day, hour)
-
-fig, axs = plt.subplots(
-    nrow,ncol,sharey=True,
-    figsize=np.array([pwidth*ncol+4,pheight*nrow+2.4])/2.54,
-    gridspec_kw={'hspace': 0.01, 'wspace': 0.15})
-
-axs[0].invert_yaxis()
-axs[0].set_ylim(1030, ptop)
-axs[0].set_ylabel(r'Pressure [$hPa$]')
-
-for jcol in range(ncol):
-    axs[jcol].plot(
-        xdfs[colvars[jcol]].sel(time=date, method='nearest'), xdfs.pressure,
-        '.-', lw=0.75, markersize=1,  c='k', label='Radiosonde')
-    for ids in dss:
-        # print(ids)
-        axs[jcol].plot(
-            ds[ids][colvars[jcol]].sel(time=date, method='nearest'),
-            ds[ids][colvars[jcol]].pressure,
-            '.-', lw=0.75, markersize=4, c=ds_color[ids], label=ids)
+        ds_data['ann'][ids]['lon'] = ds_data['ann'][ids]['lon'] % 360
+        ds_data['ann'][ids] = ds_data['ann'][ids].sortby(['lon', 'lat'])
+        ds_data['am'][ids] = ds_data['ann'][ids].mean(dim='time').compute()
     
-    axs[jcol].set_xlabel(era5_varlabels_sim[cmip6_era5_var[colvars[jcol]]])
-    if colvars[jcol]=='theta_e':
-        axs[jcol].set_xticks(np.array([20, 40, 60, 80]))
-    elif colvars[jcol] in ['ua', 'va']:
-        axs[jcol].set_xticks(np.array([-10, 0, 10]))
-    axs[jcol].set_xlim(minmaxlim[colvars[jcol]])
-    axs[jcol].xaxis.set_minor_locator(ticker.AutoMinorLocator(2))
-    axs[jcol].grid(which='both', lw=0.5, alpha=0.5, ls='--')
-    axs[jcol].text(0, 1.02, f'({string.ascii_lowercase[jcol]})',
-                   ha='left', va='bottom', transform=axs[jcol].transAxes)
+    cbar_label1 = f'{years}-{yeare} {era5_varlabels[cmip6_era5_var[ivar]]}'
+    cbar_label2 = f'Difference in {era5_varlabels[cmip6_era5_var[ivar]]}'
+    
+    for plt_region in plt_regions:
+        # plt_region = 'global'
+        print(f'#---------------- {plt_region}')
+        
+        plt_org = {}
+        plt_ann = {}
+        plt_mean = {}
+        for ids in ds_names:
+            if plt_region == 'global':
+                plt_org[ids] = ds_data['am'][ids]
+                plt_ann[ids] = ds_data['ann'][ids]
+            
+            plt_mean[ids] = global_land_ocean_mean(plt_org[ids], iregion)
+        
+        plt_diff = {}
+        plt_rmsd = {}
+        plt_md = {}
+        for ids in ds_names[1:]:
+            print(f'{ids} - {ds_names[0]}')
+            # if not f'{ids} - {ds_names[0]}' in regridder.keys():
+            #     regridder[f'{ids} - {ds_names[0]}'] = xe.Regridder(
+            #         plt_org[ids],
+            #         plt_org[ds_names[0]],
+            #         method='bilinear')
+            # plt_diff[ids] = regridder[f'{ids} - {ds_names[0]}'](plt_org[ids]) - plt_org[ds_names[0]]
+            plt_diff[ids] = regrid(plt_org[ids], plt_org[ds_names[0]]) - plt_org[ds_names[0]]
+            plt_rmsd[ids] = global_land_ocean_rmsd(plt_diff[ids], iregion)
+            plt_md[ids] = global_land_ocean_mean(plt_diff[ids], iregion)
+            
+            if ivar not in ['pr']:
+                ttest_fdr_res = ttest_fdr_control(
+                    # regridder[f'{ids} - {ds_names[0]}'](plt_ann[ids]),
+                    regrid(plt_ann[ids], plt_ann[ds_names[0]]),
+                    plt_ann[ds_names[0]])
+                plt_diff[ids] = plt_diff[ids].where(ttest_fdr_res, np.nan)
+        
+        extend1 = 'both'
+        if plt_region == 'global':
+            if ivar in ['sst']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=-2, cm_max=30, cm_interval1=1, cm_interval2=2,
+                    cmap='Oranges_r',)
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-5, cm_max=5, cm_interval1=0.5, cm_interval2=1,
+                    cmap='BrBG')
+            elif ivar in ['rsut']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=-200, cm_max=-40, cm_interval1=10, cm_interval2=20,
+                    cmap='Greens',)
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10,
+                    cmap='BrBG')
+            elif ivar in ['rlut']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=-300, cm_max=-120, cm_interval1=10, cm_interval2=30,
+                    cmap='Greens',)
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10,
+                    cmap='BrBG')
+            elif ivar in ['clwvi']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=0, cm_max=160, cm_interval1=10, cm_interval2=20,
+                    cmap='Greens_r',)
+                extend1 = 'max'
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-100, cm_max=100, cm_interval1=10, cm_interval2=20,
+                    cmap='BrBG_r')
+            elif ivar in ['clivi']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=0, cm_max=240, cm_interval1=10, cm_interval2=20,
+                    cmap='Greens_r',)
+                extend1 = 'max'
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-100, cm_max=100, cm_interval1=10, cm_interval2=20,
+                    cmap='BrBG_r')
+            elif ivar in ['CDNC']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=0, cm_max=150, cm_interval1=10, cm_interval2=20,
+                    cmap='viridis_r',)
+                extend1 = 'max'
+            elif ivar in ['clh', 'clm', 'cll', 'cll_mol', 'cll_rol', 'cosp_c_lcc', 'cosp_c_mcc', 'cosp_c_hcc', 'clvl', 'fog2m']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=0, cm_max=100, cm_interval1=10, cm_interval2=10,
+                    cmap='Blues_r',)
+                extend1 = 'neither'
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10,
+                    cmap='BrBG_r',)
+            elif ivar in ['clt', 'cosp_isccp_tcc', 'cosp_c_tcc']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=0, cm_max=100, cm_interval1=10, cm_interval2=10,
+                    cmap='Blues_r',)
+                extend1 = 'neither'
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10,
+                    cmap='BrBG_r',)
+            elif ivar in ['hfls']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=-240, cm_max=0, cm_interval1=20, cm_interval2=40, cmap='Greens',)
+                extend1 = 'both'
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-60, cm_max=60, cm_interval1=10, cm_interval2=10, cmap='BrBG')
+            elif ivar in ['hfss']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=-40, cm_max=0, cm_interval1=2.5, cm_interval2=5, cmap='Greens')
+                extend1 = 'both'
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-20, cm_max=20, cm_interval1=2.5, cm_interval2=5, cmap='BrBG',)
+            elif ivar in ['rsutcs']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=-150, cm_max=-50, cm_interval1=5, cm_interval2=10,
+                    cmap='Greens',)
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    # cm_min=-10, cm_max=10, cm_interval1=1, cm_interval2=2,
+                    cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10,
+                    cmap='BrBG')
+            elif ivar in ['rlutcs']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=-320, cm_max=-160, cm_interval1=10, cm_interval2=20,
+                    cmap='Greens',)
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10,
+                    cmap='BrBG')
+            elif ivar in ['rsutcl']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=-150, cm_max=-50, cm_interval1=5, cm_interval2=10,
+                    cmap='Greens',)
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    # cm_min=-10, cm_max=10, cm_interval1=1, cm_interval2=2,
+                    cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10,
+                    cmap='BrBG')
+            elif ivar in ['rlutcl']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=-290, cm_max=-210, cm_interval1=5, cm_interval2=10,
+                    cmap='viridis',)
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    # cm_min=-10, cm_max=10, cm_interval1=1, cm_interval2=2,
+                    cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10,
+                    cmap='BrBG')
+            elif ivar in ['blh', 'zmla', 'mlh']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=0, cm_max=1200, cm_interval1=100, cm_interval2=200,
+                    cmap='Greens_r',)
+                extend1 = 'max'
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-600, cm_max=600, cm_interval1=50, cm_interval2=200,
+                    cmap='BrBG_r')
+            elif ivar in ['LCL']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=0, cm_max=2800, cm_interval1=100, cm_interval2=400,
+                    cmap='Greens_r',)
+                extend1 = 'max'
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-200, cm_max=200, cm_interval1=50, cm_interval2=50,
+                    cmap='BrBG_r')
+            elif ivar in ['LTS']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=4, cm_max=18, cm_interval1=1, cm_interval2=2,
+                    cmap='pink')
+                extend1 = 'both'
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-2, cm_max=2, cm_interval1=0.5, cm_interval2=0.5,
+                    cmap='BrBG')
+            elif ivar in ['EIS']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=0, cm_max=10, cm_interval1=1, cm_interval2=1,
+                    cmap='pink')
+                extend1 = 'both'
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-2, cm_max=2, cm_interval1=0.5, cm_interval2=0.5,
+                    cmap='BrBG')
+            elif ivar in ['ECTEI']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=-8, cm_max=8, cm_interval1=1, cm_interval2=2,
+                    cmap='PuOr')
+                extend1 = 'both'
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-2, cm_max=2, cm_interval1=0.5, cm_interval2=0.5,
+                    cmap='BrBG')
+            elif ivar in ['pr', 'lsrf', 'lssf', 'crf', 'csf', 'rain', 'snow', 'deep_pr']:
+                pltlevel1 = np.array([0, 0.5, 1, 2, 3, 4, 6, 8, 10, 12, 16, 20,])
+                pltticks1 = np.array([0, 0.5, 1, 2, 3, 4, 6, 8, 10, 12, 16, 20,])
+                pltnorm1 = BoundaryNorm(pltlevel1, ncolors=len(pltlevel1)-1, clip=True)
+                pltcmp1 = plt.get_cmap('Blues', len(pltlevel1)-1)
+                extend1 = 'max'
+                pltlevel2 = np.array([-6, -4, -3, -2, -1, -0.5, 0, 0.5, 1, 2, 3, 4, 6])
+                pltticks2 = np.array([-6, -4, -3, -2, -1, -0.5, 0, 0.5, 1, 2, 3, 4, 6])
+                pltnorm2 = BoundaryNorm(pltlevel2, ncolors=len(pltlevel2)-1, clip=True)
+                pltcmp2 = plt.get_cmap('BrBG', len(pltlevel2)-1)
+            elif ivar in ['seaice']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=0, cm_max=100, cm_interval1=10, cm_interval2=20,
+                    cmap='Blues_r',)
+                extend1 = 'neither'
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-50, cm_max=50, cm_interval1=10, cm_interval2=20,
+                    cmap='BrBG')
+            elif ivar in ['rsn_trop']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=50, cm_max=350, cm_interval1=25, cm_interval2=50,
+                    cmap='Greens_r',)
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10,
+                    cmap='BrBG')
+            elif ivar in ['rsu_trop']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=-160, cm_max=-40, cm_interval1=10, cm_interval2=20,
+                    cmap='Greens',)
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10,
+                    cmap='BrBG')
+            elif ivar in ['rln_trop']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=-300, cm_max=-100, cm_interval1=10, cm_interval2=40,
+                    cmap='Greens',)
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10,
+                    cmap='BrBG')
+            elif ivar in ['rld_trop']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=10, cm_max=30, cm_interval1=2, cm_interval2=2,
+                    cmap='Greens_r',)
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-6, cm_max=6, cm_interval1=1, cm_interval2=2,
+                    cmap='BrBG')
+            elif ivar in ['cosp_isccp_Tb', 'cosp_isccp_Tbcs']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=220, cm_max=300, cm_interval1=5, cm_interval2=10,
+                    cmap='Greens_r',)
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-10, cm_max=10, cm_interval1=1, cm_interval2=2,
+                    cmap='BrBG')
+            elif ivar in ['GPP', 'PNPP']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=0, cm_max=0.01, cm_interval1=0.001, cm_interval2=0.002,
+                    cmap='Greens_r',)
+                extend1 = 'max'
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-0.004, cm_max=0.004, cm_interval1=0.001, cm_interval2=0.002,
+                    cmap='BrBG')
+            elif ivar in ['zg_freeze']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=0, cm_max=6000, cm_interval1=250, cm_interval2=1000,
+                    cmap='Greens_r',)
+                extend1 = 'max'
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-1200, cm_max=1200, cm_interval1=100, cm_interval2=400,
+                    cmap='BrBG')
+            elif ivar in ['p_freeze']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=500, cm_max=1200, cm_interval1=50, cm_interval2=100,
+                    cmap='Greens_r',)
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-120, cm_max=120, cm_interval1=10, cm_interval2=40,
+                    cmap='BrBG')
+            elif ivar in ['p_trop']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=60, cm_max=300, cm_interval1=20, cm_interval2=40,
+                    cmap='Greens_r',)
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-30, cm_max=30, cm_interval1=5, cm_interval2=10,
+                    cmap='BrBG')
+            elif ivar in ['t_trop']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=180, cm_max=220, cm_interval1=2, cm_interval2=8,
+                    cmap='Greens_r',)
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-10, cm_max=10, cm_interval1=2, cm_interval2=2,
+                    cmap='BrBG')
+            elif ivar in ['h_trop']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=10, cm_max=20, cm_interval1=0.5, cm_interval2=1,
+                    cmap='Greens_r',)
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-2, cm_max=2, cm_interval1=0.5, cm_interval2=0.5,
+                    cmap='BrBG')
+            elif ivar in ['ts', 'tas', 'das']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=-36, cm_max=36, cm_interval1=2, cm_interval2=8,
+                    cmap='RdBu',)
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-6, cm_max=6, cm_interval1=1, cm_interval2=1,
+                    cmap='BrBG')
+            elif ivar in ['rlds']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=100, cm_max=500, cm_interval1=25, cm_interval2=50,
+                    cmap='Greens_r',)
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10,
+                    cmap='BrBG')
+            elif ivar in ['rlu_t_s']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=0, cm_max=280, cm_interval1=10, cm_interval2=40,
+                    cmap='Greens_r',)
+                extend1 = 'max'
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10,
+                    cmap='BrBG')
+            elif ivar in ['ps']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=800, cm_max=1040, cm_interval1=10, cm_interval2=40,
+                    cmap='Greens_r',)
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-10, cm_max=10, cm_interval1=1, cm_interval2=2,
+                    cmap='BrBG')
+            elif ivar in ['rsns']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=0, cm_max=280, cm_interval1=10, cm_interval2=40,
+                    cmap='Greens_r',)
+                extend1 = 'max'
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10,
+                    cmap='BrBG')
+            elif ivar in ['rsdt']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=180, cm_max=420, cm_interval1=10, cm_interval2=20,
+                    cmap='Greens_r',)
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10,
+                    cmap='BrBG')
+            elif ivar in ['rsds', 'rsdscs']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=0, cm_max=320, cm_interval1=10, cm_interval2=40,
+                    cmap='Greens_r',)
+                extend1 = 'max'
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10,
+                    cmap='BrBG')
+            elif ivar in ['rsuscs']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=-160, cm_max=0, cm_interval1=10, cm_interval2=20,
+                    cmap='Greens',)
+                extend1 = 'min'
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10,
+                    cmap='BrBG')
+            elif ivar in ['rss_dir']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=0, cm_max=280, cm_interval1=10, cm_interval2=40,
+                    cmap='Greens_r',)
+                extend1 = 'max'
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10,
+                    cmap='BrBG')
+            elif ivar in ['rss_dif']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=40, cm_max=100, cm_interval1=5, cm_interval2=10,
+                    cmap='Greens_r',)
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10,
+                    cmap='BrBG')
+            elif ivar in ['rlns']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=-180, cm_max=-20, cm_interval1=10, cm_interval2=20,
+                    cmap='Greens',)
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10,
+                    cmap='BrBG')
+            elif ivar in ['rldscs']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=100, cm_max=500, cm_interval1=25, cm_interval2=50,
+                    cmap='Greens_r',)
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10,
+                    cmap='BrBG')
+            elif ivar in ['cosp_isccp_albedo']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=0, cm_max=0.28, cm_interval1=0.02, cm_interval2=0.04,
+                    cmap='Greens_r',)
+                extend1 = 'max'
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-0.04, cm_max=0.04, cm_interval1=0.01, cm_interval2=0.02,
+                    cmap='BrBG')
+            elif ivar in ['cosp_isccp_tau']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=0, cm_max=10, cm_interval1=0.5, cm_interval2=1,
+                    cmap='Greens_r',)
+                extend1 = 'max'
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-3, cm_max=3, cm_interval1=0.5, cm_interval2=1,
+                    cmap='BrBG')
+            elif ivar in ['cosp_isccp_ctp']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=0, cm_max=360, cm_interval1=20, cm_interval2=40,
+                    cmap='Greens_r',)
+                extend1 = 'max'
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-24, cm_max=24, cm_interval1=4, cm_interval2=8,
+                    cmap='BrBG')
+            elif ivar in ['uas', 'vas']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=-10, cm_max=10, cm_interval1=1, cm_interval2=2,
+                    cmap='RdBu',)
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-5, cm_max=5, cm_interval1=0.5, cm_interval2=1,
+                    cmap='BrBG')
+            elif ivar in ['sfcWind', 'wind_gust']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=0, cm_max=14, cm_interval1=1, cm_interval2=2,
+                    cmap='Greens_r',)
+                extend1 = 'max'
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-5, cm_max=5, cm_interval1=0.5, cm_interval2=1,
+                    cmap='BrBG')
+            elif ivar in ['huss', 'qt2m']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=0, cm_max=20, cm_interval1=1, cm_interval2=2,
+                    cmap='Greens_r',)
+                extend1 = 'max'
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-5, cm_max=5, cm_interval1=0.5, cm_interval2=1,
+                    cmap='BrBG')
+            elif ivar in ['hurs']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=20, cm_max=120, cm_interval1=5, cm_interval2=10,
+                    cmap='Greens_r',)
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-20, cm_max=20, cm_interval1=2, cm_interval2=4,
+                    cmap='BrBG')
+            elif ivar in ['hfms']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=-20, cm_max=0, cm_interval1=1, cm_interval2=2, cmap='Greens')
+                extend1 = 'both'
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-10, cm_max=10, cm_interval1=1, cm_interval2=2, cmap='BrBG',)
+            elif ivar in ['mlentrain', 'blentrain']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=0, cm_max=0.2, cm_interval1=0.01, cm_interval2=0.04,
+                    cmap='Greens_r',)
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-0.06, cm_max=0.06, cm_interval1=0.01, cm_interval2=0.02,
+                    cmap='BrBG')
+            elif ivar in ['psl']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=960, cm_max=1040, cm_interval1=2, cm_interval2=8,
+                    cmap='Greens_r',)
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-10, cm_max=10, cm_interval1=1, cm_interval2=2,
+                    cmap='BrBG')
+            elif ivar in ['CAPE']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=0, cm_max=4000, cm_interval1=200, cm_interval2=800,
+                    cmap='Greens_r',)
+                extend1 = 'max'
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-1000, cm_max=1000, cm_interval1=100, cm_interval2=400,
+                    cmap='BrBG')
+            elif ivar in ['CIN']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=-1000, cm_max=0, cm_interval1=50, cm_interval2=200, cmap='Greens')
+                extend1 = 'min'
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-100, cm_max=100, cm_interval1=10, cm_interval2=40, cmap='BrBG',)
+            elif ivar in ['dmvi', 'wmvi']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=5500, cm_max=10500, cm_interval1=500, cm_interval2=1000, cmap='Greens_r')
+                extend1 = 'both'
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-160, cm_max=160, cm_interval1=20, cm_interval2=40, cmap='BrBG',)
+            elif ivar in ['prw']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=0, cm_max=60, cm_interval1=2.5, cm_interval2=5, cmap='Greens_r')
+                extend1 = 'max'
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-16, cm_max=16, cm_interval1=2, cm_interval2=4, cmap='BrBG_r',)
+            else:
+                print(f'Warning: no colormap specified; automatically setup')
+                all_vals = np.concatenate([da.values.ravel() for da in plt_org.values()])
+                vmin = np.nanmin(all_vals)
+                vmax = np.nanmax(all_vals)
+                pltnorm1 = mcolors.Normalize(vmin=vmin, vmax=vmax)
+                pltcmp1 = plt.get_cmap('viridis')
+                pltticks1 = np.linspace(vmin, vmax, 7)
+                all_vals2 = np.concatenate([da.values.ravel() for da in plt_diff.values()])
+                vmin2 = np.nanmax(abs(all_vals2)) * (-1)
+                vmax2 = np.nanmax(abs(all_vals2))
+                pltnorm2 = mcolors.Normalize(vmin=vmin2, vmax=vmax2)
+                pltcmp2 = plt.get_cmap('BrBG')
+                pltticks2 = np.linspace(vmin2, vmax2, 7)
+        
+        for plt_mode in plt_modes:
+            print(f'#-------- {plt_mode}')
+            
+            if plt_region == 'global':
+                # plt_region = 'global'
+                fig, axs = plt.subplots(
+                    nrow, ncol,
+                    figsize=np.array([6.6*ncol, 3.3*nrow+3]) / 2.54,
+                    subplot_kw={'projection': ccrs.PlateCarree(central_longitude=180)},
+                    gridspec_kw={'hspace': 0.01, 'wspace': 0.01},)
+                fm_bottom = 2.4 / (3.3*nrow+3)
+                for irow in range(nrow):
+                    for jcol in range(ncol):
+                        if ncol == 1:
+                            axs = globe_plot(ax_org=axs)
+                            if iregion=='ocean':
+                                axs.add_feature(cfeature.LAND, color='white', zorder=2, edgecolor=None,lw=0)
+                            elif iregion=='land':
+                                axs.add_feature(cfeature.OCEAN, color='white', zorder=2, edgecolor=None,lw=0)
+                        elif nrow == 1:
+                            axs[jcol] = globe_plot(ax_org=axs[jcol])
+                            if iregion=='ocean':
+                                axs[jcol].add_feature(cfeature.LAND, color='white', zorder=2, edgecolor=None,lw=0)
+                            elif iregion=='land':
+                                axs[jcol].add_feature(cfeature.OCEAN, color='white', zorder=2, edgecolor=None,lw=0)
+                        else:
+                            axs[irow, jcol] = globe_plot(ax_org=axs[irow, jcol])
+                            if iregion=='ocean':
+                                axs[irow, jcol].add_feature(cfeature.LAND, color='white', zorder=2, edgecolor=None,lw=0)
+                            elif iregion=='land':
+                                axs[irow, jcol].add_feature(cfeature.OCEAN, color='white', zorder=2, edgecolor=None,lw=0)
+            
+            plt_colnames = [f'{am3_label[ds_names[0]]}']
+            plt_text = [f'Mean: {str(np.round(plt_mean[ds_names[0]], digit))}']
+            if plt_mode in ['original']:
+                plt_colnames += [f'{am3_label[ids]}' for ids in ds_names[1:]]
+                plt_text += [f'{str(np.round(plt_mean[ids], digit))}' for ids in ds_names[1:]]
+            elif plt_mode in ['difference']:
+                plt_colnames += [f'{am3_label[ids]} - {am3_label[ds_names[0]]}' for ids in ds_names[1:]]
+                plt_text += [f'RMSD: {str(np.round(plt_rmsd[ds_names[1]], digit))}, MD: {str(np.round(plt_md[ds_names[1]], digit))}']
+                plt_text += [f'{str(np.round(plt_rmsd[ids], digit))}, {str(np.round(plt_md[ids], digit))}' for ids in ds_names[2:]]
+            
+            if nrow == 1:
+                if ncol == 1:
+                    cbar_label1 = f'{plt_colnames[0]} {cbar_label1}'
+                    axs.text(
+                        0, -0.02, plt_text[jcol], ha='left', va='top',
+                        transform=axs.transAxes, size=8)
+                else:
+                    for jcol in range(ncol):
+                        axs[jcol].text(
+                            0, 1.02,
+                            f'({string.ascii_lowercase[jcol]}) {plt_colnames[jcol]}',
+                            ha='left',va='bottom',transform=axs[jcol].transAxes)
+                        axs[jcol].text(
+                            0, -0.02, plt_text[jcol], ha='left', va='top',
+                            transform=axs[jcol].transAxes,)
+            else:
+                for irow in range(nrow):
+                    for jcol in range(ncol):
+                        axs[irow, jcol].text(
+                            0, 1.02,
+                            f'({string.ascii_lowercase[irow * ncol + jcol]}) {plt_colnames[irow * ncol + jcol]}',
+                            ha='left',va='bottom',
+                            transform=axs[irow, jcol].transAxes)
+                        axs[irow, jcol].text(
+                            0, -0.02, plt_text[irow * ncol + jcol],
+                            ha='left', va='top',
+                            transform=axs[irow, jcol].transAxes)
+            
+            if nrow == 1:
+                if ncol == 1:
+                    plt_mesh1 = axs.pcolormesh(
+                        plt_org[ds_names[0]].lon,
+                        plt_org[ds_names[0]].lat,
+                        plt_org[ds_names[0]],
+                        norm=pltnorm1, cmap=pltcmp1,
+                        transform=ccrs.PlateCarree(), zorder=1)
+                else:
+                    plt_mesh1 = axs[0].pcolormesh(
+                        plt_org[ds_names[0]].lon,
+                        plt_org[ds_names[0]].lat,
+                        plt_org[ds_names[0]],
+                        norm=pltnorm1, cmap=pltcmp1,
+                        transform=ccrs.PlateCarree(), zorder=1)
+            else:
+                plt_mesh1 = axs[0, 0].pcolormesh(
+                    plt_org[ds_names[0]].lon,
+                    plt_org[ds_names[0]].lat,
+                    plt_org[ds_names[0]],
+                    norm=pltnorm1, cmap=pltcmp1,
+                    transform=ccrs.PlateCarree(), zorder=1)
+            
+            if plt_mode in ['original']:
+                if nrow == 1:
+                    for jcol in range(ncol-1):
+                        plt_mesh1 = axs[jcol+1].pcolormesh(
+                            plt_org[ds_names[jcol+1]].lon,
+                            plt_org[ds_names[jcol+1]].lat,
+                            plt_org[ds_names[jcol+1]],
+                            norm=pltnorm1, cmap=pltcmp1,
+                            transform=ccrs.PlateCarree(),zorder=1)
+                else:
+                    for irow in range(nrow):
+                        for jcol in range(ncol):
+                            if ((irow != 0) | (jcol != 0)):
+                                plt_mesh1 = axs[irow, jcol].pcolormesh(
+                                    plt_org[ds_names[irow * ncol + jcol]].lon,
+                                    plt_org[ds_names[irow * ncol + jcol]].lat,
+                                    plt_org[ds_names[irow * ncol + jcol]],
+                                    norm=pltnorm1, cmap=pltcmp1,
+                                    transform=ccrs.PlateCarree(),zorder=1)
+                if ncol == 1:
+                    cbar1 = fig.colorbar(
+                        plt_mesh1,#cm.ScalarMappable(norm=pltnorm1, cmap=pltcmp1),#
+                        format=remove_trailing_zero_pos,
+                        orientation="horizontal", ticks=pltticks1, extend=extend1,
+                        cax=fig.add_axes([0.05, 0.2, 0.95, 0.04]))
+                    cbar1.ax.tick_params(labelsize=8)
+                    cbar1.ax.set_xlabel(cbar_label1, fontsize=8)
+                else:
+                    cbar1 = fig.colorbar(
+                        plt_mesh1,#cm.ScalarMappable(norm=pltnorm1, cmap=pltcmp1),#
+                        format=remove_trailing_zero_pos,
+                        orientation="horizontal", ticks=pltticks1, extend=extend1,
+                        cax=fig.add_axes([0.26, fm_bottom*0.6, 0.48, fm_bottom / 6]))
+                    cbar1.ax.set_xlabel(cbar_label1)
+            elif plt_mode in ['difference']:
+                if nrow == 1:
+                    for jcol in range(ncol-1):
+                        plt_mesh2 = axs[jcol+1].pcolormesh(
+                            plt_diff[ds_names[jcol+1]].lon,
+                            plt_diff[ds_names[jcol+1]].lat,
+                            plt_diff[ds_names[jcol+1]],
+                            norm=pltnorm2, cmap=pltcmp2,
+                            transform=ccrs.PlateCarree(),zorder=1)
+                else:
+                    for irow in range(nrow):
+                        for jcol in range(ncol):
+                            if ((irow != 0) | (jcol != 0)):
+                                plt_mesh2 = axs[irow, jcol].pcolormesh(
+                                    plt_diff[ds_names[irow * ncol + jcol]].lon,
+                                    plt_diff[ds_names[irow * ncol + jcol]].lat,
+                                    plt_diff[ds_names[irow * ncol + jcol]],
+                                    norm=pltnorm2, cmap=pltcmp2,
+                                    transform=ccrs.PlateCarree(),zorder=1)
+                cbar1 = fig.colorbar(
+                    plt_mesh1,#cm.ScalarMappable(norm=pltnorm1, cmap=pltcmp1),#
+                    format=remove_trailing_zero_pos,
+                    orientation="horizontal", ticks=pltticks1, extend=extend1,
+                    cax=fig.add_axes([0.01, fm_bottom*0.6, 0.48, fm_bottom / 6]))
+                cbar1.ax.set_xlabel(cbar_label1)
+                cbar2 = fig.colorbar(
+                    plt_mesh2,#cm.ScalarMappable(norm=pltnorm2, cmap=pltcmp2),#
+                    format=remove_trailing_zero_pos,
+                    orientation="horizontal", ticks=pltticks2, extend=extend2,
+                    cax=fig.add_axes([0.51, fm_bottom*0.6, 0.48, fm_bottom / 6]))
+                cbar2.ax.set_xlabel(cbar_label2)
+            
+            opng = f'figures/4_um/4.2_access_am3/4.2.0_sim_obs/4.2.0.0 {ivar} {', '.join(ds_names)} {plt_region} {plt_mode} {years}-{yeare}.png'
+            fig.subplots_adjust(left=0.005, right=0.995, bottom=fm_bottom, top=0.92)
+            fig.savefig(opng, dpi=600)
 
-plt.legend(ncol=1, frameon=False, loc='center left', handlelength=1,
-           bbox_to_anchor=(fm_right, 0.5), handletextpad=0.5)
-
-fig.suptitle(f'{str(date)[:13]}:00 UTC at {station}')
-fig.subplots_adjust(fm_left, fm_bottom, fm_right, fm_top)
-fig.savefig(opng)
-plt.close()
 
 
 
-'''
+
+
 # endregion
+
+

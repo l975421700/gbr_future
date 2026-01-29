@@ -1,7 +1,7 @@
-for idx in $(seq 13 13); do
+for idx in $(seq 1 25); do
     qsub -v idx=$idx <<EOF
 #PBS -N qjob$idx
-#PBS -q copyq
+#PBS -q normal
 #PBS -l walltime=2:00:00
 #PBS -l mem=48GB
 #PBS -l jobfs=100MB

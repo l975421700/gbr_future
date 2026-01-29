@@ -322,6 +322,12 @@ era5_varlabels = {
     'shallowc_mf': r'shallow convection mass flux [$-$]',
     'midc_mf': r'mid convection mass flux [$-$]',
     'DMS': r'DMS [$-$]',
+    'cosp_cc_cf': r'COSP: CALIPSO/CLOUDSAT TCF [$\%$]',
+    'cosp_c_ca': r'COSP: CALIPSO cloud area [$\%$]',
+    'cosp_c_c': r'COSP: CALIPSO-ONLY cloud area [$\%$]',
+    'cosp_c_cfl': r'COSP: CALIPSO liquid CF [$\%$]',
+    'cosp_c_cfi': r'COSP: CALIPSO ice CF [$\%$]',
+    'cosp_c_cfu': r'COSP: CALIPSO undetermined CF [$\%$]',
 }
 
 
@@ -485,6 +491,12 @@ cmip6_era5_var = {
     'shallowc_mf': 'shallowc_mf',
     'midc_mf': 'midc_mf',
     'DMS': 'DMS',
+    'cosp_cc_cf': 'cosp_cc_cf',
+    'cosp_c_ca': 'cosp_c_ca',
+    'cosp_c_c': 'cosp_c_c',
+    'cosp_c_cfl': 'cosp_c_cfl',
+    'cosp_c_cfi': 'cosp_c_cfi',
+    'cosp_c_cfu': 'cosp_c_cfu',
 }
 # tcw = tcwv + tcsw + tcrw + tclw + tciw
 # 'cbh', 'tcw', 'tcsw', 'tcrw', 'tcslw', 'z', 'd2m', 'cp', 'lsp', 'deg0l', 'u100', 'v100'

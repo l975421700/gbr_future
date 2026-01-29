@@ -1,8 +1,5 @@
 
 
-# qsub -I -q normal -P v46 -l walltime=4:00:00,ncpus=1,mem=48GB,jobfs=100MB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/py18+gdata/gx60+gdata/xp65+gdata/qx55+gdata/rv74+gdata/al33+gdata/rr3+gdata/hr22+scratch/gx60+scratch/gb02+gdata/gb02
-
-
 # region import packages
 
 # data analysis
@@ -115,12 +112,14 @@ from um_postprocess import (
 # endregion
 
 
-# region plot obs and sim am
+# region plot obs and sim am sl
+# Memory Used: 38.13GB, Walltime Used: 00:50:53 for 4 ds
+# Memory Used: 42.17GB, Walltime Used: 00:59:30 for 3 ds
 
 # options
 years = '1983'; yeare = '1987'
 vars = [
-    'wmvi', 'fog2m', 'qt2m'
+    'clt', 'clwvi', 'clivi'
     
     # # monthly
     # 'seaice', 'sst'
@@ -130,11 +129,17 @@ vars = [
     # 'ts', 'blh', 'rlds', 'ps', 'rsns', 'rsdt', 'rsutcs', 'rsdscs', 'rsuscs', 'rsds', 'rlns', 'rlutcs', 'rldscs', 'uas', 'vas', 'sfcWind', 'tas', 'das', 'psl', 'prw', 'rlut', 'rsut', 'hfss', 'hfls', 'pr', 'clh', 'clm', 'cll', 'clt', 'clwvi', 'clivi'
     # 'rlu_t_s', 'rss_dir', 'rss_dif', 'cosp_isccp_albedo', 'cosp_isccp_tau', 'cosp_isccp_ctp', 'cosp_isccp_tcc', 'cosp_c_lcc', 'cosp_c_mcc', 'cosp_c_hcc', 'cosp_c_tcc', 'mlh', 'mlentrain', 'blentrain', 'wind_gust', 'lsrf', 'lssf', 'crf', 'csf', 'rain', 'snow', 'deep_pr', 'clvl', 'CAPE', 'CIN', 'dmvi', 'wmvi', 'fog2m', 'qt2m', 'hfms', 'huss', 'hurs'
     ]
-ds_names = ['access-am3-configs', 'am3-plus4k']
+ds_names = ['ERA5', 'access-am3-configs', 'am3-plus4k', 'am3-climaerosol', 'am3-climaerop4k']
 plt_regions = ['global']
 plt_modes = ['original', 'difference']
 nrow = 1 # 2 #
 ncol = len(ds_names) # 3 #
+if ncol==2:
+    mpl.rc('font', family='Times New Roman', size=10)
+elif ncol==3:
+    mpl.rc('font', family='Times New Roman', size=12)
+elif ncol==4:
+    mpl.rc('font', family='Times New Roman', size=14)
 
 # settings
 min_lonh9, max_lonh9, min_lath9, max_lath9 = [80, 200, -60, 60]
@@ -146,7 +151,7 @@ cltypes = {
     'lcc': ['Cumulus', 'Stratocumulus', 'Stratus'],
     'tcc': ['Cirrus', 'Cirrostratus', 'Deep convection', 'Altocumulus', 'Altostratus', 'Nimbostratus', 'Cumulus', 'Stratocumulus', 'Stratus']}
 extend2 = 'both'
-regridder = {}
+# regridder = {}
 
 for ivar in vars:
     # ivar = 'vas'
@@ -154,18 +159,27 @@ for ivar in vars:
     
     if ivar in ['sst', 'seaice']:
         iregion = 'ocean'
+    elif ivar in ['GPP', 'PNPP']:
+        iregion = 'land'
     else:
         iregion = 'global'
+    
+    if ivar in ['pr', 'lsrf', 'lssf', 'crf', 'csf', 'rain', 'snow', 'deep_pr', 'mlentrain', 'blentrain', 'cosp_isccp_albedo', 'cosp_isccp_ctp']:
+        digit = 2
+    elif ivar in ['GPP', 'PNPP']:
+        digit = 3
+    else:
+        digit = 1
     
     ds_data = {'ann': {}, 'am': {}}
     for ids in ds_names:
         print(f'Get {ids}')
         
-        if ids in ['access-am3-configs', 'am3-plus4k']:
+        if ids in ['access-am3-configs', 'am3-plus4k', 'am3-climaerosol', 'am3-climaerop4k']:
             # ids = 'access-am3-configs'
             istream = next((k for k, v in amvargroups.items() if ivar in v), None)
             if not istream is None:
-                fl = sorted(glob.glob(f'scratch/cylc-run/{ids}/share/data/History_Data/netCDF/*a.p{istream}*.nc'))
+                fl = sorted(glob.glob(f'cylc-run/{ids}/share/data/History_Data/netCDF/*a.p{istream}*.nc'))
                 ds = xr.open_mfdataset(fl, preprocess=preprocess_amoutput, parallel=True)
                 ds = ds[ivar].sel(time=slice(years, yeare))
                 
@@ -262,15 +276,15 @@ for ivar in vars:
                     cmap='BrBG')
             elif ivar in ['rlut']:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-                    cm_min=-300, cm_max=-120, cm_interval1=10, cm_interval2=20,
-                    cmap='viridis',)
+                    cm_min=-300, cm_max=-120, cm_interval1=10, cm_interval2=30,
+                    cmap='Greens',)
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
                     cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10,
                     cmap='BrBG')
             elif ivar in ['clwvi']:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
                     cm_min=0, cm_max=160, cm_interval1=10, cm_interval2=20,
-                    cmap='viridis',)
+                    cmap='Greens_r',)
                 extend1 = 'max'
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
                     cm_min=-100, cm_max=100, cm_interval1=10, cm_interval2=20,
@@ -278,7 +292,7 @@ for ivar in vars:
             elif ivar in ['clivi']:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
                     cm_min=0, cm_max=240, cm_interval1=10, cm_interval2=20,
-                    cmap='viridis',)
+                    cmap='Greens_r',)
                 extend1 = 'max'
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
                     cm_min=-100, cm_max=100, cm_interval1=10, cm_interval2=20,
@@ -290,11 +304,11 @@ for ivar in vars:
                 extend1 = 'max'
             elif ivar in ['clh', 'clm', 'cll', 'cll_mol', 'cll_rol', 'cosp_c_lcc', 'cosp_c_mcc', 'cosp_c_hcc', 'clvl', 'fog2m']:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-                    cm_min=0, cm_max=60, cm_interval1=5, cm_interval2=10,
+                    cm_min=0, cm_max=100, cm_interval1=10, cm_interval2=10,
                     cmap='Blues_r',)
-                extend1 = 'max'
+                extend1 = 'neither'
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-                    cm_min=-30, cm_max=30, cm_interval1=5, cm_interval2=10,
+                    cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10,
                     cmap='BrBG_r',)
             elif ivar in ['clt', 'cosp_isccp_tcc', 'cosp_c_tcc']:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
@@ -302,7 +316,7 @@ for ivar in vars:
                     cmap='Blues_r',)
                 extend1 = 'neither'
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-                    cm_min=-30, cm_max=30, cm_interval1=5, cm_interval2=10,
+                    cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10,
                     cmap='BrBG_r',)
             elif ivar in ['hfls']:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
@@ -326,10 +340,9 @@ for ivar in vars:
                     cmap='BrBG')
             elif ivar in ['rlutcs']:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-                    cm_min=-290, cm_max=-210, cm_interval1=5, cm_interval2=10,
-                    cmap='viridis',)
+                    cm_min=-320, cm_max=-160, cm_interval1=10, cm_interval2=20,
+                    cmap='Greens',)
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-                    # cm_min=-10, cm_max=10, cm_interval1=1, cm_interval2=2,
                     cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10,
                     cmap='BrBG')
             elif ivar in ['rsutcl']:
@@ -354,7 +367,7 @@ for ivar in vars:
                     cmap='Greens_r',)
                 extend1 = 'max'
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-                    cm_min=-400, cm_max=400, cm_interval1=100, cm_interval2=100,
+                    cm_min=-600, cm_max=600, cm_interval1=50, cm_interval2=200,
                     cmap='BrBG_r')
             elif ivar in ['LCL']:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
@@ -402,6 +415,7 @@ for ivar in vars:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
                     cm_min=0, cm_max=100, cm_interval1=10, cm_interval2=20,
                     cmap='Blues_r',)
+                extend1 = 'neither'
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
                     cm_min=-50, cm_max=50, cm_interval1=10, cm_interval2=20,
                     cmap='BrBG')
@@ -421,7 +435,7 @@ for ivar in vars:
                     cmap='BrBG')
             elif ivar in ['rln_trop']:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-                    cm_min=-300, cm_max=-100, cm_interval1=10, cm_interval2=20,
+                    cm_min=-300, cm_max=-100, cm_interval1=10, cm_interval2=40,
                     cmap='Greens',)
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
                     cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10,
@@ -431,7 +445,7 @@ for ivar in vars:
                     cm_min=10, cm_max=30, cm_interval1=2, cm_interval2=2,
                     cmap='Greens_r',)
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-                    cm_min=-5, cm_max=5, cm_interval1=1, cm_interval2=1,
+                    cm_min=-6, cm_max=6, cm_interval1=1, cm_interval2=2,
                     cmap='BrBG')
             elif ivar in ['cosp_isccp_Tb', 'cosp_isccp_Tbcs']:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
@@ -442,42 +456,44 @@ for ivar in vars:
                     cmap='BrBG')
             elif ivar in ['GPP', 'PNPP']:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-                    cm_min=0, cm_max=0.01, cm_interval1=0.001, cm_interval2=0.001,
+                    cm_min=0, cm_max=0.01, cm_interval1=0.001, cm_interval2=0.002,
                     cmap='Greens_r',)
+                extend1 = 'max'
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-                    cm_min=-0.005, cm_max=0.005, cm_interval1=0.001, cm_interval2=0.001,
+                    cm_min=-0.004, cm_max=0.004, cm_interval1=0.001, cm_interval2=0.002,
                     cmap='BrBG')
             elif ivar in ['zg_freeze']:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-                    cm_min=0, cm_max=5000, cm_interval1=250, cm_interval2=500,
+                    cm_min=0, cm_max=6000, cm_interval1=250, cm_interval2=1000,
                     cmap='Greens_r',)
+                extend1 = 'max'
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-                    cm_min=-500, cm_max=500, cm_interval1=100, cm_interval2=100,
+                    cm_min=-1200, cm_max=1200, cm_interval1=100, cm_interval2=400,
                     cmap='BrBG')
             elif ivar in ['p_freeze']:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-                    cm_min=550, cm_max=1100, cm_interval1=25, cm_interval2=50,
+                    cm_min=500, cm_max=1200, cm_interval1=50, cm_interval2=100,
                     cmap='Greens_r',)
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-                    cm_min=-100, cm_max=100, cm_interval1=10, cm_interval2=20,
+                    cm_min=-120, cm_max=120, cm_interval1=10, cm_interval2=40,
                     cmap='BrBG')
             elif ivar in ['p_trop']:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-                    cm_min=50, cm_max=250, cm_interval1=10, cm_interval2=20,
+                    cm_min=60, cm_max=300, cm_interval1=20, cm_interval2=40,
                     cmap='Greens_r',)
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-                    cm_min=-50, cm_max=50, cm_interval1=5, cm_interval2=10,
+                    cm_min=-30, cm_max=30, cm_interval1=5, cm_interval2=10,
                     cmap='BrBG')
             elif ivar in ['t_trop']:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-                    cm_min=180, cm_max=220, cm_interval1=2, cm_interval2=4,
+                    cm_min=180, cm_max=220, cm_interval1=2, cm_interval2=8,
                     cmap='Greens_r',)
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
                     cm_min=-10, cm_max=10, cm_interval1=2, cm_interval2=2,
                     cmap='BrBG')
             elif ivar in ['h_trop']:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-                    cm_min=10, cm_max=16, cm_interval1=0.5, cm_interval2=1,
+                    cm_min=10, cm_max=20, cm_interval1=0.5, cm_interval2=1,
                     cmap='Greens_r',)
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
                     cm_min=-2, cm_max=2, cm_interval1=0.5, cm_interval2=0.5,
@@ -487,33 +503,35 @@ for ivar in vars:
                     cm_min=-36, cm_max=36, cm_interval1=2, cm_interval2=8,
                     cmap='RdBu',)
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-                    cm_min=-4, cm_max=4, cm_interval1=1, cm_interval2=1,
+                    cm_min=-6, cm_max=6, cm_interval1=1, cm_interval2=1,
                     cmap='BrBG')
             elif ivar in ['rlds']:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-                    cm_min=100, cm_max=400, cm_interval1=25, cm_interval2=50,
+                    cm_min=100, cm_max=500, cm_interval1=25, cm_interval2=50,
                     cmap='Greens_r',)
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
                     cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10,
                     cmap='BrBG')
             elif ivar in ['rlu_t_s']:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-                    cm_min=0, cm_max=260, cm_interval1=10, cm_interval2=20,
+                    cm_min=0, cm_max=280, cm_interval1=10, cm_interval2=40,
                     cmap='Greens_r',)
+                extend1 = 'max'
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
                     cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10,
                     cmap='BrBG')
             elif ivar in ['ps']:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-                    cm_min=500, cm_max=1000, cm_interval1=25, cm_interval2=50,
+                    cm_min=800, cm_max=1040, cm_interval1=10, cm_interval2=40,
                     cmap='Greens_r',)
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-                    cm_min=-50, cm_max=50, cm_interval1=5, cm_interval2=10,
+                    cm_min=-10, cm_max=10, cm_interval1=1, cm_interval2=2,
                     cmap='BrBG')
             elif ivar in ['rsns']:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-                    cm_min=0, cm_max=260, cm_interval1=10, cm_interval2=20,
+                    cm_min=0, cm_max=280, cm_interval1=10, cm_interval2=40,
                     cmap='Greens_r',)
+                extend1 = 'max'
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
                     cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10,
                     cmap='BrBG')
@@ -526,8 +544,9 @@ for ivar in vars:
                     cmap='BrBG')
             elif ivar in ['rsds', 'rsdscs']:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-                    cm_min=120, cm_max=340, cm_interval1=10, cm_interval2=20,
+                    cm_min=0, cm_max=320, cm_interval1=10, cm_interval2=40,
                     cmap='Greens_r',)
+                extend1 = 'max'
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
                     cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10,
                     cmap='BrBG')
@@ -535,13 +554,15 @@ for ivar in vars:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
                     cm_min=-160, cm_max=0, cm_interval1=10, cm_interval2=20,
                     cmap='Greens',)
+                extend1 = 'min'
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
                     cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10,
                     cmap='BrBG')
             elif ivar in ['rss_dir']:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-                    cm_min=0, cm_max=260, cm_interval1=10, cm_interval2=20,
+                    cm_min=0, cm_max=280, cm_interval1=10, cm_interval2=40,
                     cmap='Greens_r',)
+                extend1 = 'max'
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
                     cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10,
                     cmap='BrBG')
@@ -550,7 +571,7 @@ for ivar in vars:
                     cm_min=40, cm_max=100, cm_interval1=5, cm_interval2=10,
                     cmap='Greens_r',)
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-                    cm_min=-20, cm_max=20, cm_interval1=2, cm_interval2=4,
+                    cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10,
                     cmap='BrBG')
             elif ivar in ['rlns']:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
@@ -561,7 +582,7 @@ for ivar in vars:
                     cmap='BrBG')
             elif ivar in ['rldscs']:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-                    cm_min=80, cm_max=400, cm_interval1=10, cm_interval2=40,
+                    cm_min=100, cm_max=500, cm_interval1=25, cm_interval2=50,
                     cmap='Greens_r',)
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
                     cm_min=-40, cm_max=40, cm_interval1=5, cm_interval2=10,
@@ -570,22 +591,25 @@ for ivar in vars:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
                     cm_min=0, cm_max=0.28, cm_interval1=0.02, cm_interval2=0.04,
                     cmap='Greens_r',)
+                extend1 = 'max'
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-                    cm_min=-0.04, cm_max=0.04, cm_interval1=0.01, cm_interval2=0.01,
+                    cm_min=-0.04, cm_max=0.04, cm_interval1=0.01, cm_interval2=0.02,
                     cmap='BrBG')
             elif ivar in ['cosp_isccp_tau']:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
                     cm_min=0, cm_max=10, cm_interval1=0.5, cm_interval2=1,
                     cmap='Greens_r',)
+                extend1 = 'max'
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-                    cm_min=-3, cm_max=3, cm_interval1=0.5, cm_interval2=0.5,
+                    cm_min=-3, cm_max=3, cm_interval1=0.5, cm_interval2=1,
                     cmap='BrBG')
             elif ivar in ['cosp_isccp_ctp']:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
                     cm_min=0, cm_max=360, cm_interval1=20, cm_interval2=40,
                     cmap='Greens_r',)
+                extend1 = 'max'
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-                    cm_min=-20, cm_max=20, cm_interval1=2, cm_interval2=4,
+                    cm_min=-24, cm_max=24, cm_interval1=4, cm_interval2=8,
                     cmap='BrBG')
             elif ivar in ['uas', 'vas']:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
@@ -598,6 +622,7 @@ for ivar in vars:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
                     cm_min=0, cm_max=14, cm_interval1=1, cm_interval2=2,
                     cmap='Greens_r',)
+                extend1 = 'max'
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
                     cm_min=-5, cm_max=5, cm_interval1=0.5, cm_interval2=1,
                     cmap='BrBG')
@@ -605,6 +630,7 @@ for ivar in vars:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
                     cm_min=0, cm_max=20, cm_interval1=1, cm_interval2=2,
                     cmap='Greens_r',)
+                extend1 = 'max'
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
                     cm_min=-5, cm_max=5, cm_interval1=0.5, cm_interval2=1,
                     cmap='BrBG')
@@ -623,43 +649,44 @@ for ivar in vars:
                     cm_min=-10, cm_max=10, cm_interval1=1, cm_interval2=2, cmap='BrBG',)
             elif ivar in ['mlentrain', 'blentrain']:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-                    cm_min=0, cm_max=0.2, cm_interval1=0.01, cm_interval2=0.02,
+                    cm_min=0, cm_max=0.2, cm_interval1=0.01, cm_interval2=0.04,
                     cmap='Greens_r',)
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-                    cm_min=-0.05, cm_max=0.05, cm_interval1=0.01, cm_interval2=0.01,
+                    cm_min=-0.06, cm_max=0.06, cm_interval1=0.01, cm_interval2=0.02,
                     cmap='BrBG')
             elif ivar in ['psl']:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-                    cm_min=980, cm_max=1020, cm_interval1=2, cm_interval2=4,
+                    cm_min=960, cm_max=1040, cm_interval1=2, cm_interval2=8,
                     cmap='Greens_r',)
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-                    cm_min=-5, cm_max=5, cm_interval1=1, cm_interval2=1,
+                    cm_min=-10, cm_max=10, cm_interval1=1, cm_interval2=2,
                     cmap='BrBG')
             elif ivar in ['CAPE']:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-                    cm_min=0, cm_max=4000, cm_interval1=200, cm_interval2=400,
+                    cm_min=0, cm_max=4000, cm_interval1=200, cm_interval2=800,
                     cmap='Greens_r',)
+                extend1 = 'max'
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-                    cm_min=-500, cm_max=500, cm_interval1=100, cm_interval2=100,
+                    cm_min=-1000, cm_max=1000, cm_interval1=100, cm_interval2=400,
                     cmap='BrBG')
             elif ivar in ['CIN']:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-                    cm_min=-1000, cm_max=0, cm_interval1=50, cm_interval2=100, cmap='Greens')
-                extend1 = 'both'
+                    cm_min=-1000, cm_max=0, cm_interval1=50, cm_interval2=200, cmap='Greens')
+                extend1 = 'min'
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-                    cm_min=-100, cm_max=100, cm_interval1=10, cm_interval2=20, cmap='BrBG',)
+                    cm_min=-100, cm_max=100, cm_interval1=10, cm_interval2=40, cmap='BrBG',)
             elif ivar in ['dmvi', 'wmvi']:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-                    cm_min=5250, cm_max=10500, cm_interval1=250, cm_interval2=500, cmap='Greens_r')
+                    cm_min=5500, cm_max=10500, cm_interval1=500, cm_interval2=1000, cmap='Greens_r')
                 extend1 = 'both'
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-                    cm_min=-500, cm_max=500, cm_interval1=50, cm_interval2=100, cmap='BrBG',)
+                    cm_min=-160, cm_max=160, cm_interval1=20, cm_interval2=40, cmap='BrBG',)
             elif ivar in ['prw']:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-                    cm_min=0, cm_max=48, cm_interval1=2, cm_interval2=4, cmap='Greens_r')
-                extend1 = 'both'
+                    cm_min=0, cm_max=60, cm_interval1=2.5, cm_interval2=5, cmap='Greens_r')
+                extend1 = 'max'
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-                    cm_min=-8, cm_max=8, cm_interval1=1, cm_interval2=2, cmap='BrBG',)
+                    cm_min=-16, cm_max=16, cm_interval1=2, cm_interval2=4, cmap='BrBG_r',)
             else:
                 print(f'Warning: no colormap specified; automatically setup')
                 all_vals = np.concatenate([da.values.ravel() for da in plt_org.values()])
@@ -682,10 +709,10 @@ for ivar in vars:
                 # plt_region = 'global'
                 fig, axs = plt.subplots(
                     nrow, ncol,
-                    figsize=np.array([6.6*ncol, 3.3*nrow+2.8]) / 2.54,
+                    figsize=np.array([6.6*ncol, 3.3*nrow+3]) / 2.54,
                     subplot_kw={'projection': ccrs.PlateCarree(central_longitude=180)},
                     gridspec_kw={'hspace': 0.01, 'wspace': 0.01},)
-                fm_bottom = 2.2 / (3.3*nrow+2.8)
+                fm_bottom = 2.4 / (3.3*nrow+3)
                 for irow in range(nrow):
                     for jcol in range(ncol):
                         if ncol == 1:
@@ -706,11 +733,6 @@ for ivar in vars:
                                 axs[irow, jcol].add_feature(cfeature.LAND, color='white', zorder=2, edgecolor=None,lw=0)
                             elif iregion=='land':
                                 axs[irow, jcol].add_feature(cfeature.OCEAN, color='white', zorder=2, edgecolor=None,lw=0)
-            
-            if ivar in ['pr']:
-                digit = 2
-            else:
-                digit = 1
             
             plt_colnames = [f'{am3_label[ds_names[0]]}']
             plt_text = [f'Mean: {str(np.round(plt_mean[ds_names[0]], digit))}']
@@ -840,7 +862,7 @@ for ivar in vars:
                 cbar2.ax.set_xlabel(cbar_label2)
             
             opng = f'figures/4_um/4.2_access_am3/4.2.0_sim_obs/4.2.0.0 {ivar} {', '.join(ds_names)} {plt_region} {plt_mode} {years}-{yeare}.png'
-            fig.subplots_adjust(left=0.005, right=0.995, bottom=fm_bottom, top=0.94)
+            fig.subplots_adjust(left=0.005, right=0.995, bottom=fm_bottom, top=0.92)
             fig.savefig(opng, dpi=600)
 
 
@@ -849,4 +871,5 @@ for ivar in vars:
 
 
 # endregion
+
 
