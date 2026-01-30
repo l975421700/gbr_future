@@ -1564,7 +1564,7 @@ elif ncol>=4:
 extend2 = 'both'
 
 for ivar in vars:
-    # ivar = 'cosp_c_ca'
+    # ivar = 'cosp_isccp_ctp_tau'
     print(f'#-------------------------------- {ivar}')
     
     ds_data = {'ann': {}, 'am': {}}
@@ -1578,18 +1578,16 @@ for ivar in vars:
                 fl = sorted(glob.glob(f'cylc-run/{ids}/share/data/History_Data/netCDF/*a.p{istream}*.nc'))
                 ds = xr.open_mfdataset(fl, preprocess=preprocess_amoutput, parallel=True).sel(time=slice(years, yeare))
                 
+                ds_data['ann'][ids] = ds[ivar].rename({'pseudo_level': 'tau'}).resample({'time': '1YE'}).map(time_weighted_mean).mean(dim='lon').weighted(np.cos(np.deg2rad(ds.lat))).mean(dim='lat').compute()
                 
-                
-                
-                ds_data['ann'][ids] = ds[ivar].resample({'time': '1YE'}).map(time_weighted_mean).mean(dim='lon').compute()
                 # print(np.nanmax(ds_data['ann'][ids]))
                 # print(np.nanmin(ds_data['ann'][ids]))
             
-            if ivar in ['cosp_cc_cf', 'cosp_c_ca', 'cosp_c_c', 'cosp_c_cfl', 'cosp_c_cfi', 'cosp_c_cfu']:
+            if ivar in ['cosp_isccp_ctp_tau']:
                 ds_data['ann'][ids] *= 100
             del ds
         
-        ds_data['ann'][ids] = ds_data['ann'][ids].sortby(['lat']).transpose(..., 'height', 'lat')
+        ds_data['ann'][ids] = ds_data['ann'][ids].transpose(..., 'pressure', 'tau')
         ds_data['am'][ids] = ds_data['ann'][ids].mean(dim='time').compute()
     
     cbar_label1 = f'{years}-{yeare} {era5_varlabels[cmip6_era5_var[ivar]]}'
@@ -1610,22 +1608,22 @@ for ivar in vars:
         for ids in ds_names[1:]:
             # ids = ds_names[1]
             print(f'{ids} - {ds_names[0]}')
-            plt_diff[ids] = plt_org[ids] - plt_org[ds_names[0]].interp(lat=plt_org[ids].lat, height=plt_org[ids].height)
+            plt_diff[ids] = plt_org[ids] - plt_org[ds_names[0]].interp(pressure=plt_org[ids].pressure, tau=plt_org[ids].tau)
             
             if ivar not in ['pr']:
                 ttest_fdr_res = ttest_fdr_control(
                     plt_ann[ids],
-                    plt_ann[ds_names[0]].interp(lat=plt_ann[ids].lat, height=plt_ann[ids].height))
+                    plt_ann[ds_names[0]].interp(pressure=plt_ann[ids].pressure, tau=plt_ann[ids].tau))
                 plt_diff[ids] = plt_diff[ids].where(ttest_fdr_res, np.nan)
         
         extend1 = 'both'
         if plt_region == 'global':
-            if ivar in ['cosp_cc_cf', 'cosp_c_ca', 'cosp_c_c', 'cosp_c_cfl', 'cosp_c_cfi', 'cosp_c_cfu']:
+            if ivar in ['cosp_isccp_ctp_tau']:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-                    cm_min=0, cm_max=40, cm_interval1=5, cm_interval2=5, cmap='Blues_r')
+                    cm_min=0, cm_max=4, cm_interval1=0.5, cm_interval2=0.25, cmap='Blues_r')
                 extend1 = 'max'
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
-                    cm_min=-15, cm_max=15, cm_interval1=3, cm_interval2=3, cmap='BrBG_r')
+                    cm_min=-0.5, cm_max=0.5, cm_interval1=0.05, cm_interval2=0.1, cmap='BrBG_r')
             else:
                 print(f'Warning: no colormap specified; automatically setup')
                 all_vals = np.concatenate([da.values.ravel() for da in plt_org.values()])
@@ -1647,13 +1645,13 @@ for ivar in vars:
             if plt_region == 'global':
                 fig, axs = plt.subplots(
                     nrow, ncol,
-                    figsize=np.array([6.6*ncol+4, 5.5*nrow+4])/2.54,
+                    figsize=np.array([6.6*ncol+2.5, 6*nrow+4.5])/2.54,
                     sharey=True, sharex=True,
-                    gridspec_kw={'hspace': 0.01, 'wspace': 0.05},)
-                fm_bottom = 3 / (5.5*nrow+4)
-                fm_top = 1 - 1/(5.5*nrow+4)
-                fm_left = 2 / (6.6*ncol+4)
-                fm_right = 1 - 2 / (6.6*ncol+4)
+                    gridspec_kw={'hspace': 0.01, 'wspace': 0.12},)
+                fm_bottom = 3.6 / (6*nrow+4.5)
+                fm_top = 1 - 0.9/(6*nrow+4.5)
+                fm_left = 2 / (6.6*ncol+2.5)
+                fm_right = 1 - 0.5 / (6.6*ncol+2.5)
                 
                 plt_colnames = [f'{am3_label[ds_names[0]]}']
                 if plt_mode in ['original']:
@@ -1670,27 +1668,23 @@ for ivar in vars:
                                     ha='left', va='top',
                                     transform=axs.transAxes)
                                 plt_mesh1 = axs.pcolormesh(
-                                    plt_org[ds_names[0]].lat,
-                                    plt_org[ds_names[0]].height/1000,
+                                    np.arange(0.5, 7, 1),
+                                    np.arange(0.5, 7, 1),
                                     plt_org[ds_names[0]],
                                     norm=pltnorm1, cmap=pltcmp1, zorder=1)
                                 
-                                axs.set_ylim(0, 19)
-                                axs.yaxis.set_minor_locator(AutoMinorLocator(2))
+                                axs.set_xlim(0, 7)
+                                axs.set_xticks(np.arange(0, 8, 1))
+                                axs.set_xlabel(r'$\tau$ [$-$]')
+                                axs.set_xticklabels(['0', '0.3', '1.3', '3.6', '9.4', '23', '60', '380'])
                                 
-                                ax2 = axs.twinx()
-                                ax2.set_ylim(0, 19)
-                                ax2.set_yticks(pressure_to_height_std(np.array([1000,  800,  600,  400,  200, 100]) * units.hPa).magnitude)
-                                ax2.set_yticklabels(np.array([1000,  800,  600,  400,  200, 100]), c = 'gray')
-                                ax2.set_ylabel('Pressure [$hPa$]', c = 'gray')
-                                
-                                axs.set_xlim(-90, 90)
-                                axs.set_xticks(np.arange(-60, 61, 60))
-                                axs.xaxis.set_minor_locator(AutoMinorLocator(2))
-                                axs.xaxis.set_major_formatter(LatitudeFormatter(degree_symbol='° '))
+                                axs.set_ylim(0, 7)
+                                axs.set_yticks(np.arange(0, 8, 1))
+                                axs.set_ylabel(r'CTP [$hPa$]')
+                                axs.set_yticklabels(['1000', '800', '680', '560', '440', '310', '180', '50'])
                                 
                                 axs.grid(True, which='both', lw=0.5, c='gray', alpha=0.5, ls='--')
-                                axs.set_ylabel(r'Height [$km$]')
+                                
                             else:
                                 axs[jcol].text(
                                     0, 1.02,
@@ -1699,28 +1693,23 @@ for ivar in vars:
                                     transform=axs[jcol].transAxes)
                                 if jcol==0:
                                     plt_mesh1 = axs[0].pcolormesh(
-                                        plt_org[ds_names[0]].lat,
-                                        plt_org[ds_names[0]].height/1000,
+                                        np.arange(0.5, 7, 1),
+                                        np.arange(0.5, 7, 1),
                                         plt_org[ds_names[0]],
                                         norm=pltnorm1, cmap=pltcmp1, zorder=1)
-                                    axs[0].set_ylabel(r'Height [$km$]')
                                     
-                                    axs[0].set_ylim(0, 19)
-                                    axs[0].yaxis.set_minor_locator(AutoMinorLocator(2))
-                                    
-                                if jcol==(ncol-1):
-                                    ax2 = axs[jcol].twinx()
-                                    ax2.set_ylim(0, 19)
-                                    ax2.set_yticks(pressure_to_height_std(np.array([1000,  800,  600,  400,  200, 100]) * units.hPa).magnitude)
-                                    ax2.set_yticklabels(np.array([1000,  800,  600,  400,  200, 100]), c = 'gray')
-                                    ax2.set_ylabel('Pressure [$hPa$]', c = 'gray')
+                                    axs[0].set_ylim(0, 7)
+                                    axs[0].set_yticks(np.arange(0, 8, 1))
+                                    axs[0].set_ylabel(r'CTP [$hPa$]')
+                                    axs[0].set_yticklabels(['1000', '800', '680', '560', '440', '310', '180', '50'])
                                 
-                                axs[jcol].set_xlim(-90, 90)
-                                axs[jcol].set_xticks(np.arange(-60, 61, 60))
-                                axs[jcol].xaxis.set_minor_locator(AutoMinorLocator(2))
-                                axs[jcol].xaxis.set_major_formatter(LatitudeFormatter(degree_symbol='° '))
+                                axs[jcol].set_xlim(0, 7)
+                                axs[jcol].set_xticks(np.arange(0, 8, 1))
+                                axs[jcol].set_xlabel(r'$\tau$ [$-$]')
+                                axs[jcol].set_xticklabels(['0', '0.3', '1.3', '3.6', '9.4', '23', '60', '380'])
                                 
                                 axs[jcol].grid(True, which='both', lw=0.5, c='gray', alpha=0.5, ls='--')
+                                
                         else:
                             axs[irow, jcol].text(
                                 0, 1.02,
@@ -1729,28 +1718,21 @@ for ivar in vars:
                                 transform=axs[irow, jcol].transAxes)
                             if (irow==0) & (jcol==0):
                                 plt_mesh1 = axs[0, 0].pcolormesh(
-                                    plt_org[ds_names[0]].lat,
-                                    plt_org[ds_names[0]].height/1000,
+                                    np.arange(0.5, 7, 1),
+                                    np.arange(0.5, 7, 1),
                                     plt_org[ds_names[0]],
                                     norm=pltnorm1, cmap=pltcmp1, zorder=1)
                             
                             if jcol==0:
-                                axs[irow, 0].set_ylabel(r'Height [$km$]')
-                                
-                                axs[irow, 0].set_ylim(0, 19)
-                                axs[irow, 0].yaxis.set_minor_locator(AutoMinorLocator(2))
-                                
-                            if jcol==(ncol-1):
-                                ax2 = axs[irow, jcol].twinx()
-                                ax2.set_ylim(0, 19)
-                                ax2.set_yticks(pressure_to_height_std(np.array([1000,  800,  600,  400,  200, 100]) * units.hPa).magnitude)
-                                ax2.set_yticklabels(np.array([1000,  800,  600,  400,  200, 100]), c = 'gray')
-                                ax2.set_ylabel('Pressure [$hPa$]', c = 'gray')
+                                axs[irow, 0].set_ylim(0, 7)
+                                axs[irow, 0].set_yticks(np.arange(0, 8, 1))
+                                axs[irow, 0].set_ylabel(r'CTP [$hPa$]')
+                                axs[irow, 0].set_yticklabels(['1000', '800', '680', '560', '440', '310', '180', '50'])
                             
-                            axs[irow, jcol].set_xlim(-90, 90)
-                            axs[irow, jcol].set_xticks(np.arange(-60, 61, 60))
-                            axs[irow, jcol].xaxis.set_minor_locator(AutoMinorLocator(2))
-                            axs[irow, jcol].xaxis.set_major_formatter(LatitudeFormatter(degree_symbol='° '))
+                            axs[irow, jcol].set_xlim(0, 7)
+                            axs[irow, jcol].set_xticks(np.arange(0, 8, 1))
+                            axs[irow, jcol].set_xlabel(r'$\tau$ [$-$]')
+                            axs[irow, jcol].set_xticklabels(['0', '0.3', '1.3', '3.6', '9.4', '23', '60', '380'])
                             
                             axs[irow, jcol].grid(True, which='both', lw=0.5, c='gray', alpha=0.5, ls='--')
                 
@@ -1758,8 +1740,8 @@ for ivar in vars:
                     if nrow == 1:
                         for jcol in range(ncol-1):
                             plt_mesh1 = axs[jcol+1].pcolormesh(
-                                plt_org[ds_names[jcol+1]].lat,
-                                plt_org[ds_names[jcol+1]].height/1000,
+                                np.arange(0.5, 7, 1),
+                                np.arange(0.5, 7, 1),
                                 plt_org[ds_names[jcol+1]],
                                 norm=pltnorm1, cmap=pltcmp1, zorder=1)
                     else:
@@ -1767,8 +1749,8 @@ for ivar in vars:
                             for jcol in range(ncol):
                                 if ((irow != 0) | (jcol != 0)):
                                     plt_mesh1 = axs[irow, jcol].pcolormesh(
-                                        plt_org[ds_names[irow*ncol+jcol]].lat,
-                                        plt_org[ds_names[irow*ncol+jcol]].height/1000,
+                                        np.arange(0.5, 7, 1),
+                                        np.arange(0.5, 7, 1),
                                         plt_org[ds_names[irow*ncol+jcol]],
                                         norm=pltnorm1, cmap=pltcmp1,zorder=1)
                     if ncol == 1:
@@ -1784,14 +1766,14 @@ for ivar in vars:
                             plt_mesh1,#cm.ScalarMappable(norm=pltnorm1, cmap=pltcmp1),#
                             format=remove_trailing_zero_pos,
                             orientation="horizontal", ticks=pltticks1, extend=extend1,
-                            cax=fig.add_axes([0.26, fm_bottom*0.55, 0.48, fm_bottom / 6]))
+                            cax=fig.add_axes([0.26, fm_bottom*0.44, 0.48, fm_bottom / 6]))
                         cbar1.ax.set_xlabel(cbar_label1)
                 elif plt_mode in ['difference']:
                     if nrow == 1:
                         for jcol in range(ncol-1):
                             plt_mesh2 = axs[jcol+1].pcolormesh(
-                                plt_diff[ds_names[jcol+1]].lat,
-                                plt_diff[ds_names[jcol+1]].height/1000,
+                                np.arange(0.5, 7, 1),
+                                np.arange(0.5, 7, 1),
                                 plt_diff[ds_names[jcol+1]],
                                 norm=pltnorm2, cmap=pltcmp2,zorder=1)
                     else:
@@ -1799,24 +1781,24 @@ for ivar in vars:
                             for jcol in range(ncol):
                                 if ((irow != 0) | (jcol != 0)):
                                     plt_mesh2 = axs[irow, jcol].pcolormesh(
-                                        plt_diff[ds_names[irow*ncol+jcol]].lat,
-                                        plt_diff[ds_names[irow*ncol+jcol]].height/1000,
+                                        np.arange(0.5, 7, 1),
+                                        np.arange(0.5, 7, 1),
                                         plt_diff[ds_names[irow*ncol+jcol]],
                                         norm=pltnorm2, cmap=pltcmp2,zorder=1)
                     cbar1 = fig.colorbar(
                         plt_mesh1,#cm.ScalarMappable(norm=pltnorm1, cmap=pltcmp1),#
                         format=remove_trailing_zero_pos,
                         orientation="horizontal", ticks=pltticks1, extend=extend1,
-                        cax=fig.add_axes([0.01, fm_bottom*0.55, 0.48, fm_bottom / 6]))
+                        cax=fig.add_axes([0.01, fm_bottom*0.44, 0.48, fm_bottom / 6]))
                     cbar1.ax.set_xlabel(cbar_label1)
                     cbar2 = fig.colorbar(
                         plt_mesh2,#cm.ScalarMappable(norm=pltnorm2, cmap=pltcmp2),#
                         format=remove_trailing_zero_pos,
                         orientation="horizontal", ticks=pltticks2, extend=extend2,
-                        cax=fig.add_axes([0.51, fm_bottom*0.55, 0.48, fm_bottom / 6]))
+                        cax=fig.add_axes([0.51, fm_bottom*0.44, 0.48, fm_bottom / 6]))
                     cbar2.ax.set_xlabel(cbar_label2)
             
-            opng = f'figures/4_um/4.2_access_am3/4.2.0_sim_obs/4.2.0.2 {ivar} {', '.join(ds_names)} {plt_region} {plt_mode} {years}-{yeare}.png'
+            opng = f'figures/4_um/4.2_access_am3/4.2.0_sim_obs/4.2.0.3 {ivar} {', '.join(ds_names)} {plt_region} {plt_mode} {years}-{yeare}.png'
             fig.subplots_adjust(left=fm_left, right=fm_right, bottom=fm_bottom, top=fm_top)
             fig.savefig(opng, dpi=600)
 

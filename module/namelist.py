@@ -328,6 +328,7 @@ era5_varlabels = {
     'cosp_c_cfl': r'COSP: CALIPSO liquid CF [$\%$]',
     'cosp_c_cfi': r'COSP: CALIPSO ice CF [$\%$]',
     'cosp_c_cfu': r'COSP: CALIPSO undetermined CF [$\%$]',
+    'cosp_isccp_ctp_tau': r'COSP: ISCCP CTP-$\tau$ histogram [$\%$]',
 }
 
 
@@ -497,6 +498,7 @@ cmip6_era5_var = {
     'cosp_c_cfl': 'cosp_c_cfl',
     'cosp_c_cfi': 'cosp_c_cfi',
     'cosp_c_cfu': 'cosp_c_cfu',
+    'cosp_isccp_ctp_tau': 'cosp_isccp_ctp_tau',
 }
 # tcw = tcwv + tcsw + tcrw + tclw + tciw
 # 'cbh', 'tcw', 'tcsw', 'tcrw', 'tcslw', 'z', 'd2m', 'cp', 'lsp', 'deg0l', 'u100', 'v100'
