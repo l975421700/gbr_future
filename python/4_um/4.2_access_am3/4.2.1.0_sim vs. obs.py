@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -P v46 -l walltime=4:00:00,ncpus=1,mem=48GB,jobfs=100MB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/py18+gdata/gx60+gdata/xp65+gdata/qx55+gdata/rv74+gdata/al33+gdata/rr3+gdata/hr22+scratch/gx60+scratch/gb02+gdata/gb02
+# qsub -I -q copyq -P v46 -l walltime=4:00:00,ncpus=1,mem=192GB,jobfs=100MB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/py18+gdata/gx60+gdata/xp65+gdata/qx55+gdata/rv74+gdata/al33+gdata/rr3+gdata/hr22+scratch/gx60+scratch/gb02+gdata/gb02
 
 
 # region import packages
@@ -83,7 +83,7 @@ from um_postprocess import (
 # options
 years = '1983'; yeare = '1987'
 vars = [
-    'seaice', 'sst'
+    'ncloud'
     
     # # monthly
     # 'seaice', 'sst'
@@ -93,7 +93,7 @@ vars = [
     # 'ts', 'blh', 'rlds', 'ps', 'rsns', 'rsdt', 'rsutcs', 'rsdscs', 'rsuscs', 'rsds', 'rlns', 'rlutcs', 'rldscs', 'uas', 'vas', 'sfcWind', 'tas', 'das', 'psl', 'prw', 'rlut', 'rsut', 'hfss', 'hfls', 'pr', 'clh', 'clm', 'cll', 'clt', 'clwvi', 'clivi'
     # 'rlu_t_s', 'rss_dir', 'rss_dif', 'cosp_isccp_albedo', 'cosp_isccp_tau', 'cosp_isccp_ctp', 'cosp_isccp_tcc', 'cosp_c_lcc', 'cosp_c_mcc', 'cosp_c_hcc', 'cosp_c_tcc', 'mlh', 'mlentrain', 'blentrain', 'wind_gust', 'lsrf', 'lssf', 'crf', 'csf', 'rain', 'snow', 'deep_pr', 'clvl', 'CAPE', 'CIN', 'dmvi', 'wmvi', 'fog2m', 'qt2m', 'hfms', 'huss', 'hurs'
     ]
-ds_names = ['ERA5', 'access-am3-configs', 'am3-plus4k', 'am3-climaerosol', 'am3-climaerop4k']
+ds_names = ['access-am3-configs', 'am3-plus4k', 'am3-climaerosol', 'am3-climaerop4k']
 plt_regions = ['global']
 plt_modes = ['original', 'difference']
 nrow = 1 # 2 #
@@ -140,7 +140,7 @@ for ivar in vars:
         print(f'Get {ids}')
         
         if ids in ['access-am3-configs', 'am3-plus4k', 'am3-climaerosol', 'am3-climaerop4k']:
-            # ids = 'access-am3-configs'
+            # ids = 'am3-plus4k'
             istream = next((k for k, v in amvargroups.items() if ivar in v), None)
             if not istream is None:
                 fl = sorted(glob.glob(f'cylc-run/{ids}/share/data/History_Data/netCDF/*a.p{istream}*.nc'))
@@ -171,6 +171,10 @@ for ivar in vars:
                     ds_data['ann'][ids] = ds.resample({'time': '1YE'}).map(time_weighted_mean).compute()
                 elif istream in ['b']:
                     ds_data['ann'][ids] = ds.resample({'time': '1YE'}).mean().compute()
+                elif istream in ['c']:
+                    if ivar in ['ncloud']:
+                        ds = ds.where(ds != 0, np.nan)
+                        ds_data['ann'][ids] = ds.resample({'time': '1YE'}).mean(skipna=True).mean(dim='theta85', skipna=True).compute() / 1e+6
         elif ids == 'ERA5':
             # ids = 'ERA5'
             with open(f'data/sim/era5/mon/era5_sl_mon_alltime_{cmip6_era5_var[ivar]}.pkl', 'rb') as f:
@@ -261,11 +265,6 @@ for ivar in vars:
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
                     cm_min=-100, cm_max=100, cm_interval1=10, cm_interval2=20,
                     cmap='BrBG_r')
-            elif ivar in ['CDNC']:
-                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-                    cm_min=0, cm_max=150, cm_interval1=10, cm_interval2=20,
-                    cmap='viridis_r',)
-                extend1 = 'max'
             elif ivar in ['clh', 'clm', 'cll', 'cll_mol', 'cll_rol', 'cosp_c_lcc', 'cosp_c_mcc', 'cosp_c_hcc', 'clvl', 'fog2m']:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
                     cm_min=0, cm_max=100, cm_interval1=10, cm_interval2=10,
@@ -651,6 +650,12 @@ for ivar in vars:
                 extend1 = 'max'
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
                     cm_min=-16, cm_max=16, cm_interval1=2, cm_interval2=4, cmap='BrBG_r',)
+            elif ivar in ['ncloud']:
+                pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
+                    cm_min=0, cm_max=300, cm_interval1=15, cm_interval2=30, cmap='pink')
+                extend1 = 'max'
+                pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
+                    cm_min=-100, cm_max=100, cm_interval1=20, cm_interval2=20, cmap='BrBG_r',)
             else:
                 print(f'Warning: no colormap specified; automatically setup')
                 all_vals = np.concatenate([da.values.ravel() for da in plt_org.values()])
@@ -1620,7 +1625,7 @@ for ivar in vars:
         if plt_region == 'global':
             if ivar in ['cosp_isccp_ctp_tau']:
                 pltlevel1, pltticks1, pltnorm1, pltcmp1 = plt_mesh_pars(
-                    cm_min=0, cm_max=4, cm_interval1=0.5, cm_interval2=0.25, cmap='Blues_r')
+                    cm_min=0, cm_max=4, cm_interval1=0.25, cm_interval2=0.5, cmap='Blues_r')
                 extend1 = 'max'
                 pltlevel2, pltticks2, pltnorm2, pltcmp2 = plt_mesh_pars(
                     cm_min=-0.5, cm_max=0.5, cm_interval1=0.05, cm_interval2=0.1, cmap='BrBG_r')
@@ -1806,24 +1811,8 @@ for ivar in vars:
 
 
 '''
-
+for ids in ds_names:
+    print(f'{ids}: {np.round(plt_org[ids].sum().values, 1)}')
 '''
 # endregion
-
-
-# region plot obs and sim am meridional
-'meridional_hf', 'meridional_mf'
-
-# endregion
-
-
-# region plot obs and sim am ncloud
-'ncloud'
-
-# endregion
-
-
-
-
-
 
