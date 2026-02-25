@@ -1,6 +1,6 @@
 
 
-# qsub -I -q copyq -P v46 -l walltime=4:00:00,ncpus=1,mem=192GB,jobfs=100MB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/py18+gdata/gx60+gdata/xp65+gdata/qx55+gdata/rv74+gdata/al33+gdata/rr3+gdata/hr22+scratch/gx60+scratch/gb02+gdata/gb02
+# qsub -I -q normal -P v46 -l walltime=4:00:00,ncpus=1,mem=40GB,jobfs=100MB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/py18+gdata/gx60+gdata/xp65+gdata/qx55+gdata/rv74+gdata/al33+gdata/rr3+gdata/hr22+scratch/gx60+scratch/gb02+gdata/gb02
 
 
 # region import packages
@@ -1582,6 +1582,7 @@ for ivar in vars:
             if not istream is None:
                 fl = sorted(glob.glob(f'cylc-run/{ids}/share/data/History_Data/netCDF/*a.p{istream}*.nc'))
                 ds = xr.open_mfdataset(fl, preprocess=preprocess_amoutput, parallel=True).sel(time=slice(years, yeare))
+                print(np.round(global_land_ocean_mean(ds[ivar].pipe(time_weighted_mean).sum(dim=['pseudo_level', 'pressure']), iregion='global') * 100, 1))
                 
                 ds_data['ann'][ids] = ds[ivar].rename({'pseudo_level': 'tau'}).resample({'time': '1YE'}).map(time_weighted_mean).mean(dim='lon').weighted(np.cos(np.deg2rad(ds.lat))).mean(dim='lat').compute()
                 
@@ -1608,6 +1609,7 @@ for ivar in vars:
             if plt_region == 'global':
                 plt_org[ids] = ds_data['am'][ids]
                 plt_ann[ids] = ds_data['ann'][ids]
+            print(f'{np.round(plt_org[ids].sum().values, 1)}')
         
         plt_diff = {}
         for ids in ds_names[1:]:
@@ -1811,8 +1813,6 @@ for ivar in vars:
 
 
 '''
-for ids in ds_names:
-    print(f'{ids}: {np.round(plt_org[ids].sum().values, 1)}')
 '''
 # endregion
 

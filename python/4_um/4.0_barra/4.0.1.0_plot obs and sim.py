@@ -1,6 +1,6 @@
 
 
-# qsub -I -q normal -P v46 -l walltime=6:00:00,ncpus=1,mem=192GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/qx55+gdata/gx60+gdata/py18+gdata/rv74+gdata/xp65
+# qsub -I -q normal -P v46 -l walltime=3:00:00,ncpus=1,mem=40GB,storage=gdata/v46+scratch/v46+gdata/rr1+gdata/rt52+gdata/ob53+gdata/oi10+gdata/hh5+gdata/fs38+scratch/public+gdata/zv2+gdata/ra22+gdata/qx55+gdata/gx60+gdata/py18+gdata/rv74+gdata/xp65
 
 
 # region import packages
@@ -117,11 +117,11 @@ years = '2016'; yeare = '2023'
 # ['rsut', 'rlut'， 'cll', 'clm', 'clh', 'clt', 'clwvi', 'clivi', 'inversionh', 'LCL', 'LTS', 'EIS', 'ECTEI', 'pr', 'hfls', 'hfss', 'cll_mol', 'cll_rol']
 vars = ['clwvi']
 # ['CERES', 'CM SAF', 'Himawari', 'BARRA-C2', 'BARPA-C', 'ERA5', 'BARRA-R2', 'BARPA-R', 'MOD08_M3', 'MYD08_M3', 'IMERG', 'OAFlux']
-ds_names = ['CERES', 'BARRA-C2', 'BARPA-C', 'ERA5', 'BARRA-R2', 'BARPA-R']
+ds_names = ['CERES', 'AMSR']
 plt_regions = ['c2_domain'] # ['global', 'c2_domain', 'h9_domain', 'r2_domain']
 plt_modes = ['original', 'difference'] # ['original', 'difference']
-nrow = 2 # 1 #
-ncol = 3 # len(ds_names) #
+nrow = 1 # 1 #
+ncol = 2 # len(ds_names) #
 
 # settings
 min_lon, max_lon, min_lat, max_lat = [110.58, 157.34, -43.69, -7.01]
@@ -185,6 +185,10 @@ for ivar in vars:
                 cm_saf[cm_saf_varnames[ivar]] /= 1e6
             
             ds_data['ann'][ids] = cm_saf[cm_saf_varnames[ivar]].resample({'time': '1YE'}).map(time_weighted_mean).compute()
+        elif ids == 'AMSR':
+            with open(f'data/obs/AMSR/amsr_lwp_alltime.pkl', 'rb') as f:
+                amsr_lwp_alltime = pickle.load(f)
+            ds_data['ann'][ids] = amsr_lwp_alltime['ann'].sel(time=slice(years, yeare))
         elif ids == 'ERA5':
             # ids = 'ERA5'
             with open(f'data/sim/era5/mon/era5_sl_mon_alltime_{cmip6_era5_var[ivar]}.pkl', 'rb') as f:
@@ -546,6 +550,7 @@ for ivar in vars:
                     figsize=np.array([8.8*ncol, 4.4*nrow + 2]) / 2.54,
                     subplot_kw={'projection': ccrs.Mollweide(central_longitude=180)},
                     gridspec_kw={'hspace': 0.01, 'wspace': 0.01},)
+                fm_bottom = 2 / (4.4*nrow + 2)
                 for jcol in range(ncol):
                     if ncol == 1:
                         axs = globe_plot(ax_org=axs)
@@ -733,7 +738,7 @@ for ivar in vars:
             
             opng = f'figures/4_um/4.0_barra/4.0.7_obs_sim/4.0.7.0 {ivar} {', '.join(ds_names)} {plt_region} {plt_mode} {years}-{yeare}.png'
             fig.subplots_adjust(left=0.005, right=0.995, bottom=fm_bottom, top=0.96)
-            fig.savefig(opng, dpi=2400)
+            fig.savefig(opng, dpi=600)
     
     # del ds_data
 
